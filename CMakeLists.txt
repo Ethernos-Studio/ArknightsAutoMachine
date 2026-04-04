@@ -179,9 +179,9 @@ include(cmake/compiler_flags.cmake)
 # 依赖管理
 # =============================================================================
 # 优先使用 vcpkg 安装的依赖，避免找到系统/Anaconda 的库
-if(AAM_USE_VCPKG AND DEFINED CMAKE_PREFIX_PATH)
-    list(INSERT CMAKE_PREFIX_PATH 0 "${CMAKE_PREFIX_PATH}")
-    message(STATUS "Prioritizing vcpkg dependencies from: ${CMAKE_PREFIX_PATH}")
+if(AAM_VCPKG_INSTALLED_FOUND AND DEFINED VCPKG_INSTALLED_DIR)
+    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
+    message(STATUS "Prioritizing vcpkg dependencies from: ${VCPKG_INSTALLED_DIR}")
 endif()
 
 # 检查依赖可用性

@@ -281,11 +281,6 @@ QualifierOrder:
   - volatile
   - type
 
-# 行尾注释对齐
-AlignTrailingComments:
-  Kind: Always
-  OverEmptyLines: 0
-
 # 使用圆括号初始化
 RemoveBracesLLVM: false
 RemoveSemicolon: false

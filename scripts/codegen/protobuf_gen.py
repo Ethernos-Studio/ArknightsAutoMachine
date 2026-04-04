@@ -28,6 +28,7 @@
 
 import argparse
 import shutil
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -296,6 +297,8 @@ def _is_service_proto(proto_file: Path) -> bool:
     """
     检查 .proto 文件是否包含服务定义
 
+    使用正则表达式匹配服务定义，避免误匹配注释中的 'service ' 字符串
+
     Args:
         proto_file: .proto 文件路径
 
@@ -304,7 +307,17 @@ def _is_service_proto(proto_file: Path) -> bool:
     """
     try:
         content = proto_file.read_text(encoding='utf-8')
-        return 'service ' in content
+        # 使用正则表达式匹配服务定义：行首可选空白 + service + 服务名 + {
+        # 排除注释行（以 // 或 /* 开头）
+        pattern = r'^\s*service\s+\w+\s*{'
+        for line in content.split('\n'):
+            stripped = line.strip()
+            # 跳过注释行
+            if stripped.startswith('//') or stripped.startswith('/*'):
+                continue
+            if re.search(pattern, line):
+                return True
+        return False
     except Exception:
         return False
 
