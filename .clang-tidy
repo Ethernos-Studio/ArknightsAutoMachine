@@ -1,0 +1,469 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file .clang-tidy
+# @author dhjs0000
+# @brief AAM Clang-Tidy Configuration
+# =============================================================================
+# 版本: v0.1.0-alpha.2
+# 功能: 静态代码分析与质量门禁
+# 参考: https://clang.llvm.org/extra/clang-tidy/
+# =============================================================================
+
+---
+# =============================================================================
+# 启用检查列表
+# =============================================================================
+Checks: >
+  *,
+  -abseil-*,
+  -altera-*,
+  -android-*,
+  -boost-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -cert-dcl16-c,
+  -cert-err33-c,
+  -cert-err58-cpp,
+  -cert-msc32-c,
+  -cert-msc51-cpp,
+  -cert-oop54-cpp,
+  -clang-analyzer-optin.cplusplus.UninitializedObject,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-avoid-magic-numbers,
+
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-no-malloc,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-const-cast,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-static-cast-downcast,
+  -cppcoreguidelines-pro-type-union-access,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-special-member-functions,
+  -fuchsia-*,
+  -google-build-using-namespace,
+  -google-readability-braces-around-statements,
+  -google-readability-casting,
+  -google-readability-function-size,
+  -google-readability-namespace-comments,
+  -google-readability-todo,
+  -google-runtime-int,
+  -google-runtime-references,
+  -hicpp-avoid-c-arrays,
+  -hicpp-avoid-goto,
+  -hicpp-braces-around-statements,
+  -hicpp-explicit-conversions,
+  -hicpp-function-size,
+  -hicpp-member-init,
+  -hicpp-move-const-arg,
+  -hicpp-multiway-paths-covered,
+  -hicpp-named-parameter,
+  -hicpp-no-array-decay,
+  -hicpp-no-malloc,
+  -hicpp-signed-bitwise,
+  -hicpp-special-member-functions,
+  -hicpp-uppercase-literal-suffix,
+  -hicpp-use-auto,
+  -hicpp-use-emplace,
+  -hicpp-vararg,
+  -llvm-header-guard,
+  -llvm-include-order,
+  -llvm-namespace-comment,
+  -llvm-qualified-auto,
+  -llvmlibc-*,
+  -misc-include-cleaner,
+  -misc-no-recursion,
+  -misc-non-private-member-variables-in-classes,
+  -misc-use-anonymous-namespace,
+  -modernize-avoid-c-arrays,
+  -modernize-return-braced-init-list,
+  -modernize-use-auto,
+  -modernize-use-default-member-init,
+  -modernize-use-nodiscard,
+  -modernize-use-trailing-return-type,
+  -mpi-*,
+  -objc-*,
+  -openmp-*,
+  -portability-simd-intrinsics,
+  -readability-braces-around-statements,
+  -readability-convert-member-functions-to-static,
+  -readability-else-after-return,
+  -readability-function-cognitive-complexity,
+  -readability-function-size,
+  -readability-identifier-length,
+  -readability-implicit-bool-conversion,
+  -readability-magic-numbers,
+  -readability-named-parameter,
+  -readability-redundant-access-specifiers,
+  -readability-simplify-boolean-expr,
+  -readability-static-accessed-through-instance,
+  -readability-uppercase-literal-suffix,
+  -readability-use-anyofallof,
+  -zircon-*,
+  -clang-diagnostic-error
+
+# =============================================================================
+# 头文件过滤
+# =============================================================================
+HeaderFilterRegex: '^(?!.*third_party)(?!.*generated)(?!.*build).*include.*|.*src.*'
+
+# =============================================================================
+# 文件排除模式
+# =============================================================================
+ExcludeHeaderFilterRegex: '.*(third_party|generated|build|\.pb\.h|\.pb\.cc).*'
+
+# =============================================================================
+# 检查配置
+# =============================================================================
+CheckOptions:
+  # ---------------------------------------------------------------------------
+  # 命名规范
+  # ---------------------------------------------------------------------------
+  - key: readability-identifier-naming.AbstractClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.AbstractClassPrefix
+    value: I
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassConstantPrefix
+    value: k
+  - key: readability-identifier-naming.ClassMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassMemberSuffix
+    value: _
+  - key: readability-identifier-naming.ConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstantPrefix
+    value: k
+  - key: readability-identifier-naming.ConstantMemberCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstantMemberPrefix
+    value: k
+  - key: readability-identifier-naming.ConstantParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstantPointerParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstexprFunctionCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstexprMethodCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: k
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantPrefix
+    value: k
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key: readability-identifier-naming.GlobalFunctionCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalPointerCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalPointerPrefix
+    value: g_
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariablePrefix
+    value: g_
+  - key: readability-identifier-naming.InlineNamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalConstantPointerCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalPointerCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberSuffix
+    value: _
+  - key: readability-identifier-naming.MethodCase
+    value: camelBack
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterPackCase
+    value: lower_case
+  - key: readability-identifier-naming.PointerParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _
+  - key: readability-identifier-naming.PrivateMethodCase
+    value: camelBack
+  - key: readability-identifier-naming.ProtectedMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ProtectedMemberSuffix
+    value: _
+  - key: readability-identifier-naming.ProtectedMethodCase
+    value: camelBack
+  - key: readability-identifier-naming.PublicMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PublicMethodCase
+    value: camelBack
+  - key: readability-identifier-naming.ScopedEnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.StaticConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.StaticConstantPrefix
+    value: k
+  - key: readability-identifier-naming.StaticVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.StaticVariablePrefix
+    value: s_
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.TemplateTemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeTemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.UnionCase
+    value: CamelCase
+  - key: readability-identifier-naming.ValueTemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.VirtualMethodCase
+    value: camelBack
+
+  # ---------------------------------------------------------------------------
+  # 函数复杂度限制
+  # ---------------------------------------------------------------------------
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 25
+  - key: readability-function-cognitive-complexity.DescribeBasicIncrements
+    value: 1
+  - key: readability-function-size.LineThreshold
+    value: 80
+  - key: readability-function-size.StatementThreshold
+    value: 800
+  - key: readability-function-size.BranchThreshold
+    value: 20
+  - key: readability-function-size.ParameterThreshold
+    value: 6
+  - key: readability-function-size.NestingThreshold
+    value: 5
+
+  # ---------------------------------------------------------------------------
+  # 特殊成员函数
+  # ---------------------------------------------------------------------------
+  - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value: 0
+  - key: cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
+    value: 0
+  - key: hicpp-special-member-functions.AllowSoleDefaultDtor
+    value: 0
+  - key: hicpp-special-member-functions.AllowMissingMoveFunctions
+    value: 0
+
+  # ---------------------------------------------------------------------------
+  # 异常安全
+  # ---------------------------------------------------------------------------
+  - key: cppcoreguidelines-no-malloc.Reallocations
+    value: '::realloc;::reallocf'
+  - key: cppcoreguidelines-owning-memory.LegacyResourceProducers
+    value: '::malloc;::aligned_alloc;::realloc;::calloc;::fopen;::freopen;::tmpfile'
+  - key: cppcoreguidelines-owning-memory.LegacyResourceConsumers
+    value: '::free;::realloc;::freopen;::fclose'
+
+  # ---------------------------------------------------------------------------
+  # 性能相关
+  # ---------------------------------------------------------------------------
+  - key: performance-inefficient-string-concatenation.StrictMode
+    value: 1
+  - key: performance-inefficient-vector-operation.EnableProto
+    value: 1
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: 1
+  - key: performance-move-constructor-init.IncludeMemberInitializers
+    value: 1
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: ''
+
+  # ---------------------------------------------------------------------------
+  # 现代 C++
+  # ---------------------------------------------------------------------------
+  - key: modernize-loop-convert.MaxCopySize
+    value: 16
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+  - key: modernize-loop-convert.NamingStyle
+    value: lower_case
+  - key: modernize-pass-by-value.IncludeStyle
+    value: llvm
+  - key: modernize-replace-auto-ptr.IncludeStyle
+    value: llvm
+  - key: modernize-use-auto.MinTypeNameLength
+    value: 5
+  - key: modernize-use-auto.RemoveStars
+    value: 0
+  - key: modernize-use-default-member-init.UseAssignment
+    value: 1
+  - key: modernize-use-emplace.ContainersWithPushBack
+    value: '::std::vector;::std::list;::std::deque'
+  - key: modernize-use-emplace.SmartPointers
+    value: '::std::shared_ptr;::std::unique_ptr;::std::auto_ptr;::std::weak_ptr'
+  - key: modernize-use-equals-default.IgnoreMacros
+    value: 1
+  - key: modernize-use-noexcept.ReplacementString
+    value: ''
+  - key: modernize-use-noexcept.UseNoexceptFalse
+    value: 1
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+  - key: modernize-use-override.IgnoreDestructors
+    value: 0
+  - key: modernize-use-override.OverrideSpelling
+    value: override
+  - key: modernize-use-override.FinalSpelling
+    value: final
+  - key: modernize-use-using.IgnoreMacros
+    value: 1
+
+  # ---------------------------------------------------------------------------
+  # Bug 预防
+  # ---------------------------------------------------------------------------
+  - key: bugprone-argument-comment.CommentBoolLiterals
+    value: 0
+  - key: bugprone-argument-comment.CommentIntegerLiterals
+    value: 0
+  - key: bugprone-argument-comment.CommentFloatLiterals
+    value: 0
+  - key: bugprone-argument-comment.CommentStringLiterals
+    value: 0
+  - key: bugprone-argument-comment.CommentUserDefinedLiterals
+    value: 0
+  - key: bugprone-argument-comment.StrictMode
+    value: 0
+  - key: bugprone-assert-side-effect.AssertMacros
+    value: assert,NSAssert,NSCAssert,NSCParameterAssert
+  - key: bugprone-assert-side-effect.CheckFunctionCalls
+    value: 0
+  - key: bugprone-dangling-handle.HandleClasses
+    value: 'std::basic_string_view;std::experimental::basic_string_view'
+  - key: bugprone-exception-escape.FunctionsThatShouldNotThrow
+    value: ''
+  - key: bugprone-exception-escape.IgnoredExceptions
+    value: ''
+  - key: bugprone-misplaced-widening-cast.CheckImplicitCasts
+    value: 0
+  - key: bugprone-not-null-terminated-result.WantToUseSafeFunctions
+    value: 1
+  - key: bugprone-suspicious-enum-usage.StrictMode
+    value: 0
+  - key: bugprone-suspicious-missing-comma.MaxConcatenatedTokens
+    value: 5
+  - key: bugprone-suspicious-missing-comma.RatioThreshold
+    value: '0.2'
+  - key: bugprone-suspicious-missing-comma.SizeThreshold
+    value: '5'
+  - key: bugprone-suspicious-string-compare.StringCompareLikeFunctions
+    value: ''
+  - key: bugprone-suspicious-string-compare.WarnOnImplicitComparison
+    value: 1
+  - key: bugprone-suspicious-string-compare.WarnOnLogicalNotComparison
+    value: 0
+  - key: bugprone-too-small-loop-variable.MagnitudeBitsUpperLimit
+    value: 16
+  - key: bugprone-unhandled-self-assignment.WarnOnlyIfThisHasSuspiciousField
+    value: 1
+  - key: bugprone-unused-return-value.CheckedFunctions
+    value: '::std::async;::std::launder;::std::remove;::std::remove_if;::std::unique;::std::unique_ptr::release;::std::basic_string::empty;::std::vector::empty;::std::back_inserter;::std::distance;::std::find;::std::find_if;::std::inserter;::std::lower_bound;::std::make_pair;::std::map::count;::std::map::find;::std::map::lower_bound;::std::multimap::count;::std::multimap::find;::std::next;::std::prev;::std::set::count;::std::set::find;::std::setfill;::std::setprecision;::std::setw;::std::to_string;::std::transform;::std::unordered_map::count;::std::unordered_map::find'
+
+  # ---------------------------------------------------------------------------
+  # 可移植性
+  # ---------------------------------------------------------------------------
+  - key: portability-simd-intrinsics.Std
+    value: ''
+  - key: portability-simd-intrinsics.Suggest
+    value: 0
+
+  # ---------------------------------------------------------------------------
+  # 其他
+  # ---------------------------------------------------------------------------
+  - key: google-build-namespaces.HeaderFileExtensions
+    value: ',h,hh,hpp,hxx'
+  - key: google-global-names-in-headers.HeaderFileExtensions
+    value: ',h,hh,hpp,hxx'
+  - key: google-readability-braces-around-statements.ShortStatementLines
+    value: 1
+  - key: google-readability-function-size.LineThreshold
+    value: 800
+  - key: google-readability-function-size.StatementThreshold
+    value: 800
+  - key: google-readability-function-size.BranchThreshold
+    value: 20
+  - key: google-readability-function-size.ParameterThreshold
+    value: 6
+  - key: google-readability-function-size.NestingThreshold
+    value: 5
+  - key: google-readability-namespace-comments.ShortNamespaceLines
+    value: 10
+  - key: google-readability-namespace-comments.SpacesBeforeComments
+    value: 2
+  - key: google-runtime-int.UnsignedTypePrefix
+    value: uint
+  - key: google-runtime-int.SignedTypePrefix
+    value: int
+  - key: google-runtime-int.TypeSuffix
+    value: ''
+  - key: llvm-namespace-comment.ShortNamespaceLines
+    value: 1
+  - key: llvm-namespace-comment.SpacesBeforeComments
+    value: 1
+  - key: misc-uniqueptr-reset-release.IncludeStyle
+    value: llvm
+  - key: misc-unused-parameters.StrictMode
+    value: 0
+
+# =============================================================================
+# 警告即错误（质量门禁）
+# =============================================================================
+WarningsAsErrors: ''
+
+# =============================================================================
+# 格式化配置
+# =============================================================================
+FormatStyle: file

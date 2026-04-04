@@ -460,3 +460,6 @@ FodyWeavers.xsd
 
 # VS Code files for those working on multiple tools
 .vscode/*
+
+# [Mark]Temp File
+temp.*

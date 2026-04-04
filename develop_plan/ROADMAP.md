@@ -45,11 +45,11 @@
 
 ### v0.1.0-alpha.2：构建系统
 
-- [ ] `CMakeLists.txt`（根）：C++23 标准，`aam_core` 静态库
-- [ ] `cmake/compiler_flags.cmake`：跨平台编译标志
-- [ ] `cmake/FindZeroMQ.cmake`：ZeroMQ 发现模块
-- [ ] `.clang-format`：代码风格配置
-- [ ] `.clang-tidy`：静态检查规则
+- [x] `CMakeLists.txt`（根）：C++23 标准，`aam_core` 静态库
+- [x] `cmake/compiler_flags.cmake`：跨平台编译标志
+- [x] `cmake/FindZeroMQ.cmake`：ZeroMQ 发现模块
+- [x] `.clang-format`：代码风格配置
+- [x] `.clang-tidy`：静态检查规则
 
 ### v0.1.0-alpha.3：持续集成
 

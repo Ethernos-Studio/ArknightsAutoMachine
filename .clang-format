@@ -1,0 +1,308 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file .clang-format
+# @author dhjs0000
+# @brief AAM Clang-Format Configuration
+# =============================================================================
+# 版本: v0.1.0-alpha.2
+# 风格: 基于 LLVM 风格，适配 C++23 特性
+# 参考: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+# =============================================================================
+
+Language: Cpp
+Standard: c++20  # clang-format 最高支持 c++20，但兼容 C++23 代码
+
+# =============================================================================
+# 基础布局
+# =============================================================================
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# =============================================================================
+# 缩进配置
+# =============================================================================
+AccessModifierOffset: -4
+IndentAccessModifiers: false
+IndentCaseLabels: true
+IndentCaseBlocks: false
+IndentGotoLabels: true
+IndentPPDirectives: AfterHash
+IndentExternBlock: AfterExternBlock
+IndentRequiresClause: true
+RequiresClausePosition: OwnLine
+IndentWrappedFunctionNames: false
+NamespaceIndentation: None
+
+# =============================================================================
+# 对齐配置
+# =============================================================================
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Right
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveBitFields:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignEscapedNewlines: Right
+AlignOperands: AlignAfterOperator
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+
+# =============================================================================
+# 换行与括号
+# =============================================================================
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: true
+  AfterControlStatement: Never
+  AfterEnum: true
+  AfterExternBlock: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeConceptDeclarations: Always
+BreakBeforeInlineASMColon: OnlyMultiline
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+BreakStringLiterals: true
+BreakAfterAttributes: Leave
+BreakAfterReturnType: Automatic
+
+# =============================================================================
+# 短函数/语句处理
+# =============================================================================
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: false
+
+# =============================================================================
+# 构造函数初始化列表
+# =============================================================================
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+PackConstructorInitializers: CurrentLine
+
+# =============================================================================
+# 模板与泛型
+# =============================================================================
+AlwaysBreakTemplateDeclarations: Yes
+RequiresExpressionIndentation: OuterScope
+
+# =============================================================================
+# 指针与引用
+# =============================================================================
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+SpaceAroundPointerQualifiers: Default
+
+# =============================================================================
+# 空格配置
+# =============================================================================
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceAroundPointerQualifiers: Default
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterForeachMacros: true
+  AfterFunctionDefinitionName: false
+  AfterFunctionDeclarationName: false
+  AfterIfMacros: true
+  AfterOverloadedOperator: false
+  AfterRequiresInClause: false
+  AfterRequiresInExpression: false
+  BeforeNonEmptyParentheses: false
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: Never
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: false
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: -1
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# =============================================================================
+# 行与注释
+# =============================================================================
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SeparateDefinitionBlocks: Always
+
+# 注释配置
+CommentPragmas: '^ IWYU pragma:'
+ReflowComments: true
+FixNamespaceComments: true
+ShortNamespaceLines: 1
+
+# =============================================================================
+# 包含排序
+# =============================================================================
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  # 项目头文件 (aam/)
+  - Regex: '^"aam/'
+    Priority: 3
+    SortPriority: 0
+    CaseSensitive: true
+  # 第三方库头文件
+  - Regex: '^<(spdlog|fmt|yaml-cpp|nlohmann|opencv2|Eigen|zmq|grpc|protobuf)'
+    Priority: 2
+    SortPriority: 0
+    CaseSensitive: true
+  # 系统头文件
+  - Regex: '^<'
+    Priority: 1
+    SortPriority: 0
+    CaseSensitive: true
+  # 其他头文件
+  - Regex: '.*'
+    Priority: 4
+    SortPriority: 0
+    CaseSensitive: true
+
+# =============================================================================
+# 其他配置
+# =============================================================================
+BinPackArguments: false
+BinPackParameters: false
+ExperimentalAutoDetectBinPacking: false
+AllowAllParametersOfDeclarationOnASingleLine: false
+AllowAllArgumentsOnASameLine: false
+
+BitFieldColonSpacing: Both
+
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+DisableFormat: false
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+InsertBraces: false
+InsertNewlineAtEOF: true
+InsertTrailingCommas: None
+IntegerLiteralSeparator:
+  Binary: 0
+  Decimal: 0
+  Hex: 0
+LambdaBodyIndentation: Signature
+LineEnding: DeriveLF
+
+# 惩罚配置（影响换行决策）
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakOpenParenthesis: 0
+PenaltyBreakString: 1000
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 1000000
+PenaltyIndentedWhitespace: 0
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# 宏处理
+ForEachMacros:
+  - foreach
+  - Q_FOREACH
+  - BOOST_FOREACH
+IfMacros:
+  - KJ_IF_MAYBE
+StatementAttributeLikeMacros:
+  - Q_EMIT
+StatementMacros:
+  - Q_UNUSED
+  - QT_REQUIRE_VERSION
+
+# 类型限定符顺序
+QualifierAlignment: Custom
+QualifierOrder:
+  - static
+  - inline
+  - constexpr
+  - const
+  - volatile
+  - type
+
+# 行尾注释对齐
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+
+# 使用圆括号初始化
+RemoveBracesLLVM: false
+RemoveSemicolon: false
+
+# 概念与约束
+BreakBeforeConceptDeclarations: Always
+RequiresClausePosition: OwnLine
+IndentRequiresClause: true
+RequiresExpressionIndentation: OuterScope
+
+# =============================================================================
+# 版本特定（Clang-Format 16+）
+# =============================================================================
+# 如果支持，启用以下选项
+# InsertNewlineAtEOF: true
+# IntegerLiteralSeparator:
+#   Binary: 4
+#   Decimal: 3
+#   Hex: 4
