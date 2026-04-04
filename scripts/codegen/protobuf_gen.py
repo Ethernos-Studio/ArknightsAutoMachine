@@ -27,7 +27,7 @@
 # =============================================================================
 
 import argparse
-import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -189,6 +189,8 @@ def generate_cpp_code(
     if grpc_plugin:
         grpc_out = cpp_out / "grpc"
         grpc_out.mkdir(parents=True, exist_ok=True)
+    else:
+        grpc_out = None
 
     success_count = 0
     fail_count = 0
@@ -207,14 +209,14 @@ def generate_cpp_code(
         # 添加 gRPC 插件（如果可用）
         if grpc_plugin and _is_service_proto(proto_file):
             cmd.extend([
-                f"--grpc_out={cpp_out}",
+                f"--grpc_out={grpc_out}",
                 f"--plugin=protoc-gen-grpc={grpc_plugin}",
             ])
 
         cmd.append(str(proto_file))
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
@@ -278,7 +280,7 @@ def generate_python_code(
         cmd.append(str(proto_file))
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,

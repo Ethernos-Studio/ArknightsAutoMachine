@@ -65,9 +65,9 @@ jobs:
           fallback-style: 'LLVM'
 
       - name: Check CMake formatting
-        uses: cmake-lint/cmake-lint-action@v1
-        with:
-          args: '--line-width=100'
+        run: |
+          pip install cmakelang
+          find . -name "CMakeLists.txt" -o -name "*.cmake" | grep -v "vcpkg_installed" | xargs -I {} cmake-lint {} --line-width=100
 
   # ============================================================================
   # 协议兼容性检查
@@ -119,6 +119,7 @@ jobs:
         with:
           vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
           vcpkgJsonGlob: 'vcpkg.json'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -132,8 +133,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake `
             -DAAM_BUILD_TESTS=ON `
             -DAAM_ENABLE_CUDA=OFF `
-            -DCMAKE_CXX_FLAGS=/W4 `
-            -DCMAKE_CXX_FLAGS=/WX
+            -DCMAKE_CXX_FLAGS="/W4 /WX"
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }} --parallel 4
@@ -195,6 +195,7 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake
         run: |
@@ -261,6 +262,7 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake
         run: |

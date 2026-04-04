@@ -28,7 +28,7 @@ version: v1
 # Lint 配置
 lint:
   use:
-    - STANDARD
+    - DEFAULT
   except:
     # 目录结构规则 - AAM 使用扁平化结构
     - PACKAGE_DIRECTORY_MATCH

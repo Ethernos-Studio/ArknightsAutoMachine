@@ -16,7 +16,7 @@
   along with AAM. If not, see <https://www.gnu.org/licenses/>.
   =============================================================================
   @file PROTOCOL_REVIEW_GUIDELINES.md
-  @author Ethernos Studio
+  @author dhjs0000
   @brief Protocol Buffer 变更审查规范
   =============================================================================
   版本: v0.1.0-alpha.3

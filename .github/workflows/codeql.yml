@@ -78,7 +78,7 @@ jobs:
           fetch-depth: 0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
@@ -117,6 +117,7 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake
         run: |
@@ -133,10 +134,11 @@ jobs:
         run: cmake --build build --parallel $(nproc)
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
           upload: true
+          output: '${{ github.workspace }}/codeql-results-cpp.sarif'
 
   # ============================================================================
   # Python 安全分析
@@ -161,7 +163,7 @@ jobs:
           fetch-depth: 0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
@@ -186,10 +188,11 @@ jobs:
           fi
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
           upload: true
+          output: '${{ github.workspace }}/codeql-results-python.sarif'
 
   # ============================================================================
   # 安全报告汇总
