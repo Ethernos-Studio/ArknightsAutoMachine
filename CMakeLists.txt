@@ -128,13 +128,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # =============================================================================
 # 第三方依赖查找
 # =============================================================================
-# vcpkg 配置优先策略：优先使用 vcpkg 提供的 CMake Config 模式
-if(AAM_USE_VCPKG AND DEFINED ENV{VCPKG_ROOT})
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-        CACHE STRING "Vcpkg toolchain file")
-    message(STATUS "Using vcpkg toolchain: $ENV{VCPKG_ROOT}")
-endif()
-      add_library(ZeroMQ::ZeroMQ ALIAS ZeroMQ::libzmq)
+# 尝试使用 vcpkg 的 ZeroMQ Config 模式（优先）
+find_package(ZeroMQ CONFIG QUIET)
+if(ZeroMQ_FOUND)
+    message(STATUS "Using vcpkg provided ZeroMQ config")
+    # 创建兼容的导入目标 ZeroMQ::ZeroMQ
+    if(NOT TARGET ZeroMQ::ZeroMQ AND TARGET ZeroMQ::libzmq)
+        add_library(ZeroMQ::ZeroMQ ALIAS ZeroMQ::libzmq)
     endif()
 endif()
 
@@ -176,7 +176,7 @@ set(PROTO_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY ${PROTO_BINARY_DIR})
 
 # 收集所有 .proto 文件
-file(GLOB_RECURSE PROTO_FILES 
+file(GLOB_RECURSE PROTO_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/proto/*.proto"
 )
 
@@ -216,11 +216,11 @@ add_custom_target(aam_proto_generation
 # 核心库目标: aam_core
 # =============================================================================
 # 收集核心库源文件
-file(GLOB_RECURSE AAM_CORE_SOURCES
+file(GLOB_RECURSE AAM_CORE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/core/src/*.cpp"
 )
 
-file(GLOB_RECURSE AAM_CORE_HEADERS
+file(GLOB_RECURSE AAM_CORE_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/core/include/*.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/core/include/*.h"
 )

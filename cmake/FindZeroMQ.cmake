@@ -212,23 +212,66 @@ if(ZeroMQ_FOUND AND ZeroMQ_VERSION VERSION_LESS ZeroMQ_MINIMUM_VERSION)
 endif()
 
 # =============================================================================
+# 辅助函数：检测是否为静态库
+# =============================================================================
+function(_zmq_detect_static_library result_var library_path)
+    set(${result_var} FALSE PARENT_SCOPE)
+    if(WIN32)
+        # Windows 下无法直接区分静态/动态 .lib，默认假设为静态
+        set(${result_var} TRUE PARENT_SCOPE)
+    else()
+        # Unix 下检查文件后缀
+        if(library_path MATCHES "\\.a$")
+            set(${result_var} TRUE PARENT_SCOPE)
+        endif()
+    endif()
+endfunction()
+
+# =============================================================================
+# 辅助函数：配置 ZeroMQ 目标属性
+# =============================================================================
+function(_zmq_configure_target target_name)
+    # 检测是否为静态库
+    _zmq_detect_static_library(_zmq_is_static "${ZeroMQ_LIBRARY}")
+
+    # 仅在确认为静态库时定义 ZMQ_STATIC
+    if(_zmq_is_static)
+        set_property(TARGET ${target_name} PROPERTY
+            INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
+    endif()
+
+    # Windows 特定链接依赖
+    if(WIN32)
+        set_property(TARGET ${target_name} APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES
+                ws2_32
+                iphlpapi
+                rpcrt4
+        )
+    else()
+        # Linux/macOS 可能需要 pthread
+        find_package(Threads REQUIRED)
+        set_property(TARGET ${target_name} APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES
+                Threads::Threads
+        )
+    endif()
+
+    # 区分 Debug/Release
+    if(WIN32 AND ZeroMQ_LIBRARY_RELEASE AND ZeroMQ_LIBRARY_DEBUG)
+        set_target_properties(${target_name} PROPERTIES
+            IMPORTED_LOCATION_RELEASE "${ZeroMQ_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION_DEBUG "${ZeroMQ_LIBRARY_DEBUG}"
+        )
+    endif()
+endfunction()
+
+# =============================================================================
 # 创建导入目标
 # =============================================================================
 # 现代 CMake 导入目标：ZeroMQ::ZeroMQ
 if(ZeroMQ_FOUND AND NOT TARGET ZeroMQ::ZeroMQ)
     add_library(ZeroMQ::ZeroMQ UNKNOWN IMPORTED GLOBAL)
-
-    # 检测是否为静态库（Windows: .lib, Unix: .a）
-    set(_ZMQ_IS_STATIC FALSE)
-    if(WIN32)
-        # Windows 下无法直接区分静态/动态 .lib，默认假设为静态
-        set(_ZMQ_IS_STATIC TRUE)
-    else()
-        # Unix 下检查文件后缀
-        if(ZeroMQ_LIBRARY MATCHES "\\.a$")
-            set(_ZMQ_IS_STATIC TRUE)
-        endif()
-    endif()
 
     set_target_properties(ZeroMQ::ZeroMQ PROPERTIES
         IMPORTED_LOCATION "${ZeroMQ_LIBRARY}"
@@ -236,89 +279,19 @@ if(ZeroMQ_FOUND AND NOT TARGET ZeroMQ::ZeroMQ)
         IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
     )
 
-    # 仅在确认为静态库时定义 ZMQ_STATIC
-    if(_ZMQ_IS_STATIC)
-        set_property(TARGET ZeroMQ::ZeroMQ PROPERTY
-            INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
-    endif()
-
-    # Windows 特定链接依赖
-    if(WIN32)
-        set_property(TARGET ZeroMQ::ZeroMQ APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES
-                ws2_32
-                iphlpapi
-                rpcrt4
-        )
-    else()
-        # Linux/macOS 可能需要 pthread
-        find_package(Threads REQUIRED)
-        set_property(TARGET ZeroMQ::ZeroMQ APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES
-                Threads::Threads
-        )
-    endif()
-
-    # 区分 Debug/Release
-    if(WIN32 AND ZeroMQ_LIBRARY_RELEASE AND ZeroMQ_LIBRARY_DEBUG)
-        set_target_properties(ZeroMQ::ZeroMQ PROPERTIES
-            IMPORTED_LOCATION_RELEASE "${ZeroMQ_LIBRARY_RELEASE}"
-            IMPORTED_LOCATION_DEBUG "${ZeroMQ_LIBRARY_DEBUG}"
-        )
-    endif()
+    _zmq_configure_target(ZeroMQ::ZeroMQ)
 endif()
 
 # 向后兼容：libzmq-static 目标
 if(ZeroMQ_FOUND AND NOT TARGET libzmq-static)
     add_library(libzmq-static STATIC IMPORTED GLOBAL)
 
-    # 检测是否为静态库（Windows: .lib, Unix: .a）
-    set(_ZMQ_IS_STATIC FALSE)
-    if(WIN32)
-        # Windows 下无法直接区分静态/动态 .lib，默认假设为静态
-        set(_ZMQ_IS_STATIC TRUE)
-    else()
-        # Unix 下检查文件后缀
-        if(ZeroMQ_LIBRARY MATCHES "\\.a$")
-            set(_ZMQ_IS_STATIC TRUE)
-        endif()
-    endif()
-
     set_target_properties(libzmq-static PROPERTIES
         IMPORTED_LOCATION "${ZeroMQ_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${ZeroMQ_INCLUDE_DIR}"
     )
 
-    # 仅在确认为静态库时定义 ZMQ_STATIC
-    if(_ZMQ_IS_STATIC)
-        set_property(TARGET libzmq-static PROPERTY
-            INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
-    endif()
-    
-    # Windows 特定链接依赖
-    if(WIN32)
-        set_property(TARGET libzmq-static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES
-                ws2_32
-                iphlpapi
-                rpcrt4
-        )
-    else()
-        # Linux/macOS 可能需要 pthread
-        find_package(Threads REQUIRED)
-        set_property(TARGET libzmq-static APPEND PROPERTY
-            INTERFACE_LINK_LIBRARIES
-                Threads::Threads
-        )
-    endif()
-    
-    # 区分 Debug/Release
-    if(WIN32 AND ZeroMQ_LIBRARY_RELEASE AND ZeroMQ_LIBRARY_DEBUG)
-        set_target_properties(libzmq-static PROPERTIES
-            IMPORTED_LOCATION_RELEASE "${ZeroMQ_LIBRARY_RELEASE}"
-            IMPORTED_LOCATION_DEBUG "${ZeroMQ_LIBRARY_DEBUG}"
-        )
-    endif()
+    _zmq_configure_target(libzmq-static)
 
     # 链接到现代目标
     if(TARGET ZeroMQ::ZeroMQ)

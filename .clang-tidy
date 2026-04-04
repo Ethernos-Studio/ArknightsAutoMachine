@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AAM. If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-# AAM Clang-Tidy Configuration
+# @file .clang-tidy
+# @author dhjs0000
+# @brief AAM Clang-Tidy Configuration
 # =============================================================================
 # 版本: v0.1.0-alpha.2
 # 功能: 静态代码分析与质量门禁

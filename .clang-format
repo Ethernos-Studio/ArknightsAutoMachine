@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AAM. If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-# AAM Clang-Format Configuration
+# @file .clang-format
+# @author dhjs0000
+# @brief AAM Clang-Format Configuration
 # =============================================================================
 # 版本: v0.1.0-alpha.2
 # 风格: 基于 LLVM 风格，适配 C++23 特性
