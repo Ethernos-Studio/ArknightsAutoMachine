@@ -1,4 +1,20 @@
 # =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
 # FindZeroMQ.cmake - ZeroMQ Library Discovery Module
 # =============================================================================
 # 版本: v0.1.0-alpha.2
@@ -73,8 +89,9 @@ find_path(ZeroMQ_INCLUDE_DIR
 # =============================================================================
 if(WIN32)
     # Windows: 查找 .lib 文件
+    # 注意：使用通用名称而非硬编码版本号，确保兼容性
     find_library(ZeroMQ_LIBRARY_RELEASE
-        NAMES libzmq-mt-s-4_3_4 libzmq-mt-4_3_4 libzmq libzmq-static zmq
+        NAMES libzmq-mt-s libzmq-mt libzmq libzmq-static zmq
         PATHS ${ZeroMQ_SEARCH_PATHS}
         PATH_SUFFIXES
             lib
@@ -82,9 +99,9 @@ if(WIN32)
             zeromq/lib
         DOC "ZeroMQ release library"
     )
-    
+
     find_library(ZeroMQ_LIBRARY_DEBUG
-        NAMES libzmq-mt-sgd-4_3_4 libzmq-mt-gd-4_3_4 libzmqd libzmq-staticd zmqd
+        NAMES libzmq-mt-sgd libzmq-mt-gd libzmqd libzmq-staticd zmqd
         PATHS ${ZeroMQ_SEARCH_PATHS}
         PATH_SUFFIXES
             lib
@@ -163,17 +180,112 @@ find_package_handle_standard_args(ZeroMQ
     HANDLE_VERSION_RANGE
 )
 
+# ---------------------------------------------------------------------------
+# 强制最低版本检查
+# ---------------------------------------------------------------------------
+if(ZeroMQ_FOUND AND ZeroMQ_VERSION VERSION_LESS ZeroMQ_MINIMUM_VERSION)
+    set(ZeroMQ_FOUND FALSE)
+    set(_ZeroMQ_version_error
+        "Found ZeroMQ version ${ZeroMQ_VERSION}, but at least ${ZeroMQ_MINIMUM_VERSION} is required")
+
+    # 清除变量，避免调用者意外使用不支持的版本
+    unset(ZeroMQ_LIBRARY)
+    unset(ZeroMQ_INCLUDE_DIR)
+    unset(ZeroMQ_LIBRARIES)
+    unset(ZeroMQ_INCLUDE_DIRS)
+
+    if(NOT ZeroMQ_FIND_QUIETLY)
+        if(ZeroMQ_FIND_REQUIRED)
+            message(FATAL_ERROR "${_ZeroMQ_version_error}")
+        else()
+            message(STATUS "${_ZeroMQ_version_error}")
+        endif()
+    endif()
+endif()
+
 # =============================================================================
 # 创建导入目标
 # =============================================================================
+# 现代 CMake 导入目标：ZeroMQ::ZeroMQ
+if(ZeroMQ_FOUND AND NOT TARGET ZeroMQ::ZeroMQ)
+    add_library(ZeroMQ::ZeroMQ UNKNOWN IMPORTED GLOBAL)
+
+    # 检测是否为静态库（Windows: .lib, Unix: .a）
+    set(_ZMQ_IS_STATIC FALSE)
+    if(WIN32)
+        # Windows 下无法直接区分静态/动态 .lib，默认假设为静态
+        set(_ZMQ_IS_STATIC TRUE)
+    else()
+        # Unix 下检查文件后缀
+        if(ZeroMQ_LIBRARY MATCHES "\\.a$")
+            set(_ZMQ_IS_STATIC TRUE)
+        endif()
+    endif()
+
+    set_target_properties(ZeroMQ::ZeroMQ PROPERTIES
+        IMPORTED_LOCATION "${ZeroMQ_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${ZeroMQ_INCLUDE_DIR}"
+        IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
+    )
+
+    # 仅在确认为静态库时定义 ZMQ_STATIC
+    if(_ZMQ_IS_STATIC)
+        set_property(TARGET ZeroMQ::ZeroMQ PROPERTY
+            INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
+    endif()
+
+    # Windows 特定链接依赖
+    if(WIN32)
+        set_property(TARGET ZeroMQ::ZeroMQ APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES
+                ws2_32
+                iphlpapi
+                rpcrt4
+        )
+    else()
+        # Linux/macOS 可能需要 pthread
+        find_package(Threads REQUIRED)
+        set_property(TARGET ZeroMQ::ZeroMQ APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES
+                Threads::Threads
+        )
+    endif()
+
+    # 区分 Debug/Release
+    if(WIN32 AND ZeroMQ_LIBRARY_RELEASE AND ZeroMQ_LIBRARY_DEBUG)
+        set_target_properties(ZeroMQ::ZeroMQ PROPERTIES
+            IMPORTED_LOCATION_RELEASE "${ZeroMQ_LIBRARY_RELEASE}"
+            IMPORTED_LOCATION_DEBUG "${ZeroMQ_LIBRARY_DEBUG}"
+        )
+    endif()
+endif()
+
+# 向后兼容：libzmq-static 目标
 if(ZeroMQ_FOUND AND NOT TARGET libzmq-static)
     add_library(libzmq-static STATIC IMPORTED GLOBAL)
-    
+
+    # 检测是否为静态库（Windows: .lib, Unix: .a）
+    set(_ZMQ_IS_STATIC FALSE)
+    if(WIN32)
+        # Windows 下无法直接区分静态/动态 .lib，默认假设为静态
+        set(_ZMQ_IS_STATIC TRUE)
+    else()
+        # Unix 下检查文件后缀
+        if(ZeroMQ_LIBRARY MATCHES "\\.a$")
+            set(_ZMQ_IS_STATIC TRUE)
+        endif()
+    endif()
+
     set_target_properties(libzmq-static PROPERTIES
         IMPORTED_LOCATION "${ZeroMQ_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${ZeroMQ_INCLUDE_DIR}"
-        INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC"
     )
+
+    # 仅在确认为静态库时定义 ZMQ_STATIC
+    if(_ZMQ_IS_STATIC)
+        set_property(TARGET libzmq-static PROPERTY
+            INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
+    endif()
     
     # Windows 特定链接依赖
     if(WIN32)
@@ -199,6 +311,12 @@ if(ZeroMQ_FOUND AND NOT TARGET libzmq-static)
             IMPORTED_LOCATION_DEBUG "${ZeroMQ_LIBRARY_DEBUG}"
         )
     endif()
+
+    # 链接到现代目标
+    if(TARGET ZeroMQ::ZeroMQ)
+        set_property(TARGET libzmq-static PROPERTY
+            INTERFACE_LINK_LIBRARIES ZeroMQ::ZeroMQ)
+    endif()
 endif()
 
 # cppzmq 目标
@@ -206,8 +324,16 @@ if(CPPZMQ_INCLUDE_DIR AND NOT TARGET cppzmq-static)
     add_library(cppzmq-static INTERFACE IMPORTED GLOBAL)
     set_target_properties(cppzmq-static PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${CPPZMQ_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES libzmq-static
     )
+
+    # 优先链接到现代目标 ZeroMQ::ZeroMQ
+    if(TARGET ZeroMQ::ZeroMQ)
+        set_property(TARGET cppzmq-static PROPERTY
+            INTERFACE_LINK_LIBRARIES ZeroMQ::ZeroMQ)
+    elseif(TARGET libzmq-static)
+        set_property(TARGET cppzmq-static PROPERTY
+            INTERFACE_LINK_LIBRARIES libzmq-static)
+    endif()
 endif()
 
 # =============================================================================

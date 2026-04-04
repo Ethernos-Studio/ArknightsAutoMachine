@@ -1,4 +1,20 @@
 # =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
 # AAM Compiler Flags Configuration
 # =============================================================================
 # 版本: v0.1.0-alpha.2
@@ -124,10 +140,14 @@ else()
         )
     endif()
 
+    # 控制是否在 Release 配置中使用 -march=native（默认关闭以保证二进制可移植性）
+    option(AAM_ENABLE_MARCH_NATIVE "Enable -march=native/-mtune=native for Release builds (may reduce portability)" OFF)
+
     # 优化配置
     target_compile_options(aam_compiler_flags INTERFACE
         $<$<CONFIG:Debug>:-O0 -g3 -ggdb>
-        $<$<CONFIG:Release>:-O3 -DNDEBUG -march=native -mtune=native>
+        $<$<CONFIG:Release>:-O3 -DNDEBUG>
+        $<$<AND:$<CONFIG:Release>,$<BOOL:${AAM_ENABLE_MARCH_NATIVE}>>:-march=native -mtune=native>
         $<$<CONFIG:RelWithDebInfo>:-O2 -g -DNDEBUG>
         $<$<CONFIG:MinSizeRel>:-Os -DNDEBUG>
     )

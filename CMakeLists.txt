@@ -1,12 +1,40 @@
 # =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
 # Arknights Auto Machine (AAM) - Root CMake Configuration
 # =============================================================================
 # 版本: v0.1.0-alpha.2
 # 目标: C++23 标准，aam_core 静态库构建
-# 作者: AAM Development Team
+# 作者: dhjs0000
 # =============================================================================
 
 cmake_minimum_required(VERSION 3.25)
+
+# =============================================================================
+# vcpkg 工具链配置（必须在 project() 之前）
+# =============================================================================
+# 注意：如果用户通过命令行传递了 CMAKE_TOOLCHAIN_FILE，则优先使用用户指定的
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    if(DEFINED ENV{VCPKG_ROOT})
+        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            CACHE STRING "Vcpkg toolchain file")
+        message(STATUS "Auto-configured vcpkg toolchain: $ENV{VCPKG_ROOT}")
+    endif()
+endif()
 
 # =============================================================================
 # 项目定义与版本管理
@@ -28,6 +56,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # 导出编译命令数据库（用于 clangd 等工具）
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES
+        ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+endif()
 
 # =============================================================================
 # 构建类型与选项
@@ -46,6 +78,20 @@ option(AAM_ENABLE_PROFILING "Enable performance profiling instrumentation" OFF)
 option(AAM_ENABLE_SANITIZERS "Enable address/thread sanitizers in Debug mode" ON)
 option(AAM_USE_VCPKG "Use vcpkg for dependency management" ON)
 option(AAM_STATIC_LINK "Static link runtime libraries" OFF)
+option(AAM_ENABLE_STATIC_ANALYSIS "Enable static analysis with clang-tidy" ON)
+
+# =============================================================================
+# 静态分析集成
+# =============================================================================
+if(AAM_ENABLE_STATIC_ANALYSIS)
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+    if(CLANG_TIDY_EXE)
+        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        message(STATUS "Static analysis enabled: ${CLANG_TIDY_EXE}")
+    else()
+        message(WARNING "clang-tidy not found, static analysis disabled")
+    endif()
+endif()
 
 # =============================================================================
 # 平台检测与配置
@@ -76,18 +122,22 @@ include(cmake/compiler_flags.cmake)
 # =============================================================================
 # 依赖管理
 # =============================================================================
-# vcpkg 集成
-if(AAM_USE_VCPKG AND DEFINED ENV{VCPKG_ROOT})
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-        CACHE STRING "Vcpkg toolchain file")
-endif()
-
-# 查找包路径
+# 查找包路径（自定义 Find 模块）
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # =============================================================================
 # 第三方依赖查找
 # =============================================================================
+# vcpkg 配置优先策略：优先使用 vcpkg 提供的 CMake Config 模式
+if(AAM_USE_VCPKG AND DEFINED ENV{VCPKG_ROOT})
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "Vcpkg toolchain file")
+    message(STATUS "Using vcpkg toolchain: $ENV{VCPKG_ROOT}")
+endif()
+      add_library(ZeroMQ::ZeroMQ ALIAS ZeroMQ::libzmq)
+    endif()
+endif()
+
 find_package(Threads REQUIRED)
 find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
@@ -206,7 +256,7 @@ target_link_libraries(aam_core
         opencv_imgproc
         opencv_imgcodecs
         Eigen3::Eigen
-        libzmq-static
+        ZeroMQ::ZeroMQ
         cppzmq-static
     PRIVATE
         aam_compiler_flags
@@ -241,12 +291,7 @@ target_compile_definitions(aam_core
         $<$<BOOL:${AAM_PLATFORM_MACOS}>:AAM_PLATFORM_MACOS>
 )
 
-# 编译器特定选项
-if(MSVC)
-    target_compile_options(aam_core PRIVATE /W4 /WX)
-else()
-    target_compile_options(aam_core PRIVATE -Wall -Wextra -Wpedantic -Werror)
-endif()
+# 编译器特定选项已由 aam_compiler_flags 提供，此处无需重复设置
 
 # 静态链接配置
 if(AAM_STATIC_LINK AND MSVC)
