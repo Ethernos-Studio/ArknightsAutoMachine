@@ -45,13 +45,50 @@ endif()
 
 # 如果 vcpkg_installed 目录存在，自动设置 CMAKE_PREFIX_PATH
 # 支持本地开发（已安装依赖）和 CI/其他开发者（未安装依赖）两种场景
-set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows")
+# 根据平台自动选择正确的 vcpkg triplet 路径
+
+# 允许用户通过缓存变量覆盖 triplet
+set(AAM_VCPKG_TRIPLET "" CACHE STRING "vcpkg triplet (e.g., x64-windows, arm64-osx, x64-linux)")
+
+if(AAM_VCPKG_TRIPLET)
+    # 用户使用 -DAAM_VCPKG_TRIPLET=xxx 指定了 triplet
+    set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${AAM_VCPKG_TRIPLET}")
+    message(STATUS "Using user-specified vcpkg triplet: ${AAM_VCPKG_TRIPLET}")
+else()
+    # 自动检测平台和架构
+    # 检测架构
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
+        set(_VCPKG_ARCH "x64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+        set(_VCPKG_ARCH "arm64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686|x86")
+        set(_VCPKG_ARCH "x86")
+    else()
+        set(_VCPKG_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    
+    # 检测平台
+    if(WIN32)
+        set(_VCPKG_PLATFORM "windows")
+    elseif(APPLE)
+        set(_VCPKG_PLATFORM "osx")
+    elseif(UNIX)
+        set(_VCPKG_PLATFORM "linux")
+    else()
+        set(_VCPKG_PLATFORM "unknown")
+    endif()
+    
+    set(_VCPKG_TRIPLET "${_VCPKG_ARCH}-${_VCPKG_PLATFORM}")
+    set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${_VCPKG_TRIPLET}")
+    message(STATUS "Auto-detected vcpkg triplet: ${_VCPKG_TRIPLET} (arch: ${CMAKE_SYSTEM_PROCESSOR})")
+endif()
+
 if(EXISTS "${VCPKG_INSTALLED_DIR}")
     list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
     message(STATUS "Found vcpkg_installed at: ${VCPKG_INSTALLED_DIR}")
     set(AAM_VCPKG_INSTALLED_FOUND TRUE)
 else()
-    message(STATUS "vcpkg_installed not found. Dependencies must be installed via vcpkg or system package manager.")
+    message(STATUS "vcpkg_installed not found at ${VCPKG_INSTALLED_DIR}. Dependencies must be installed via vcpkg or system package manager.")
     set(AAM_VCPKG_INSTALLED_FOUND FALSE)
 endif()
 
