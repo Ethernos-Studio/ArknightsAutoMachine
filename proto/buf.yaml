@@ -1,0 +1,50 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file buf.yaml
+# @author dhjs0000
+# @brief Buf 配置文件
+# =============================================================================
+# 版本: v0.1.0-alpha.3
+# 功能: 配置 Buf 构建、lint 和 breaking 检测规则
+# =============================================================================
+
+version: v1
+
+# Lint 配置
+lint:
+  use:
+    - STANDARD
+  except:
+    # 目录结构规则 - AAM 使用扁平化结构
+    - PACKAGE_DIRECTORY_MATCH
+    # 版本后缀规则 - alpha 阶段不强制版本后缀
+    - PACKAGE_VERSION_SUFFIX
+    # 枚举零值命名 - AAM 使用 NONE 而非 UNSPECIFIED
+    - ENUM_ZERO_VALUE_SUFFIX
+    # RPC 响应命名 - 流式响应使用 Event 后缀
+    - RPC_RESPONSE_STANDARD_NAME
+    # 同一目录多包规则 - AAM 按层级组织
+    - DIRECTORY_SAME_PACKAGE
+  enum_zero_value_suffix: _NONE
+  rpc_allow_same_request_response: true
+  service_suffix: Service
+
+# Breaking 变更检测配置
+breaking:
+  use:
+    - FILE
