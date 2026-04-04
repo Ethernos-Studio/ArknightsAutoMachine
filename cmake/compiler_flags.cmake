@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AAM. If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-# AAM Compiler Flags Configuration
+# @file compiler_flags.cmake
+# @author dhjs0000
+# @brief AAM Compiler Flags Configuration
 # =============================================================================
 # 版本: v0.1.0-alpha.2
 # 功能: 跨平台编译器标志统一配置

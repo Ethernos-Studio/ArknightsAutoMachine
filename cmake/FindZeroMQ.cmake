@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with AAM. If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
-# FindZeroMQ.cmake - ZeroMQ Library Discovery Module
+# @file FindZeroMQ.cmake
+# @author dhjs0000
+# @brief ZeroMQ Library Discovery Module
 # =============================================================================
 # 版本: v0.1.0-alpha.2
 # 功能: 跨平台 ZeroMQ 库查找模块
@@ -61,14 +63,20 @@ list(APPEND ZeroMQ_SEARCH_PATHS
 )
 
 # Windows 特定路径
+# 注意：用户可通过 CMAKE_PREFIX_PATH 覆盖这些路径，或设置 VCPKG_ROOT 环境变量
 if(WIN32)
     list(APPEND ZeroMQ_SEARCH_PATHS
         "C:/Program Files/ZeroMQ"
         "C:/Program Files (x86)/ZeroMQ"
-        "C:/vcpkg/installed/x64-windows"
-        "C:/vcpkg/installed/x64-windows-static"
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party/zeromq"
     )
+    # 如果 VCPKG_ROOT 未设置，尝试常见的 vcpkg 安装位置
+    if(NOT DEFINED ENV{VCPKG_ROOT})
+        list(APPEND ZeroMQ_SEARCH_PATHS
+            "C:/vcpkg/installed/x64-windows"
+            "C:/vcpkg/installed/x64-windows-static"
+        )
+    endif()
 endif()
 
 # =============================================================================

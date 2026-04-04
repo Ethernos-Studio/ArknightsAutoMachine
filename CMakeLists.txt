@@ -44,7 +44,7 @@ project(
     VERSION 0.1.0
     DESCRIPTION "Arknights Auto Machine - Industrial-grade Game Automation Framework"
     HOMEPAGE_URL "https://github.com/AAM-Team/Arknights-Auto-Machine"
-    LANGUAGES CXX C CUDA
+    LANGUAGES CXX C
 )
 
 # =============================================================================
