@@ -27,7 +27,6 @@
 # =============================================================================
 
 import argparse
-import shlex
 import shutil
 import subprocess
 import sys
@@ -189,8 +188,6 @@ def generate_cpp_code(
     if grpc_plugin:
         grpc_out = cpp_out / "grpc"
         grpc_out.mkdir(parents=True, exist_ok=True)
-    else:
-        grpc_out = None
 
     success_count = 0
     fail_count = 0

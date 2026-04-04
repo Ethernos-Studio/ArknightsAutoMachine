@@ -93,8 +93,7 @@ jobs:
       - name: Buf Breaking Change Detection
         if: github.event_name == 'pull_request'
         run: |
-          buf breaking --against '.git#branch=main,subdir=proto'
-        working-directory: ${{ github.workspace }}/proto
+          buf breaking --against '${{ github.workspace }}/.git#branch=main,subdir=proto'
 
   # ============================================================================
   # Windows 构建

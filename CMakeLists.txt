@@ -326,9 +326,15 @@ add_dependencies(aam_core aam_proto_generation)
 # 为 Protobuf 生成的代码禁用特定的严格检查
 # Protobuf 3.20+ 使用 constinit，与 MSVC C++20/23 的 /WX 标志不兼容
 # 注意：protobuf 头文件会自动处理 MSVC 的 constinit 问题，不需要手动定义
-set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
-    COMPILE_FLAGS "/permissive /W0"
-)
+if(MSVC)
+    set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
+        COMPILE_FLAGS "/permissive /W0"
+    )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
+        COMPILE_FLAGS "-w"
+    )
+endif()
 
 # 目标属性配置
 target_include_directories(aam_core
