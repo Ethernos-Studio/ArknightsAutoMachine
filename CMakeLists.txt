@@ -194,7 +194,7 @@ if(NOT AAM_VCPKG_INSTALLED_FOUND AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         "  1. Install dependencies via vcpkg:\n"
         "     vcpkg install --triplet=x64-windows @vcpkg.json\n"
         "  2. Or set VCPKG_ROOT environment variable:\n"
-        "     $env:VCPKG_ROOT = 'C:\path\to\vcpkg'\n"
+        "     $env:VCPKG_ROOT = 'C:/path/to/vcpkg'\n"
         "  3. Or pass CMAKE_TOOLCHAIN_FILE:\n"
         "     cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake\n"
         "=====================================================================\n"
@@ -327,12 +327,19 @@ add_dependencies(aam_core aam_proto_generation)
 # Protobuf 3.20+ 使用 constinit，与 MSVC C++20/23 的 /WX 标志不兼容
 # 注意：protobuf 头文件会自动处理 MSVC 的 constinit 问题，不需要手动定义
 if(MSVC)
+    # 仅抑制 Protobuf 生成代码的特定警告，保留其他警告
+    # C4251: class needs dll-interface
+    # C4275: non dll-interface class used as base
+    # C4800: forcing value to bool
+    # C4244: conversion from 'type1' to 'type2', possible loss of data
+    # C4267: conversion from 'size_t' to 'type', possible loss of data
     set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
-        COMPILE_FLAGS "/permissive /W0"
+        COMPILE_FLAGS "/wd4251 /wd4275 /wd4800 /wd4244 /wd4267"
     )
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # GCC/Clang: 仅抑制特定警告
     set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
-        COMPILE_FLAGS "-w"
+        COMPILE_FLAGS "-Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare"
     )
 endif()
 
