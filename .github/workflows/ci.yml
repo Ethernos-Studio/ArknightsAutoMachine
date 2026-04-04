@@ -1,0 +1,310 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file ci.yml
+# @author dhjs0000
+# @brief Continuous Integration Workflow for AAM
+# =============================================================================
+# 版本: v0.1.0-alpha.3
+# 功能: 三平台构建矩阵（Windows/Linux/macOS）
+# 触发: PR 到 main 分支 或 推送到 main 分支
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, 'v*' ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+
+env:
+  BUILD_TYPE: Release
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  # ============================================================================
+  # 代码风格检查
+  # ============================================================================
+  lint:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run clang-format
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: '17'
+          check-path: '.'
+          fallback-style: 'LLVM'
+
+      - name: Check CMake formatting
+        uses: cmake-lint/cmake-lint-action@v1
+        with:
+          args: '--line-width=100'
+
+  # ============================================================================
+  # 协议兼容性检查
+  # ============================================================================
+  proto-check:
+    name: Protocol Compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: '1.29.0'
+
+      - name: Buf Lint
+        run: buf lint
+        working-directory: ${{ github.workspace }}/proto
+
+      - name: Buf Breaking Change Detection
+        if: github.event_name == 'pull_request'
+        run: |
+          buf breaking --against '.git#branch=main,subdir=proto'
+        working-directory: ${{ github.workspace }}/proto
+
+  # ============================================================================
+  # Windows 构建
+  # ============================================================================
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-2022
+    needs: [lint, proto-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64]
+        build_type: [Release, Debug]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
+          vcpkgJsonGlob: 'vcpkg.json'
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake `
+            -DAAM_BUILD_TESTS=ON `
+            -DAAM_ENABLE_CUDA=OFF `
+            -DCMAKE_CXX_FLAGS=/W4 `
+            -DCMAKE_CXX_FLAGS=/WX
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel 4
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest -C ${{ matrix.build_type }} --output-on-failure --parallel 4
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aam-windows-${{ matrix.arch }}-${{ matrix.build_type }}
+          path: |
+            build/${{ matrix.build_type }}/*.lib
+            build/${{ matrix.build_type }}/*.dll
+            build/${{ matrix.build_type }}/*.exe
+          retention-days: 7
+
+  # ============================================================================
+  # Linux 构建
+  # ============================================================================
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-22.04
+    needs: [lint, proto-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc-12, clang-16]
+        build_type: [Release, Debug]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            cmake \
+            pkg-config \
+            ${{ matrix.compiler == 'gcc-12' && 'g++-12' || 'clang-16' }} \
+            libopencv-dev \
+            libeigen3-dev \
+            libprotobuf-dev \
+            protobuf-compiler \
+            libgrpc++-dev \
+            protobuf-compiler-grpc \
+            libspdlog-dev \
+            libfmt-dev \
+            libyaml-cpp-dev \
+            nlohmann-json3-dev \
+            libzmq3-dev
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
+
+      - name: Configure CMake
+        run: |
+          export CC=${{ matrix.compiler == 'gcc-12' && 'gcc-12' || 'clang-16' }}
+          export CXX=${{ matrix.compiler == 'gcc-12' && 'g++-12' || 'clang++-16' }}
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake \
+            -DAAM_BUILD_TESTS=ON \
+            -DAAM_ENABLE_CUDA=OFF \
+            -DAAM_ENABLE_SANITIZERS=${{ matrix.build_type == 'Debug' && 'ON' || 'OFF' }}
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel $(nproc)
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aam-linux-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: |
+            build/lib*.a
+            build/lib*.so
+          retention-days: 7
+
+  # ============================================================================
+  # macOS 构建
+  # ============================================================================
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-14
+    needs: [lint, proto-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          brew install \
+            cmake \
+            ninja \
+            pkg-config \
+            opencv \
+            eigen \
+            protobuf \
+            grpc \
+            spdlog \
+            fmt \
+            yaml-cpp \
+            nlohmann-json \
+            zeromq
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f00f'
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake \
+            -DAAM_BUILD_TESTS=ON \
+            -DAAM_ENABLE_CUDA=OFF
+
+      - name: Build
+        run: cmake --build build --parallel $(sysctl -n hw.ncpu)
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel $(sysctl -n hw.ncpu)
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aam-macos-${{ matrix.build_type }}
+          path: |
+            build/lib*.a
+            build/lib*.dylib
+          retention-days: 7
+
+  # ============================================================================
+  # 构建状态汇总
+  # ============================================================================
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-macos]
+    if: always()
+    steps:
+      - name: Check Build Status
+        run: |
+          echo "Windows: ${{ needs.build-windows.result }}"
+          echo "Linux: ${{ needs.build-linux.result }}"
+          echo "macOS: ${{ needs.build-macos.result }}"
+          if [ "${{ needs.build-windows.result }}" != "success" ] || \
+             [ "${{ needs.build-linux.result }}" != "success" ] || \
+             [ "${{ needs.build-macos.result }}" != "success" ]; then
+            echo "Build failed!"
+            exit 1
+          fi
+          echo "All builds passed!"
