@@ -228,7 +228,7 @@ find_package(OpenCV CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(ZeroMQ REQUIRED)
 # cppzmq 可能已由 FindZeroMQ.cmake 提供，避免重复查找
-if(NOT TARGET cppzmq-static)
+if(NOT TARGET cppzmq AND NOT TARGET cppzmq-static)
     find_package(cppzmq CONFIG REQUIRED)
 endif()
 
@@ -367,7 +367,7 @@ target_link_libraries(aam_core
         opencv_imgcodecs
         Eigen3::Eigen
         ZeroMQ::ZeroMQ
-        cppzmq-static
+        $<IF:$<TARGET_EXISTS:cppzmq-static>,cppzmq-static,cppzmq>
     PRIVATE
         aam_compiler_flags
 )
