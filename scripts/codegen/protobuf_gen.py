@@ -27,6 +27,7 @@
 # =============================================================================
 
 import argparse
+import shlex
 import shutil
 import re
 import subprocess
@@ -214,11 +215,14 @@ def generate_cpp_code(
         cmd.append(str(proto_file))
 
         try:
+            # 使用 shlex.join 安全地转义命令参数，防止命令注入
+            safe_cmd = shlex.join(cmd)
             subprocess.run(
-                cmd,
+                safe_cmd,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                shell=True
             )
             success_count += 1
         except subprocess.CalledProcessError as e:
@@ -278,11 +282,14 @@ def generate_python_code(
         cmd.append(str(proto_file))
 
         try:
+            # 使用 shlex.join 安全地转义命令参数，防止命令注入
+            safe_cmd = shlex.join(cmd)
             subprocess.run(
-                cmd,
+                safe_cmd,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                shell=True
             )
             success_count += 1
         except subprocess.CalledProcessError as e:
