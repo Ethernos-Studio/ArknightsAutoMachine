@@ -2396,7 +2396,6 @@ def main():
 
                 # 保存JSON
                 if args.json:
-                    import json
                     with open(args.json, 'w', encoding='utf-8') as f:
                         json.dump(result.to_dict(), f, ensure_ascii=False, indent=2)
                     print(f"JSON报告已保存: {args.json}")
