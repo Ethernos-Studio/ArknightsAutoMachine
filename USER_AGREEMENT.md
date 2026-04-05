@@ -1,0 +1,144 @@
+<!--
+  Copyright (C) 2026 Ethernos Studio
+  This file is part of Arknights Auto Machine (AAM).
+
+  AAM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  AAM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with AAM. If not, see <https://www.gnu.org/licenses/>.
+  =============================================================================
+  @file USER_AGREEMENT.md
+  @author dhjs0000
+  @brief AAM 用户协议与免责声明
+  =============================================================================
+-->
+
+# Arknights Auto Machine (AAM) 用户协议
+
+**版本**：v1.0.0  
+**生效日期**：2026-04-05  
+**版权所有**：Ethernos Studio (dhjs0000)  
+**开源许可**：GNU Affero General Public License v3.0 (AGPL-3.0-only)
+
+---
+
+## 1. 接受条款与风险提示
+
+1.1 使用 AAM（以下简称"本软件"）即表示您已阅读、理解并同意本协议所有条款。若不同意，请立即卸载并停止使用。
+
+1.2 **重要风险提示**：  
+- 本软件通过 ADB 协议模拟人类操作行为，**必然违反**《明日方舟》用户协议第 4.3 条关于禁止自动化程序的规定  
+- 使用本软件可能导致游戏账号受到**警告/临时封禁/永久封禁**等处罚  
+- 鹰角网络保留随时更新反作弊机制的权利，本软件的规避检测能力**不具有持久性保证**
+
+1.3 **AI 决策特别声明**：  
+AAM L5 层可能接入第三方大语言模型（LLM）API（包括但不限于 Kimi、Claude 等）。AI 生成的操作指令可能存在**误判、延迟或异常行为**，开发者不对 AI 决策导致的游戏损失承担责任。
+
+---
+
+## 2. 知识产权与开源声明
+
+2.1 本软件著作权归 Ethernos Studio 所有，受《中华人民共和国著作权法》及国际版权公约保护。
+
+2.2 本软件以 **AGPL-3.0-only** 开源许可证发布。根据 AGPL：
+- 您有权自由使用、修改、分发本软件
+- **网络交互限制**：若您基于本软件提供在线服务（如云托管、SaaS 平台），必须向所有用户公开服务端源代码
+- **传染性**：任何集成/修改后的衍生作品必须沿用 AGPL 许可证开源
+
+2.3 **Maa 兼容性声明**：  
+AAM 实现了与 MaaAssistantArknights 的接口兼容，但**不包含** Maa 的受版权保护资源文件（如内置识别模型、GUI 素材）。Maa 相关资源受其原 AGPL 许可证约束。
+
+---
+
+## 3. 禁止行为（绝对禁止清单）
+
+使用本软件时，您**不得**：
+
+3.1 **商业利用**：出售本软件、提供代练服务、或以任何方式通过本软件直接/间接牟利（包括但不限于售卖"防封版"、提供付费挂机服务）
+
+3.2 **逆向与破解**：反编译、反汇编、修改本软件二进制以绕过 AGPL 开源要求；开发"内存注入版""协议破解版"等增强模块
+
+3.3 **数据滥用**：利用 AAM 的图像识别功能批量采集游戏数据并用于训练商业 AI 模型；将游戏截图（可能含个人信息）上传至未授权的第三方 AI 服务
+
+3.4 **规避检测的恶意修改**：使用本软件配合硬件宏、虚拟机沙箱、或修改游戏客户端以逃避反作弊检测
+
+3.5 **法律责任转嫁**：将本软件用于《刑法》第 285 条禁止的"破坏计算机信息系统"行为（如利用自动化工具实施游戏内诈骗、刷取虚拟货币并变现）
+
+---
+
+## 4. 隐私与数据处理
+
+4.1 **本地优先原则**：  
+AAM 默认在本地设备运行所有图像识别与逻辑推理（L0-L4 层）。游戏画面截图**不会**上传至 Ethernos Studio 服务器。
+
+4.2 **LLM 服务数据流**：  
+若您启用 L5 层 AI 决策功能：
+- 游戏画面截图/状态描述将发送至您配置的第三方 AI API（如 Kimi Code）
+- 您需自行审阅该 API 提供商的隐私政策，Ethernos Studio 不对第三方数据泄露负责
+- 建议在配置文件中启用 `privacy_mode: strict`，限制截图中的敏感信息（如 UID、充值记录）传输
+
+4.3 **数据留存**：  
+AAM 仅在本地保存操作日志（用于调试），不会上传用户游戏数据。日志文件默认保存 7 天，到期自动清理。
+
+---
+
+## 5. 责任限制与免责声明
+
+5.1 **无担保声明**：  
+本软件按"**现状**"（AS IS）提供，不附有任何明示或默示担保，包括但不限于：
+- 对游戏账号安全的担保
+- 对反作弊规避持久性的担保
+- 对 AI 决策准确性的担保
+
+5.2 **损失免责**：  
+在任何情况下，Ethernos Studio 及开发者 dhjs0000 均不对以下损失承担责任：
+- 游戏账号被封禁导致的虚拟财产损失
+- 因使用本软件导致的设备损坏、数据丢失
+- 依赖 AI 决策导致的游戏内资源损失（如错误部署干员导致关卡失败）
+
+5.3 **责任上限**：  
+若适用法律要求承担赔偿责任，赔偿金额**不超过**您为本软件实际支付的费用（鉴于 AGPL 开源性质，通常为 0 元）。
+
+---
+
+## 6. 协议更新与终止
+
+6.1 **更新权**：Ethernos Studio 保留随时修改本协议的权利。重大变更将在 GitHub Releases 页面公示 7 日，继续使用视为接受新条款。
+
+6.2 **自动终止**：  
+若您违反第 3 条禁止行为，本协议自动终止，AGPL 赋予的开源权利**不受影响**（您仍可保留、修改代码，但失去获得技术支持的资格）。
+
+6.3 **用户终止权**：您可随时停止使用并卸载本软件， uninstall 行为即视为协议终止。
+
+---
+
+## 7. 争议解决与适用法律
+
+7.1 本协议适用中华人民共和国法律（不含冲突法规则）。
+
+---
+
+## 8. 其他条款
+
+8.1 **独立性**：若本协议某条款被有权机关认定为无效，不影响其他条款效力。
+
+8.2 **非代理关系**：本协议不构成您与 Ethernos Studio 之间的合伙、合资、雇佣或代理关系。
+
+8.3 **联系信息**：  
+- 项目仓库：https://github.com/Ethernos-Studio/ArknightsAutoMachine  
+- 官方邮箱：support@ethernos.net  
+- 技术交流群：1070963958（QQ）
+
+---
+
+**确认按钮文案建议**（供 GUI 使用）：
+
+> **"我已阅读并理解《AAM 用户协议》。我知晓使用本工具可能导致明日方舟账号被封禁，并自愿承担全部风险。我同意遵守 AGPL-3.0 开源许可证义务。"**
