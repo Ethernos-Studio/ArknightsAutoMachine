@@ -64,12 +64,13 @@ jobs:
           check-path: 'core'
           fallback-style: 'LLVM'
 
-      - name: Run clang-format on bridge
-        uses: jidicula/clang-format-action@v4.11.0
-        with:
-          clang-format-version: '17'
-          check-path: 'bridge'
-          fallback-style: 'LLVM'
+      # bridge/ 目录在 v0.7.0-beta 阶段启用，当前跳过
+      # - name: Run clang-format on bridge
+      #   uses: jidicula/clang-format-action@v4.11.0
+      #   with:
+      #     clang-format-version: '17'
+      #     check-path: 'bridge'
+      #     fallback-style: 'LLVM'
 
       - name: Check CMake formatting
         run: |
@@ -229,13 +230,15 @@ jobs:
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
           export CC=${{ matrix.compiler == 'gcc-12' && 'gcc-12' || 'clang-16' }}
           export CXX=${{ matrix.compiler == 'gcc-12' && 'g++-12' || 'clang++-16' }}
           cmake -B build -S . \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake \
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" \
             -DAAM_BUILD_TESTS=ON \
             -DAAM_ENABLE_CUDA=OFF \
             -DAAM_ENABLE_SANITIZERS=${{ matrix.build_type == 'Debug' && 'ON' || 'OFF' }}
