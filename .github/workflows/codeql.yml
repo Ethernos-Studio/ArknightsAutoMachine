@@ -51,6 +51,8 @@ on:
 env:
   CODEQL_EXTRACTOR_CPP_TRAP_CACHING: true
   CODEQL_EXTRACTOR_CPP_BUILD_TRACING: true
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
 
 jobs:
   # ============================================================================
@@ -116,7 +118,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c3867e714dd3a51c272826eea77267876517ed99'
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake

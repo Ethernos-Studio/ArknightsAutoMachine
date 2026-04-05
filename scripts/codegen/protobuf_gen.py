@@ -215,15 +215,21 @@ def generate_cpp_code(
 
         try:
             # 安全地执行命令：cmd 是列表，使用 shell=False（默认）
+            # 这是安全的做法，避免了命令注入风险
             # 显式指定 encoding='utf-8' 确保跨平台中文路径正确处理
+            # 添加 timeout=120 防止 protoc 挂起导致无限阻塞
             subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 encoding='utf-8',
-                check=True
+                check=True,
+                timeout=120
             )
             success_count += 1
+        except subprocess.TimeoutExpired:
+            print(f"  错误: 生成 {proto_file.name} 超时（120秒）")
+            fail_count += 1
         except subprocess.CalledProcessError as e:
             print(f"  错误: 生成 {proto_file.name} 失败")
             print(f"    {e.stderr}")
@@ -282,15 +288,21 @@ def generate_python_code(
 
         try:
             # 安全地执行命令：cmd 是列表，使用 shell=False（默认）
+            # 这是安全的做法，避免了命令注入风险
             # 显式指定 encoding='utf-8' 确保跨平台中文路径正确处理
+            # 添加 timeout=120 防止 protoc 挂起导致无限阻塞
             subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 encoding='utf-8',
-                check=True
+                check=True,
+                timeout=120
             )
             success_count += 1
+        except subprocess.TimeoutExpired:
+            print(f"  错误: 生成 {proto_file.name} 超时（120秒）")
+            fail_count += 1
         except subprocess.CalledProcessError as e:
             print(f"  错误: 生成 {proto_file.name} 失败")
             print(f"    {e.stderr}")
@@ -304,7 +316,7 @@ def _is_service_proto(proto_file: Path) -> bool:
     检查 .proto 文件是否包含服务定义
 
     使用正则表达式匹配服务定义，避免误匹配注释中的 'service ' 字符串。
-    支持处理单行注释 // 和多行注释 /* */。
+    支持处理单行注释 // 和多行注释 /* */，以及行内注释。
 
     Args:
         proto_file: .proto 文件路径
@@ -319,14 +331,17 @@ def _is_service_proto(proto_file: Path) -> bool:
         # 使用非贪婪匹配 .*? 来匹配最短内容
         content_no_block_comments = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
 
-        # 然后逐行处理，跳过单行注释
-        pattern = r'^\s*service\s+\w+\s*{'
+        # 简化正则：只匹配 service 关键字和服务名，不强制要求 { 在同一行
+        # 这样可以处理 service Foo /* comment */ { 的情况
+        pattern = r'^\s*service\s+\w+'
         for line in content_no_block_comments.split('\n'):
             stripped = line.strip()
             # 跳过空行和单行注释
             if not stripped or stripped.startswith('//'):
                 continue
-            if re.search(pattern, line):
+            # 移除行内注释 //
+            line_no_inline_comment = re.sub(r'\s*//.*$', '', line)
+            if re.search(pattern, line_no_inline_comment):
                 return True
         return False
     except Exception:

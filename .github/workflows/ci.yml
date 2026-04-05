@@ -43,6 +43,7 @@ on:
 env:
   BUILD_TYPE: Release
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
 
 jobs:
   # ============================================================================
@@ -75,7 +76,7 @@ jobs:
       - name: Check CMake formatting
         run: |
           pip install cmakelang
-          find . -name "CMakeLists.txt" -o -name "*.cmake" | grep -v "vcpkg_installed" | xargs -I {} cmake-lint {} --line-width=100 --suppress=C0307,C0301
+          find . -name "CMakeLists.txt" -o -name "*.cmake" | grep -v "vcpkg_installed" | grep -v "vcpkg/" | xargs -I {} cmake-lint {}
 
   # ============================================================================
   # 协议兼容性检查
@@ -140,7 +141,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c3867e714dd3a51c272826eea77267876517ed99'
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           vcpkgJsonGlob: 'vcpkg.json'
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
@@ -198,12 +199,15 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          # 安装 LLVM 仓库以获取 clang-16
+          # 安装 LLVM 仓库以获取 clang-16（使用官方 GPG key 验证）
           if [[ "${{ matrix.compiler }}" == "clang-16" ]]; then
             sudo apt-get install -y wget lsb-release gnupg software-properties-common
-            wget https://apt.llvm.org/llvm.sh
-            chmod +x llvm.sh
-            sudo ./llvm.sh 16
+            # 添加 LLVM 官方 GPG key
+            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm-snapshot.asc
+            # 添加 LLVM 仓库
+            sudo add-apt-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-16 main"
+            sudo apt-get update
+            sudo apt-get install -y clang-16 lldb-16 lld-16
           fi
           sudo apt-get install -y \
             build-essential \
