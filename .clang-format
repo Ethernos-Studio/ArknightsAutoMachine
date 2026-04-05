@@ -285,12 +285,6 @@ QualifierOrder:
 RemoveBracesLLVM: false
 RemoveSemicolon: false
 
-# 概念与约束
-BreakBeforeConceptDeclarations: Always
-RequiresClausePosition: OwnLine
-IndentRequiresClause: true
-RequiresExpressionIndentation: OuterScope
-
 # =============================================================================
 # 版本特定（Clang-Format 16+）
 # =============================================================================

@@ -94,7 +94,10 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: ${{ github.workspace }}/proto
         run: |
-          buf breaking --against '../.git#branch=main,subdir=proto'
+          # 获取目标分支（支持 main 或 master）
+          TARGET_BRANCH="${{ github.base_ref }}"
+          echo "Checking breaking changes against branch: $TARGET_BRANCH"
+          buf breaking --against "../.git#branch=${TARGET_BRANCH},subdir=proto"
 
   # ============================================================================
   # Windows 构建
