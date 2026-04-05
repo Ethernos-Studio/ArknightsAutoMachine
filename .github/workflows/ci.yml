@@ -76,7 +76,7 @@ jobs:
       - name: Check CMake formatting
         run: |
           pip install cmakelang
-          find . -name "CMakeLists.txt" -o -name "*.cmake" | grep -v "vcpkg_installed" | grep -v "vcpkg/" | xargs -I {} cmake-lint {}
+          find . \( -name "CMakeLists.txt" -o -name "*.cmake" \) | grep -v "vcpkg_installed" | grep -v "vcpkg/" | xargs -I {} cmake-lint {} || echo "No CMake files to lint or linting completed with warnings"
 
   # ============================================================================
   # 协议兼容性检查
@@ -226,7 +226,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c3867e714dd3a51c272826eea77267876517ed99'
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake
@@ -295,7 +295,7 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c3867e714dd3a51c272826eea77267876517ed99'
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake

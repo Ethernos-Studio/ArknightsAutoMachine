@@ -27,8 +27,9 @@
 # =============================================================================
 
 import argparse
-import shutil
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -401,6 +402,7 @@ def _is_service_proto(proto_file: Path, proto_dir: Path) -> bool:
                     str(desc_file)
                 ]
 
+                # nosec B603: cmd_decode 是内部构建的列表，非外部输入；已使用 shell=False
                 result_decode = subprocess.run(
                     cmd_decode,
                     capture_output=True,
