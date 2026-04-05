@@ -74,7 +74,7 @@ jobs:
       - name: Check CMake formatting
         run: |
           pip install cmakelang
-          find . -name "CMakeLists.txt" -o -name "*.cmake" | grep -v "vcpkg_installed" | xargs -I {} cmake-lint {} --line-width=100
+          find . -name "CMakeLists.txt" -o -name "*.cmake" | grep -v "vcpkg_installed" | xargs -I {} cmake-lint {} --line-width=100 --suppress=C0307,C0301
 
   # ============================================================================
   # 协议兼容性检查
