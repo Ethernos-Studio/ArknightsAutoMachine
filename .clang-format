@@ -226,8 +226,6 @@ IncludeCategories:
 BinPackArguments: false
 BinPackParameters: false
 ExperimentalAutoDetectBinPacking: false
-AllowAllParametersOfDeclarationOnASingleLine: false
-AllowAllArgumentsOnASameLine: false
 
 BitFieldColonSpacing: Both
 
