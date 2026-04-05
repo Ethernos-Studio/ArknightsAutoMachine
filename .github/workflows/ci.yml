@@ -141,7 +141,7 @@ jobs:
           }
 
       - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
+        uses: lukka/run-vcpkg@v12
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           vcpkgJsonGlob: 'vcpkg.json'
@@ -156,9 +156,10 @@ jobs:
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
-          cmake -B build -S . `
+          $vcpkgToolchain = Join-Path -Path "${{ github.workspace }}" -ChildPath "vcpkg/scripts/buildsystems/vcpkg.cmake"
+          cmake -B build -S . -G Ninja `
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
-            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
             -DAAM_BUILD_TESTS=ON `
             -DAAM_ENABLE_CUDA=OFF `
             -DCMAKE_CXX_FLAGS="/W4 /WX"
