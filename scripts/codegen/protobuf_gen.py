@@ -139,23 +139,41 @@ def find_grpc_plugin(plugin_name: str) -> Optional[Path]:
     return None
 
 
-def collect_proto_files(proto_dir: Path) -> List[Path]:
+def collect_proto_files(
+    proto_dir: Path,
+    timeout: float = 30.0
+) -> List[Path]:
     """
     收集所有 .proto 文件
 
     Args:
         proto_dir: proto 文件根目录
+        timeout: 超时时间（秒），防止在大型目录中无限扫描
 
     Returns:
         List[Path]: .proto 文件路径列表
 
     Raises:
         ProtoFileError: proto 目录不存在或无 .proto 文件
+        TimeoutError: 扫描超时
     """
+    import time
+
     if not proto_dir.exists():
         raise ProtoFileError(f"Proto 目录不存在: {proto_dir}")
 
-    proto_files = list(proto_dir.rglob("*.proto"))
+    start_time = time.time()
+    proto_files = []
+
+    # 使用 os.walk 替代 rglob 以便更好地控制超时
+    for root, _, files in os.walk(proto_dir):
+        # 检查是否超时
+        if time.time() - start_time > timeout:
+            raise TimeoutError(f"扫描 proto 文件超时（{timeout}秒），目录可能过大")
+
+        for file in files:
+            if file.endswith('.proto'):
+                proto_files.append(Path(root) / file)
 
     if not proto_files:
         raise ProtoFileError(f"在 {proto_dir} 中未找到 .proto 文件")
@@ -205,7 +223,7 @@ def generate_cpp_code(
         ]
 
         # 添加 gRPC 插件（如果可用）
-        if grpc_plugin and _is_service_proto(proto_file):
+        if grpc_plugin and _is_service_proto(proto_file, proto_dir):
             cmd.extend([
                 f"--grpc_out={grpc_out}",
                 f"--plugin=protoc-gen-grpc={grpc_plugin}",
@@ -279,7 +297,7 @@ def generate_python_code(
         ]
 
         # 添加 gRPC 插件（如果可用）
-        if grpc_plugin and _is_service_proto(proto_file):
+        if grpc_plugin and _is_service_proto(proto_file, proto_dir):
             cmd.extend([
                 f"--grpc_python_out={py_out}",
                 f"--plugin=protoc-gen-grpc_python={grpc_plugin}",
@@ -313,44 +331,92 @@ def generate_python_code(
     return success_count, fail_count
 
 
-def _is_service_proto(proto_file: Path) -> bool:
+def _is_service_proto(proto_file: Path, proto_dir: Path) -> bool:
     """
     检查 .proto 文件是否包含服务定义
 
-    使用正则表达式匹配服务定义，避免误匹配注释中的 'service ' 字符串。
-    支持处理单行注释 // 和多行注释 /* */，以及行内注释。
-
-    注意：这是一个简化实现，仅支持常见的 proto 编码风格。以下情况可能导致误判：
-    - 字符串字面量中包含 "service"（如 string desc = "some service";）
-    - 复杂的嵌套注释或非常规的注释格式
-    - 使用 protobuf 的扩展语法（如 option 中的特殊格式）
-    对于需要精确检测的场景，建议使用 protoc 的 descriptor 输出进行解析。
+    使用 protoc 生成 FileDescriptorSet 并解析，确保准确检测服务定义。
+    此方法通过 protobuf 编译器解析 proto 文件，能够正确处理所有语法结构，
+    包括注释、字符串字面量和复杂嵌套。
 
     Args:
         proto_file: .proto 文件路径
+        proto_dir: proto 文件根目录，用于解析 import
 
     Returns:
         bool: 是否包含服务定义
     """
+    import tempfile
+    import os
+
+    protoc = find_protoc()
+    if not protoc:
+        return False
+
     try:
-        content = proto_file.read_text(encoding='utf-8')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 生成 FileDescriptorSet 到临时文件
+            desc_file = os.path.join(tmpdir, "desc.pb")
 
-        # 首先移除所有多行注释 /* ... */
-        # 使用非贪婪匹配 .*? 来匹配最短内容
-        content_no_block_comments = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+            cmd = [
+                str(protoc),
+                f"--proto_path={proto_dir}",
+                f"--descriptor_set_out={desc_file}",
+                "--include_source_info",
+                str(proto_file)
+            ]
 
-        # 简化正则：只匹配 service 关键字和服务名，不强制要求 { 在同一行
-        # 这样可以处理 service Foo /* comment */ { 的情况
-        pattern = r'^\s*service\s+\w+'
-        for line in content_no_block_comments.split('\n'):
-            stripped = line.strip()
-            # 跳过空行和单行注释
-            if not stripped or stripped.startswith('//'):
-                continue
-            # 移除行内注释 //
-            line_no_inline_comment = re.sub(r'\s*//.*$', '', line)
-            if re.search(pattern, line_no_inline_comment):
-                return True
+            # nosec B603: cmd 是内部构建的列表，非外部输入；已使用 shell=False
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                timeout=60
+            )
+
+            if result.returncode != 0:
+                # protoc 失败，可能是语法错误或缺少依赖
+                return False
+
+            # 使用 Python 的 google.protobuf 库解析 descriptor
+            try:
+                from google.protobuf import descriptor_pb2
+
+                with open(desc_file, 'rb') as f:
+                    file_set = descriptor_pb2.FileDescriptorSet()
+                    file_set.ParseFromString(f.read())
+
+                # 检查是否有服务定义
+                for file_desc in file_set.file:
+                    if len(file_desc.service) > 0:
+                        return True
+                return False
+            except ImportError:
+                # 如果没有安装 google.protobuf，使用备用方案：
+                # 解析 protoc 的 --decode 输出
+                cmd_decode = [
+                    str(protoc),
+                    "--decode=google.protobuf.FileDescriptorSet",
+                    str(desc_file)
+                ]
+
+                result_decode = subprocess.run(
+                    cmd_decode,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    timeout=30
+                )
+
+                if result_decode.returncode == 0:
+                    # 检查输出中是否包含 service 定义
+                    output = result_decode.stdout
+                    # 查找 service 关键字（在 FileDescriptorProto 中）
+                    return 'service {' in output or 'service{' in output
+                return False
+
+    except subprocess.TimeoutExpired:
         return False
     except Exception:
         return False
