@@ -25,24 +25,29 @@
 #include <array>
 #include <string>
 
-namespace aam::l0 {
+namespace aam::l0
+{
 
 // ==========================================================================
 // 错误类别实现
 // ==========================================================================
 
-namespace {
+namespace
+{
 
 /**
  * @brief CaptureError 错误类别类
  */
-class CaptureErrorCategory : public std::error_category {
+class CaptureErrorCategory : public std::error_category
+{
 public:
-    [[nodiscard]] const char* name() const noexcept override {
+    [[nodiscard]] const char* name() const noexcept override
+    {
         return "capture";
     }
 
-    [[nodiscard]] std::string message(int ev) const override {
+    [[nodiscard]] std::string message(int ev) const override
+    {
         switch (static_cast<CaptureError>(ev)) {
             case CaptureError::Success:
                 return "Success";
@@ -97,7 +102,8 @@ public:
         }
     }
 
-    [[nodiscard]] std::error_condition default_error_condition(int ev) const noexcept override {
+    [[nodiscard]] std::error_condition default_error_condition(int ev) const noexcept override
+    {
         switch (static_cast<CaptureError>(ev)) {
             case CaptureError::Success:
                 return std::errc{};
@@ -127,9 +133,10 @@ public:
 // 全局错误类别实例
 const CaptureErrorCategory g_capture_error_category{};
 
-} // anonymous namespace
+}  // anonymous namespace
 
-const std::error_category& capture_error_category() noexcept {
+const std::error_category& capture_error_category() noexcept
+{
     return g_capture_error_category;
 }
 
@@ -137,7 +144,8 @@ const std::error_category& capture_error_category() noexcept {
 // 后端工厂实现
 // ==========================================================================
 
-std::unique_ptr<ICaptureBackend> CreateCaptureBackend(BackendType type) {
+std::unique_ptr<ICaptureBackend> CreateCaptureBackend(BackendType type)
+{
     // 工厂实现：根据类型创建对应的后端实例
     // 当前支持的后端类型在后续版本中逐步添加
     (void)type;
@@ -146,7 +154,8 @@ std::unique_ptr<ICaptureBackend> CreateCaptureBackend(BackendType type) {
     return nullptr;
 }
 
-std::string_view GetBackendTypeName(BackendType type) noexcept {
+std::string_view GetBackendTypeName(BackendType type) noexcept
+{
     switch (type) {
         case BackendType::ADB:
             return "ADB";
@@ -172,14 +181,14 @@ std::string_view GetBackendTypeName(BackendType type) noexcept {
 // ICaptureBackend 静态方法默认实现
 // ==========================================================================
 
-std::expected<std::vector<std::string>, CaptureError>
-    ICaptureBackend::EnumerateDevices() {
+std::expected<std::vector<std::string>, CaptureError> ICaptureBackend::EnumerateDevices()
+{
     // 默认实现返回空列表
     return std::vector<std::string>{};
 }
 
-std::expected<bool, CaptureError>
-    ICaptureBackend::IsDeviceAvailable(std::string_view device_id) {
+std::expected<bool, CaptureError> ICaptureBackend::IsDeviceAvailable(std::string_view device_id)
+{
     // 默认实现：枚举所有设备并检查
     auto devices = EnumerateDevices();
     if (!devices) {
@@ -195,4 +204,4 @@ std::expected<bool, CaptureError>
     return false;
 }
 
-} // namespace aam::l0
+}  // namespace aam::l0
