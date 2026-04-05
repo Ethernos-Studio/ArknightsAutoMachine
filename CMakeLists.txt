@@ -368,7 +368,6 @@ target_link_libraries(aam_core
         Eigen3::Eigen
         ZeroMQ::ZeroMQ
         $<IF:$<TARGET_EXISTS:cppzmq-static>,cppzmq-static,cppzmq>
-    PRIVATE
         aam_compiler_flags
 )
 
@@ -439,8 +438,8 @@ endif()
 # =============================================================================
 include(GNUInstallDirs)
 
-# 安装主库目标（aam_compiler_flags 是 INTERFACE 库，仅供内部使用，不安装）
-install(TARGETS aam_core
+# 安装主库目标（同时安装 aam_compiler_flags）
+install(TARGETS aam_core aam_compiler_flags
     EXPORT aam-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
