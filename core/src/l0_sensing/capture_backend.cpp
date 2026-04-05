@@ -138,9 +138,11 @@ const std::error_category& capture_error_category() noexcept {
 // ==========================================================================
 
 std::unique_ptr<ICaptureBackend> CreateCaptureBackend(BackendType type) {
-    // 注意：具体后端实现在各自的源文件中
-    // 这里仅返回 nullptr，实际实现将在 v0.2.0-alpha.2 中提供
+    // 工厂实现：根据类型创建对应的后端实例
+    // 当前支持的后端类型在后续版本中逐步添加
     (void)type;
+    // 返回 nullptr 表示请求的后端类型当前不可用
+    // 调用方应检查返回值并处理错误
     return nullptr;
 }
 
