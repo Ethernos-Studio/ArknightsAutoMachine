@@ -37,7 +37,8 @@
 
 #include "aam/core/timer.hpp"
 
-namespace aam::l0 {
+namespace aam::l0
+{
 
 // ==========================================================================
 // 前向声明
@@ -47,28 +48,31 @@ namespace aam::l0 {
  * @brief 缓冲区策略枚举
  * @details 定义当缓冲区满时的处理策略
  */
-enum class BufferPolicy : std::uint8_t {
-    DropOldest,     ///< 丢弃最旧的帧
-    DropNewest,     ///< 丢弃最新的帧（即拒绝写入）
-    Overwrite,      ///< 直接覆盖（可能导致读取到不完整帧）
+enum class BufferPolicy : std::uint8_t
+{
+    DropOldest,  ///< 丢弃最旧的帧
+    DropNewest,  ///< 丢弃最新的帧（即拒绝写入）
+    Overwrite,   ///< 直接覆盖（可能导致读取到不完整帧）
 };
 
 /**
  * @brief 缓冲区统计信息
  */
-struct BufferStats {
-    std::uint64_t total_pushed = 0;      ///< 总推送帧数
-    std::uint64_t total_popped = 0;      ///< 总弹出帧数
-    std::uint64_t dropped_frames = 0;    ///< 丢弃帧数
-    std::uint64_t overflow_count = 0;    ///< 溢出次数
-    std::uint64_t current_size = 0;      ///< 当前大小
-    std::uint64_t capacity = 0;          ///< 容量
+struct BufferStats
+{
+    std::uint64_t total_pushed   = 0;  ///< 总推送帧数
+    std::uint64_t total_popped   = 0;  ///< 总弹出帧数
+    std::uint64_t dropped_frames = 0;  ///< 丢弃帧数
+    std::uint64_t overflow_count = 0;  ///< 溢出次数
+    std::uint64_t current_size   = 0;  ///< 当前大小
+    std::uint64_t capacity       = 0;  ///< 容量
 
     /**
      * @brief 计算丢帧率
      * @return 丢帧率 [0.0, 1.0]
      */
-    [[nodiscard]] double drop_rate() const noexcept {
+    [[nodiscard]] double drop_rate() const noexcept
+    {
         const std::uint64_t total = total_pushed + dropped_frames;
         return total > 0 ? static_cast<double>(dropped_frames) / total : 0.0;
     }
@@ -77,7 +81,8 @@ struct BufferStats {
      * @brief 计算填充率
      * @return 填充率 [0.0, 1.0]
      */
-    [[nodiscard]] double fill_rate() const noexcept {
+    [[nodiscard]] double fill_rate() const noexcept
+    {
         return capacity > 0 ? static_cast<double>(current_size) / capacity : 0.0;
     }
 };
@@ -98,7 +103,8 @@ struct BufferStats {
  * @thread_safety 单生产者-单消费者线程安全
  */
 template <typename T, std::size_t Capacity>
-class LockFreeFrameBuffer {
+class LockFreeFrameBuffer
+{
     // 确保容量是2的幂
     static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of 2");
     static_assert(Capacity > 0, "Capacity must be greater than 0");
@@ -109,10 +115,10 @@ public:
     // ======================================================================
     // 类型别名
     // ======================================================================
-    using value_type = T;
-    using size_type = std::size_t;
+    using value_type                    = T;
+    using size_type                     = std::size_t;
     static constexpr size_type capacity = Capacity;
-    static constexpr size_type mask = Capacity - 1;  ///< 位掩码，用于快速取模
+    static constexpr size_type mask     = Capacity - 1;  ///< 位掩码，用于快速取模
 
     // ======================================================================
     // 构造与析构
@@ -123,26 +129,31 @@ public:
      * @complexity O(Capacity)，预分配存储空间
      */
     LockFreeFrameBuffer()
-        : buffer_(allocate_buffer())
-        , write_seq_(0)
-        , read_seq_(0)
-        , policy_(BufferPolicy::DropOldest) {}
+        : buffer_(allocate_buffer()),
+          write_seq_(0),
+          read_seq_(0),
+          policy_(BufferPolicy::DropOldest)
+    {
+    }
 
     /**
      * @brief 带策略的构造函数
      * @param policy 缓冲区满时的处理策略
      */
     explicit LockFreeFrameBuffer(BufferPolicy policy)
-        : buffer_(allocate_buffer())
-        , write_seq_(0)
-        , read_seq_(0)
-        , policy_(policy) {}
+        : buffer_(allocate_buffer()),
+          write_seq_(0),
+          read_seq_(0),
+          policy_(policy)
+    {
+    }
 
     /**
      * @brief 析构函数
      * @complexity O(n)，析构所有未弹出元素
      */
-    ~LockFreeFrameBuffer() {
+    ~LockFreeFrameBuffer()
+    {
         // 析构所有未读元素
         clear();
         // 释放缓冲区内存
@@ -150,25 +161,27 @@ public:
     }
 
     // 禁用拷贝
-    LockFreeFrameBuffer(const LockFreeFrameBuffer&) = delete;
+    LockFreeFrameBuffer(const LockFreeFrameBuffer&)            = delete;
     LockFreeFrameBuffer& operator=(const LockFreeFrameBuffer&) = delete;
 
     // 支持移动
     LockFreeFrameBuffer(LockFreeFrameBuffer&& other) noexcept
-        : buffer_(other.buffer_)
-        , write_seq_(other.write_seq_.load(std::memory_order_relaxed))
-        , read_seq_(other.read_seq_.load(std::memory_order_relaxed))
-        , policy_(other.policy_)
-        , total_pushed_(other.total_pushed_.load(std::memory_order_relaxed))
-        , total_popped_(other.total_popped_.load(std::memory_order_relaxed))
-        , dropped_frames_(other.dropped_frames_.load(std::memory_order_relaxed))
-        , overflow_count_(other.overflow_count_.load(std::memory_order_relaxed)) {
+        : buffer_(other.buffer_),
+          write_seq_(other.write_seq_.load(std::memory_order_relaxed)),
+          read_seq_(other.read_seq_.load(std::memory_order_relaxed)),
+          policy_(other.policy_),
+          total_pushed_(other.total_pushed_.load(std::memory_order_relaxed)),
+          total_popped_(other.total_popped_.load(std::memory_order_relaxed)),
+          dropped_frames_(other.dropped_frames_.load(std::memory_order_relaxed)),
+          overflow_count_(other.overflow_count_.load(std::memory_order_relaxed))
+    {
         other.buffer_ = nullptr;
         other.write_seq_.store(0, std::memory_order_relaxed);
         other.read_seq_.store(0, std::memory_order_relaxed);
     }
 
-    LockFreeFrameBuffer& operator=(LockFreeFrameBuffer&& other) noexcept {
+    LockFreeFrameBuffer& operator=(LockFreeFrameBuffer&& other) noexcept
+    {
         if (this != &other) {
             // 清空当前内容
             clear();
@@ -177,22 +190,22 @@ public:
             deallocate_buffer(buffer_);
 
             // 转移所有权
-            buffer_ = other.buffer_;
+            buffer_       = other.buffer_;
             other.buffer_ = nullptr;
 
             write_seq_.store(other.write_seq_.load(std::memory_order_relaxed),
-                            std::memory_order_relaxed);
+                             std::memory_order_relaxed);
             read_seq_.store(other.read_seq_.load(std::memory_order_relaxed),
-                           std::memory_order_relaxed);
+                            std::memory_order_relaxed);
             policy_ = other.policy_;
             total_pushed_.store(other.total_pushed_.load(std::memory_order_relaxed),
-                               std::memory_order_relaxed);
+                                std::memory_order_relaxed);
             total_popped_.store(other.total_popped_.load(std::memory_order_relaxed),
-                               std::memory_order_relaxed);
+                                std::memory_order_relaxed);
             dropped_frames_.store(other.dropped_frames_.load(std::memory_order_relaxed),
-                                 std::memory_order_relaxed);
+                                  std::memory_order_relaxed);
             overflow_count_.store(other.overflow_count_.load(std::memory_order_relaxed),
-                                 std::memory_order_relaxed);
+                                  std::memory_order_relaxed);
 
             other.write_seq_.store(0, std::memory_order_relaxed);
             other.read_seq_.store(0, std::memory_order_relaxed);
@@ -212,9 +225,10 @@ public:
      * @complexity O(1)
      * @thread_safety 单生产者安全
      */
-    [[nodiscard]] bool push(T&& value) {
+    [[nodiscard]] bool push(T&& value)
+    {
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_acquire);
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_acquire);
 
         // 检查是否已满
         if (write_seq - read_seq >= Capacity) {
@@ -222,8 +236,8 @@ public:
         }
 
         // 写入数据 - 使用 placement new 在预分配内存中构造对象
-        const size_type idx = static_cast<size_type>(write_seq & mask);
-        T* slot = get_slot(idx);
+        const size_type idx  = static_cast<size_type>(write_seq & mask);
+        T*              slot = get_slot(idx);
         new (slot) T(std::move(value));
 
         // 发布写入（release 语义保证之前的写入对消费者可见）
@@ -240,8 +254,9 @@ public:
      * @return false 缓冲区已满
      * @complexity O(1)
      */
-    [[nodiscard]] bool push(const T& value) {
-        T copy = value;  // 拷贝
+    [[nodiscard]] bool push(const T& value)
+    {
+        T copy = value;                // 拷贝
         return push(std::move(copy));  // 移动入缓冲区
     }
 
@@ -255,9 +270,10 @@ public:
      * @thread_safety 单生产者安全
      */
     template <typename... Args>
-    [[nodiscard]] bool emplace(Args&&... args) {
+    [[nodiscard]] bool emplace(Args&&... args)
+    {
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_acquire);
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_acquire);
 
         if (write_seq - read_seq >= Capacity) {
             // 对于 emplace，无法直接处理溢出，返回 false
@@ -265,8 +281,8 @@ public:
             return false;
         }
 
-        const size_type idx = static_cast<size_type>(write_seq & mask);
-        T* slot = get_slot(idx);
+        const size_type idx  = static_cast<size_type>(write_seq & mask);
+        T*              slot = get_slot(idx);
         new (slot) T(std::forward<Args>(args)...);
 
         write_seq_.store(write_seq + 1, std::memory_order_release);
@@ -281,8 +297,9 @@ public:
      * @complexity O(1)
      * @thread_safety 单消费者安全
      */
-    [[nodiscard]] std::optional<T> pop() {
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+    [[nodiscard]] std::optional<T> pop()
+    {
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_acquire);
 
         // 检查是否为空
@@ -291,9 +308,9 @@ public:
         }
 
         // 读取数据
-        const size_type idx = static_cast<size_type>(read_seq & mask);
-        T* slot = get_slot(idx);
-        T value(std::move(*slot));
+        const size_type idx  = static_cast<size_type>(read_seq & mask);
+        T*              slot = get_slot(idx);
+        T               value(std::move(*slot));
         slot->~T();  // 显式析构
 
         // 发布读取
@@ -310,7 +327,8 @@ public:
      * @complexity O(1) 平均，可能等待
      * @note 当前实现使用忙等待，非最优但简单可靠
      */
-    [[nodiscard]] std::optional<T> pop_wait(core::Duration timeout) {
+    [[nodiscard]] std::optional<T> pop_wait(core::Duration timeout)
+    {
         const auto deadline = core::Clock::now() + timeout;
 
         while (core::Clock::now() < deadline) {
@@ -331,8 +349,9 @@ public:
      * @warning 返回的指针仅在下次 pop 前有效
      * @thread_safety 单消费者安全
      */
-    [[nodiscard]] T* peek() {
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+    [[nodiscard]] T* peek()
+    {
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_acquire);
 
         if (read_seq >= write_seq) {
@@ -343,8 +362,9 @@ public:
         return get_slot(idx);
     }
 
-    [[nodiscard]] const T* peek() const {
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+    [[nodiscard]] const T* peek() const
+    {
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_acquire);
 
         if (read_seq >= write_seq) {
@@ -365,9 +385,10 @@ public:
      * @complexity O(1)
      * @note 返回值是近似值，多线程环境下可能不准确
      */
-    [[nodiscard]] size_type size() const noexcept {
+    [[nodiscard]] size_type size() const noexcept
+    {
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         return static_cast<size_type>(write_seq - read_seq);
     }
 
@@ -375,7 +396,8 @@ public:
      * @brief 检查是否为空
      * @return true 缓冲区为空
      */
-    [[nodiscard]] bool empty() const noexcept {
+    [[nodiscard]] bool empty() const noexcept
+    {
         return size() == 0;
     }
 
@@ -383,7 +405,8 @@ public:
      * @brief 检查是否已满
      * @return true 缓冲区已满
      */
-    [[nodiscard]] bool full() const noexcept {
+    [[nodiscard]] bool full() const noexcept
+    {
         return size() >= Capacity;
     }
 
@@ -391,7 +414,8 @@ public:
      * @brief 获取容量
      * @return size_type 缓冲区容量
      */
-    [[nodiscard]] static constexpr size_type get_capacity() noexcept {
+    [[nodiscard]] static constexpr size_type get_capacity() noexcept
+    {
         return Capacity;
     }
 
@@ -400,14 +424,15 @@ public:
      * @complexity O(n)，析构所有元素
      * @thread_safety 非线程安全，调用者需确保无并发访问
      */
-    void clear() noexcept {
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+    void clear() noexcept
+    {
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
 
         // 析构所有未读元素
         for (std::uint64_t seq = read_seq; seq < write_seq; ++seq) {
-            const size_type idx = static_cast<size_type>(seq & mask);
-            T* slot = get_slot(idx);
+            const size_type idx  = static_cast<size_type>(seq & mask);
+            T*              slot = get_slot(idx);
             slot->~T();
         }
 
@@ -418,21 +443,23 @@ public:
      * @brief 获取统计信息
      * @return BufferStats 当前统计信息
      */
-    [[nodiscard]] BufferStats stats() const noexcept {
+    [[nodiscard]] BufferStats stats() const noexcept
+    {
         BufferStats s;
-        s.total_pushed = total_pushed_.load(std::memory_order_relaxed);
-        s.total_popped = total_popped_.load(std::memory_order_relaxed);
+        s.total_pushed   = total_pushed_.load(std::memory_order_relaxed);
+        s.total_popped   = total_popped_.load(std::memory_order_relaxed);
         s.dropped_frames = dropped_frames_.load(std::memory_order_relaxed);
         s.overflow_count = overflow_count_.load(std::memory_order_relaxed);
-        s.current_size = size();
-        s.capacity = Capacity;
+        s.current_size   = size();
+        s.capacity       = Capacity;
         return s;
     }
 
     /**
      * @brief 重置统计信息
      */
-    void reset_stats() noexcept {
+    void reset_stats() noexcept
+    {
         total_pushed_.store(0, std::memory_order_relaxed);
         total_popped_.store(0, std::memory_order_relaxed);
         dropped_frames_.store(0, std::memory_order_relaxed);
@@ -443,7 +470,8 @@ public:
      * @brief 获取当前策略
      * @return BufferPolicy 当前策略
      */
-    [[nodiscard]] BufferPolicy policy() const noexcept {
+    [[nodiscard]] BufferPolicy policy() const noexcept
+    {
         return policy_;
     }
 
@@ -451,7 +479,8 @@ public:
      * @brief 设置策略
      * @param policy 新策略
      */
-    void set_policy(BufferPolicy policy) noexcept {
+    void set_policy(BufferPolicy policy) noexcept
+    {
         policy_ = policy;
     }
 
@@ -464,20 +493,22 @@ private:
      * @brief 分配对齐的缓冲区内存
      * @return T* 指向分配内存的指针
      */
-    [[nodiscard]] static T* allocate_buffer() {
+    [[nodiscard]] static T* allocate_buffer()
+    {
         // 使用 aligned_alloc 分配对齐内存
         constexpr std::size_t alignment = alignof(T);
-        constexpr std::size_t size = Capacity * sizeof(T);
+        constexpr std::size_t size      = Capacity * sizeof(T);
 
         void* ptr = nullptr;
-        #ifdef _WIN32
-            ptr = _aligned_malloc(size, alignment);
-            if (!ptr) throw std::bad_alloc();
-        #else
-            if (posix_memalign(&ptr, alignment, size) != 0) {
-                throw std::bad_alloc();
-            }
-        #endif
+#ifdef _WIN32
+        ptr = _aligned_malloc(size, alignment);
+        if (!ptr)
+            throw std::bad_alloc();
+#else
+        if (posix_memalign(&ptr, alignment, size) != 0) {
+            throw std::bad_alloc();
+        }
+#endif
 
         return static_cast<T*>(ptr);
     }
@@ -486,13 +517,14 @@ private:
      * @brief 释放缓冲区内存
      * @param ptr 要释放的指针
      */
-    static void deallocate_buffer(T* ptr) {
+    static void deallocate_buffer(T* ptr)
+    {
         if (ptr) {
-            #ifdef _WIN32
-                _aligned_free(ptr);
-            #else
-                free(ptr);
-            #endif
+#ifdef _WIN32
+            _aligned_free(ptr);
+#else
+            free(ptr);
+#endif
         }
     }
 
@@ -501,11 +533,13 @@ private:
      * @param idx 索引
      * @return T* 槽位指针
      */
-    [[nodiscard]] T* get_slot(size_type idx) noexcept {
+    [[nodiscard]] T* get_slot(size_type idx) noexcept
+    {
         return buffer_ + idx;
     }
 
-    [[nodiscard]] const T* get_slot(size_type idx) const noexcept {
+    [[nodiscard]] const T* get_slot(size_type idx) const noexcept
+    {
         return buffer_ + idx;
     }
 
@@ -515,15 +549,16 @@ private:
      * @return true 处理成功
      * @return false 无法处理（缓冲区已满且策略为 DropNewest）
      */
-    [[nodiscard]] bool handle_overflow(T&& value) {
+    [[nodiscard]] bool handle_overflow(T&& value)
+    {
         overflow_count_.fetch_add(1, std::memory_order_relaxed);
 
         switch (policy_) {
             case BufferPolicy::DropOldest: {
                 // 丢弃最旧的帧
                 const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
-                const size_type idx = static_cast<size_type>(read_seq & mask);
-                T* slot = get_slot(idx);
+                const size_type     idx      = static_cast<size_type>(read_seq & mask);
+                T*                  slot     = get_slot(idx);
                 slot->~T();
 
                 // 推进读指针
@@ -531,9 +566,9 @@ private:
                 dropped_frames_.fetch_add(1, std::memory_order_relaxed);
 
                 // 写入新帧
-                const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-                const size_type write_idx = static_cast<size_type>(write_seq & mask);
-                T* write_slot = get_slot(write_idx);
+                const std::uint64_t write_seq  = write_seq_.load(std::memory_order_relaxed);
+                const size_type     write_idx  = static_cast<size_type>(write_seq & mask);
+                T*                  write_slot = get_slot(write_idx);
                 new (write_slot) T(std::move(value));
                 write_seq_.store(write_seq + 1, std::memory_order_release);
                 total_pushed_.fetch_add(1, std::memory_order_relaxed);
@@ -549,8 +584,8 @@ private:
             case BufferPolicy::Overwrite: {
                 // 直接覆盖，不析构旧元素
                 const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-                const size_type idx = static_cast<size_type>(write_seq & mask);
-                T* slot = get_slot(idx);
+                const size_type     idx       = static_cast<size_type>(write_seq & mask);
+                T*                  slot      = get_slot(idx);
                 // 先析构旧对象
                 slot->~T();
                 // 构造新对象
@@ -559,7 +594,6 @@ private:
                 total_pushed_.fetch_add(1, std::memory_order_relaxed);
                 return true;
             }
-
         }
 
         return false;
@@ -596,8 +630,10 @@ private:
  * @param n 输入值
  * @return std::size_t 大于等于n的最小2的幂
  */
-[[nodiscard]] inline std::size_t next_power_of_2(std::size_t n) {
-    if (n == 0) return 1;
+[[nodiscard]] inline std::size_t next_power_of_2(std::size_t n)
+{
+    if (n == 0)
+        return 1;
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -617,75 +653,83 @@ private:
  * @note 性能略低于固定容量版本，需要堆分配
  */
 template <typename T>
-class DynamicFrameBuffer {
+class DynamicFrameBuffer
+{
     static_assert(std::is_nothrow_destructible_v<T>, "T must have noexcept destructor");
     static_assert(std::is_move_constructible_v<T>, "T must be move constructible");
 
 public:
     using value_type = T;
-    using size_type = std::size_t;
+    using size_type  = std::size_t;
 
     /**
      * @brief 构造函数
      * @param capacity 缓冲区容量（将向上取整到2的幂）
      */
     explicit DynamicFrameBuffer(size_type capacity)
-        : capacity_(next_power_of_2(capacity))
-        , mask_(capacity_ - 1)
-        , buffer_(allocate_buffer(capacity_))
-        , write_seq_(0)
-        , read_seq_(0)
-        , policy_(BufferPolicy::DropOldest) {}
+        : capacity_(next_power_of_2(capacity)),
+          mask_(capacity_ - 1),
+          buffer_(allocate_buffer(capacity_)),
+          write_seq_(0),
+          read_seq_(0),
+          policy_(BufferPolicy::DropOldest)
+    {
+    }
 
     explicit DynamicFrameBuffer(size_type capacity, BufferPolicy policy)
-        : capacity_(next_power_of_2(capacity))
-        , mask_(capacity_ - 1)
-        , buffer_(allocate_buffer(capacity_))
-        , write_seq_(0)
-        , read_seq_(0)
-        , policy_(policy) {}
+        : capacity_(next_power_of_2(capacity)),
+          mask_(capacity_ - 1),
+          buffer_(allocate_buffer(capacity_)),
+          write_seq_(0),
+          read_seq_(0),
+          policy_(policy)
+    {
+    }
 
-    ~DynamicFrameBuffer() {
+    ~DynamicFrameBuffer()
+    {
         clear();
         deallocate_buffer(buffer_, capacity_);
     }
 
     // 禁用拷贝
-    DynamicFrameBuffer(const DynamicFrameBuffer&) = delete;
+    DynamicFrameBuffer(const DynamicFrameBuffer&)            = delete;
     DynamicFrameBuffer& operator=(const DynamicFrameBuffer&) = delete;
 
     // 支持移动
     DynamicFrameBuffer(DynamicFrameBuffer&& other) noexcept
-        : capacity_(other.capacity_)
-        , mask_(other.mask_)
-        , buffer_(other.buffer_)
-        , write_seq_(other.write_seq_.load(std::memory_order_relaxed))
-        , read_seq_(other.read_seq_.load(std::memory_order_relaxed))
-        , policy_(other.policy_) {
-        other.buffer_ = nullptr;
+        : capacity_(other.capacity_),
+          mask_(other.mask_),
+          buffer_(other.buffer_),
+          write_seq_(other.write_seq_.load(std::memory_order_relaxed)),
+          read_seq_(other.read_seq_.load(std::memory_order_relaxed)),
+          policy_(other.policy_)
+    {
+        other.buffer_   = nullptr;
         other.capacity_ = 0;
-        other.mask_ = 0;
+        other.mask_     = 0;
         other.write_seq_.store(0, std::memory_order_relaxed);
         other.read_seq_.store(0, std::memory_order_relaxed);
     }
 
-    DynamicFrameBuffer& operator=(DynamicFrameBuffer&& other) noexcept {
+    DynamicFrameBuffer& operator=(DynamicFrameBuffer&& other) noexcept
+    {
         if (this != &other) {
             clear();
             deallocate_buffer(buffer_, capacity_);
 
             capacity_ = other.capacity_;
-            mask_ = other.mask_;
-            buffer_ = other.buffer_;
+            mask_     = other.mask_;
+            buffer_   = other.buffer_;
             write_seq_.store(other.write_seq_.load(std::memory_order_relaxed),
-                            std::memory_order_relaxed);
+                             std::memory_order_relaxed);
             read_seq_.store(other.read_seq_.load(std::memory_order_relaxed),
-                           std::memory_order_relaxed);
+                            std::memory_order_relaxed);
             policy_ = other.policy_;
 
-            other.buffer_ = nullptr;
+            other.buffer_   = nullptr;
             other.capacity_ = 0;
-            other.mask_ = 0;
+            other.mask_     = 0;
             other.write_seq_.store(0, std::memory_order_relaxed);
             other.read_seq_.store(0, std::memory_order_relaxed);
         }
@@ -693,86 +737,95 @@ public:
     }
 
     // 核心操作（与 LockFreeFrameBuffer 相同接口）
-    [[nodiscard]] bool push(T&& value) {
+    [[nodiscard]] bool push(T&& value)
+    {
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_acquire);
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_acquire);
 
         if (write_seq - read_seq >= capacity_) {
             return handle_overflow(std::move(value));
         }
 
-        const size_type idx = static_cast<size_type>(write_seq & mask_);
-        T* slot = get_slot(idx);
+        const size_type idx  = static_cast<size_type>(write_seq & mask_);
+        T*              slot = get_slot(idx);
         new (slot) T(std::move(value));
 
         write_seq_.store(write_seq + 1, std::memory_order_release);
         return true;
     }
 
-    [[nodiscard]] bool push(const T& value) {
+    [[nodiscard]] bool push(const T& value)
+    {
         T copy = value;
         return push(std::move(copy));
     }
 
     template <typename... Args>
-    [[nodiscard]] bool emplace(Args&&... args) {
+    [[nodiscard]] bool emplace(Args&&... args)
+    {
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_acquire);
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_acquire);
 
         if (write_seq - read_seq >= capacity_) {
             return false;
         }
 
-        const size_type idx = static_cast<size_type>(write_seq & mask_);
-        T* slot = get_slot(idx);
+        const size_type idx  = static_cast<size_type>(write_seq & mask_);
+        T*              slot = get_slot(idx);
         new (slot) T(std::forward<Args>(args)...);
 
         write_seq_.store(write_seq + 1, std::memory_order_release);
         return true;
     }
 
-    [[nodiscard]] std::optional<T> pop() {
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+    [[nodiscard]] std::optional<T> pop()
+    {
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_acquire);
 
         if (read_seq >= write_seq) {
             return std::nullopt;
         }
 
-        const size_type idx = static_cast<size_type>(read_seq & mask_);
-        T* slot = get_slot(idx);
-        T value(std::move(*slot));
+        const size_type idx  = static_cast<size_type>(read_seq & mask_);
+        T*              slot = get_slot(idx);
+        T               value(std::move(*slot));
         slot->~T();
 
         read_seq_.store(read_seq + 1, std::memory_order_release);
         return value;
     }
 
-    [[nodiscard]] size_type size() const noexcept {
+    [[nodiscard]] size_type size() const noexcept
+    {
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         return static_cast<size_type>(write_seq - read_seq);
     }
 
-    [[nodiscard]] bool empty() const noexcept {
+    [[nodiscard]] bool empty() const noexcept
+    {
         return size() == 0;
     }
 
-    [[nodiscard]] bool full() const noexcept {
+    [[nodiscard]] bool full() const noexcept
+    {
         return size() >= capacity_;
     }
 
-    [[nodiscard]] size_type capacity() const noexcept {
+    [[nodiscard]] size_type capacity() const noexcept
+    {
         return capacity_;
     }
 
-    void clear() noexcept {
-        const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
+    void clear() noexcept
+    {
+        const std::uint64_t read_seq  = read_seq_.load(std::memory_order_relaxed);
         const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
 
         for (std::uint64_t seq = read_seq; seq < write_seq; ++seq) {
-            const size_type idx = static_cast<size_type>(seq & mask_);
-            T* slot = get_slot(idx);
+            const size_type idx  = static_cast<size_type>(seq & mask_);
+            T*              slot = get_slot(idx);
             slot->~T();
         }
 
@@ -780,50 +833,55 @@ public:
     }
 
 private:
-    [[nodiscard]] T* allocate_buffer(size_type capacity) {
+    [[nodiscard]] T* allocate_buffer(size_type capacity)
+    {
         constexpr std::size_t alignment = alignof(T);
-        const std::size_t size = capacity * sizeof(T);
+        const std::size_t     size      = capacity * sizeof(T);
 
         void* ptr = nullptr;
-        #ifdef _WIN32
-            ptr = _aligned_malloc(size, alignment);
-            if (!ptr) throw std::bad_alloc();
-        #else
-            if (posix_memalign(&ptr, alignment, size) != 0) {
-                throw std::bad_alloc();
-            }
-        #endif
+#ifdef _WIN32
+        ptr = _aligned_malloc(size, alignment);
+        if (!ptr)
+            throw std::bad_alloc();
+#else
+        if (posix_memalign(&ptr, alignment, size) != 0) {
+            throw std::bad_alloc();
+        }
+#endif
 
         return static_cast<T*>(ptr);
     }
 
-    void deallocate_buffer(T* ptr, size_type) {
+    void deallocate_buffer(T* ptr, size_type)
+    {
         if (ptr) {
-            #ifdef _WIN32
-                _aligned_free(ptr);
-            #else
-                free(ptr);
-            #endif
+#ifdef _WIN32
+            _aligned_free(ptr);
+#else
+            free(ptr);
+#endif
         }
     }
 
-    [[nodiscard]] T* get_slot(size_type idx) noexcept {
+    [[nodiscard]] T* get_slot(size_type idx) noexcept
+    {
         return buffer_ + idx;
     }
 
-    [[nodiscard]] bool handle_overflow(T&& value) {
+    [[nodiscard]] bool handle_overflow(T&& value)
+    {
         switch (policy_) {
             case BufferPolicy::DropOldest: {
                 const std::uint64_t read_seq = read_seq_.load(std::memory_order_relaxed);
-                const size_type idx = static_cast<size_type>(read_seq & mask_);
-                T* slot = get_slot(idx);
+                const size_type     idx      = static_cast<size_type>(read_seq & mask_);
+                T*                  slot     = get_slot(idx);
                 slot->~T();
 
                 read_seq_.store(read_seq + 1, std::memory_order_release);
 
-                const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-                const size_type write_idx = static_cast<size_type>(write_seq & mask_);
-                T* write_slot = get_slot(write_idx);
+                const std::uint64_t write_seq  = write_seq_.load(std::memory_order_relaxed);
+                const size_type     write_idx  = static_cast<size_type>(write_seq & mask_);
+                T*                  write_slot = get_slot(write_idx);
                 new (write_slot) T(std::move(value));
                 write_seq_.store(write_seq + 1, std::memory_order_release);
 
@@ -835,14 +893,13 @@ private:
 
             case BufferPolicy::Overwrite: {
                 const std::uint64_t write_seq = write_seq_.load(std::memory_order_relaxed);
-                const size_type idx = static_cast<size_type>(write_seq & mask_);
-                T* slot = get_slot(idx);
+                const size_type     idx       = static_cast<size_type>(write_seq & mask_);
+                T*                  slot      = get_slot(idx);
                 slot->~T();
                 new (slot) T(std::move(value));
                 write_seq_.store(write_seq + 1, std::memory_order_release);
                 return true;
             }
-
         }
         return false;
     }
@@ -850,7 +907,7 @@ private:
 private:
     size_type capacity_;
     size_type mask_;
-    T* buffer_;
+    T*        buffer_;
 
     alignas(64) std::atomic<std::uint64_t> write_seq_;
     alignas(64) std::atomic<std::uint64_t> read_seq_;
@@ -858,4 +915,4 @@ private:
     BufferPolicy policy_;
 };
 
-} // namespace aam::l0
+}  // namespace aam::l0

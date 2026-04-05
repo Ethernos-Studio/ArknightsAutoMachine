@@ -31,45 +31,47 @@
 #include <sstream>
 #include <system_error>
 
-namespace aam::core {
+namespace aam::core
+{
 
 // ==========================================================================
 // LatencyHistogram 实现
 // ==========================================================================
 
 LatencyHistogram::LatencyHistogram(std::size_t bucket_count, std::int64_t max_latency_ns)
-    : bucket_count_(bucket_count)
-    , max_latency_ns_(max_latency_ns)
-    , log_max_latency_(std::log10(static_cast<double>(max_latency_ns)))
-    , buckets_(bucket_count) {
+    : bucket_count_(bucket_count),
+      max_latency_ns_(max_latency_ns),
+      log_max_latency_(std::log10(static_cast<double>(max_latency_ns))),
+      buckets_(bucket_count)
+{
     for (auto& bucket : buckets_) {
         bucket.store(0, std::memory_order_relaxed);
     }
 }
 
-void LatencyHistogram::record(Duration latency) {
+void LatencyHistogram::record(Duration latency)
+{
     record_ns(latency.count());
 }
 
-void LatencyHistogram::record_ns(std::int64_t latency_ns) {
+void LatencyHistogram::record_ns(std::int64_t latency_ns)
+{
     // 更新统计信息
     total_count_.fetch_add(1, std::memory_order_relaxed);
     sum_latency_.fetch_add(latency_ns, std::memory_order_relaxed);
 
     // 更新最小/最大值
     std::int64_t current_min = min_latency_.load(std::memory_order_relaxed);
-    while (latency_ns < current_min &&
-           !min_latency_.compare_exchange_weak(current_min, latency_ns,
-                                              std::memory_order_relaxed,
-                                              std::memory_order_relaxed)) {
+    while (latency_ns < current_min
+           && !min_latency_.compare_exchange_weak(
+               current_min, latency_ns, std::memory_order_relaxed, std::memory_order_relaxed)) {
         // 重试
     }
 
     std::int64_t current_max = max_latency_.load(std::memory_order_relaxed);
-    while (latency_ns > current_max &&
-           !max_latency_.compare_exchange_weak(current_max, latency_ns,
-                                              std::memory_order_relaxed,
-                                              std::memory_order_relaxed)) {
+    while (latency_ns > current_max
+           && !max_latency_.compare_exchange_weak(
+               current_max, latency_ns, std::memory_order_relaxed, std::memory_order_relaxed)) {
         // 重试
     }
 
@@ -79,14 +81,15 @@ void LatencyHistogram::record_ns(std::int64_t latency_ns) {
         // 使用对数分布：0-1us, 1-10us, 10-100us, ...
         // 使用缓存的 log_max_latency_ 避免重复计算
         double log_val = std::log10(static_cast<double>(latency_ns));
-        bucket_idx = static_cast<std::size_t>((log_val / log_max_latency_) * bucket_count_);
-        bucket_idx = std::min(bucket_idx, bucket_count_ - 1);
+        bucket_idx     = static_cast<std::size_t>((log_val / log_max_latency_) * bucket_count_);
+        bucket_idx     = std::min(bucket_idx, bucket_count_ - 1);
     }
 
     buckets_[bucket_idx].fetch_add(1, std::memory_order_relaxed);
 }
 
-Duration LatencyHistogram::get_percentile(double percentile) const {
+Duration LatencyHistogram::get_percentile(double percentile) const
+{
     if (percentile < 0.0 || percentile > 1.0) {
         return Duration::zero();
     }
@@ -97,14 +100,14 @@ Duration LatencyHistogram::get_percentile(double percentile) const {
     }
 
     const std::uint64_t target_count = static_cast<std::uint64_t>(percentile * total);
-    std::uint64_t cumulative = 0;
+    std::uint64_t       cumulative   = 0;
 
     for (std::size_t i = 0; i < bucket_count_; ++i) {
         cumulative += buckets_[i].load(std::memory_order_relaxed);
         if (cumulative >= target_count) {
             // 计算该桶的上界
-            const double bucket_ratio = static_cast<double>(i + 1) / bucket_count_;
-            const std::int64_t latency = static_cast<std::int64_t>(
+            const double       bucket_ratio = static_cast<double>(i + 1) / bucket_count_;
+            const std::int64_t latency      = static_cast<std::int64_t>(
                 std::pow(static_cast<double>(max_latency_ns_), bucket_ratio));
             return Duration(latency);
         }
@@ -113,7 +116,8 @@ Duration LatencyHistogram::get_percentile(double percentile) const {
     return Duration(max_latency_ns_);
 }
 
-Duration LatencyHistogram::avg_latency() const noexcept {
+Duration LatencyHistogram::avg_latency() const noexcept
+{
     const std::uint64_t count = total_count_.load(std::memory_order_relaxed);
     if (count == 0) {
         return Duration::zero();
@@ -123,7 +127,8 @@ Duration LatencyHistogram::avg_latency() const noexcept {
     return Duration(sum / static_cast<std::int64_t>(count));
 }
 
-void LatencyHistogram::reset() {
+void LatencyHistogram::reset()
+{
     total_count_.store(0, std::memory_order_relaxed);
     sum_latency_.store(0, std::memory_order_relaxed);
     min_latency_.store(std::numeric_limits<std::int64_t>::max(), std::memory_order_relaxed);
@@ -134,7 +139,8 @@ void LatencyHistogram::reset() {
     }
 }
 
-std::string LatencyHistogram::export_csv() const {
+std::string LatencyHistogram::export_csv() const
+{
     std::ostringstream oss;
     oss << "BucketIndex,LatencyLowerNs,LatencyUpperNs,Count\n";
 
@@ -142,10 +148,10 @@ std::string LatencyHistogram::export_csv() const {
         const double lower_ratio = static_cast<double>(i) / bucket_count_;
         const double upper_ratio = static_cast<double>(i + 1) / bucket_count_;
 
-        const std::int64_t lower_ns = static_cast<std::int64_t>(
-            std::pow(static_cast<double>(max_latency_ns_), lower_ratio));
-        const std::int64_t upper_ns = static_cast<std::int64_t>(
-            std::pow(static_cast<double>(max_latency_ns_), upper_ratio));
+        const std::int64_t lower_ns =
+            static_cast<std::int64_t>(std::pow(static_cast<double>(max_latency_ns_), lower_ratio));
+        const std::int64_t upper_ns =
+            static_cast<std::int64_t>(std::pow(static_cast<double>(max_latency_ns_), upper_ratio));
 
         const std::uint64_t count = buckets_[i].load(std::memory_order_relaxed);
 
@@ -160,18 +166,22 @@ std::string LatencyHistogram::export_csv() const {
 // ==========================================================================
 
 FrameRateCalculator::FrameRateCalculator(std::size_t window_size)
-    : window_size_(window_size)
-    , timestamps_(window_size) {}
+    : window_size_(window_size),
+      timestamps_(window_size)
+{
+}
 
-void FrameRateCalculator::record_frame(Timestamp timestamp) {
+void FrameRateCalculator::record_frame(Timestamp timestamp)
+{
     timestamps_[index_] = timestamp;
-    index_ = (index_ + 1) % window_size_;
+    index_              = (index_ + 1) % window_size_;
     if (count_ < window_size_) {
         ++count_;
     }
 }
 
-double FrameRateCalculator::get_fps() const noexcept {
+double FrameRateCalculator::get_fps() const noexcept
+{
     if (count_ < 2) {
         return 0.0;
     }
@@ -180,8 +190,8 @@ double FrameRateCalculator::get_fps() const noexcept {
     std::size_t oldest_idx = (index_ + window_size_ - count_) % window_size_;
     std::size_t newest_idx = (index_ + window_size_ - 1) % window_size_;
 
-    const auto duration = timestamps_[newest_idx] - timestamps_[oldest_idx];
-    const double seconds = std::chrono::duration<double>(duration).count();
+    const auto   duration = timestamps_[newest_idx] - timestamps_[oldest_idx];
+    const double seconds  = std::chrono::duration<double>(duration).count();
 
     if (seconds <= 0.0) {
         return 0.0;
@@ -190,7 +200,8 @@ double FrameRateCalculator::get_fps() const noexcept {
     return static_cast<double>(count_ - 1) / seconds;
 }
 
-double FrameRateCalculator::get_frame_interval_ms() const noexcept {
+double FrameRateCalculator::get_frame_interval_ms() const noexcept
+{
     const double fps = get_fps();
     if (fps <= 0.0) {
         return 0.0;
@@ -198,7 +209,8 @@ double FrameRateCalculator::get_frame_interval_ms() const noexcept {
     return 1000.0 / fps;
 }
 
-void FrameRateCalculator::reset() {
+void FrameRateCalculator::reset()
+{
     count_ = 0;
     index_ = 0;
     std::fill(timestamps_.begin(), timestamps_.end(), Timestamp{});
@@ -208,7 +220,8 @@ void FrameRateCalculator::reset() {
 // 时间格式化工具实现
 // ==========================================================================
 
-std::string format_duration(Duration duration, int precision) {
+std::string format_duration(Duration duration, int precision)
+{
     const auto ns = duration.count();
 
     std::ostringstream oss;
@@ -216,32 +229,40 @@ std::string format_duration(Duration duration, int precision) {
 
     if (ns < 1000) {
         oss << ns << " ns";
-    } else if (ns < 1'000'000) {
+    }
+    else if (ns < 1'000'000) {
         oss << (ns / 1000.0) << " us";
-    } else if (ns < 1'000'000'000) {
+    }
+    else if (ns < 1'000'000'000) {
         oss << (ns / 1'000'000.0) << " ms";
-    } else {
+    }
+    else {
         oss << (ns / 1'000'000'000.0) << " s";
     }
 
     return oss.str();
 }
 
-std::string format_duration_compact(Duration duration) {
+std::string format_duration_compact(Duration duration)
+{
     const auto ns = duration.count();
 
     if (ns < 1000) {
         return std::to_string(ns) + "ns";
-    } else if (ns < 1'000'000) {
+    }
+    else if (ns < 1'000'000) {
         return std::to_string(ns / 1000) + "us";
-    } else if (ns < 1'000'000'000) {
+    }
+    else if (ns < 1'000'000'000) {
         return std::to_string(ns / 1'000'000) + "ms";
-    } else {
+    }
+    else {
         return std::to_string(ns / 1'000'000'000) + "s";
     }
 }
 
-std::optional<Duration> parse_duration(std::string_view str) {
+std::optional<Duration> parse_duration(std::string_view str)
+{
     // 移除空白字符
     while (!str.empty() && std::isspace(str.front())) {
         str.remove_prefix(1);
@@ -255,7 +276,7 @@ std::optional<Duration> parse_duration(std::string_view str) {
     }
 
     // 解析数值部分
-    double value = 0.0;
+    double value   = 0.0;
     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
 
     if (ec != std::errc()) {
@@ -270,20 +291,27 @@ std::optional<Duration> parse_duration(std::string_view str) {
 
     if (unit == "ns" || unit == "nanosecond" || unit == "nanoseconds") {
         return Duration(static_cast<std::int64_t>(value));
-    } else if (unit == "us" || unit == "microsecond" || unit == "microseconds" || unit == "μs") {
+    }
+    else if (unit == "us" || unit == "microsecond" || unit == "microseconds" || unit == "μs") {
         return std::chrono::duration_cast<Duration>(Microseconds(static_cast<std::int64_t>(value)));
-    } else if (unit == "ms" || unit == "millisecond" || unit == "milliseconds") {
+    }
+    else if (unit == "ms" || unit == "millisecond" || unit == "milliseconds") {
         return std::chrono::duration_cast<Duration>(Milliseconds(static_cast<std::int64_t>(value)));
-    } else if (unit == "s" || unit == "second" || unit == "seconds") {
+    }
+    else if (unit == "s" || unit == "second" || unit == "seconds") {
         return std::chrono::duration_cast<Duration>(Seconds(static_cast<std::int64_t>(value)));
-    } else if (unit == "m" || unit == "minute" || unit == "minutes") {
-        return std::chrono::duration_cast<Duration>(std::chrono::minutes(static_cast<std::int64_t>(value)));
-    } else if (unit == "h" || unit == "hour" || unit == "hours") {
-        return std::chrono::duration_cast<Duration>(std::chrono::hours(static_cast<std::int64_t>(value)));
+    }
+    else if (unit == "m" || unit == "minute" || unit == "minutes") {
+        return std::chrono::duration_cast<Duration>(
+            std::chrono::minutes(static_cast<std::int64_t>(value)));
+    }
+    else if (unit == "h" || unit == "hour" || unit == "hours") {
+        return std::chrono::duration_cast<Duration>(
+            std::chrono::hours(static_cast<std::int64_t>(value)));
     }
 
     // 默认单位为毫秒
     return std::chrono::duration_cast<Duration>(Milliseconds(static_cast<std::int64_t>(value)));
 }
 
-} // namespace aam::core
+}  // namespace aam::core
