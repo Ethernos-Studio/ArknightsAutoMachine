@@ -196,19 +196,15 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install Clang
+        if: matrix.compiler == 'clang-16'
+        run: |
+          chmod +x scripts/setup/install_clang.sh
+          sudo ./scripts/setup/install_clang.sh 16
+
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          # 安装 LLVM 仓库以获取 clang-16（使用官方 GPG key 验证）
-          if [[ "${{ matrix.compiler }}" == "clang-16" ]]; then
-            sudo apt-get install -y wget lsb-release gnupg software-properties-common
-            # 添加 LLVM 官方 GPG key
-            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm-snapshot.asc
-            # 添加 LLVM 仓库
-            sudo add-apt-repository "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-16 main"
-            sudo apt-get update
-            sudo apt-get install -y clang-16 lldb-16 lld-16
-          fi
           sudo apt-get install -y \
             build-essential \
             ninja-build \

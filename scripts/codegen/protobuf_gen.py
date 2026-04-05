@@ -320,6 +320,12 @@ def _is_service_proto(proto_file: Path) -> bool:
     使用正则表达式匹配服务定义，避免误匹配注释中的 'service ' 字符串。
     支持处理单行注释 // 和多行注释 /* */，以及行内注释。
 
+    注意：这是一个简化实现，仅支持常见的 proto 编码风格。以下情况可能导致误判：
+    - 字符串字面量中包含 "service"（如 string desc = "some service";）
+    - 复杂的嵌套注释或非常规的注释格式
+    - 使用 protobuf 的扩展语法（如 option 中的特殊格式）
+    对于需要精确检测的场景，建议使用 protoc 的 descriptor 输出进行解析。
+
     Args:
         proto_file: .proto 文件路径
 

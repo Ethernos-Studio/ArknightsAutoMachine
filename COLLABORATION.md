@@ -1,7 +1,33 @@
+<!--
+  Copyright (C) 2026 Ethernos Studio
+  This file is part of Arknights Auto Machine (AAM).
+
+  AAM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  AAM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with AAM. If not, see <https://www.gnu.org/licenses/>.
+  =============================================================================
+  @file COLLABORATION.md
+  @author dhjs0000
+  @brief Arknights Auto Machine 协作规范
+  =============================================================================
+  版本: v0.1.0-alpha.3
+  功能: 定义 AAM 项目的协作流程、代码审查标准和贡献指南
+  =============================================================================
+-->
+
 # Arknights Auto Machine 协作规范
 
 > **文档定位**: 本文档面向外部贡献者，定义了参与 AAM 项目的基本协作流程和规范。
-> 
+>
 > **内部团队**: 核心团队成员请同时参阅 [INTERNAL_COLLABORATION.md](./INTERNAL_COLLABORATION.md) 获取更详细的内部开发流程和工具使用指南。
 
 ## 概述
