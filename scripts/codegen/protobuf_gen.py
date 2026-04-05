@@ -215,10 +215,12 @@ def generate_cpp_code(
 
         try:
             # 安全地执行命令：cmd 是列表，使用 shell=False（默认）
+            # 显式指定 encoding='utf-8' 确保跨平台中文路径正确处理
             subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 check=True
             )
             success_count += 1
@@ -280,10 +282,12 @@ def generate_python_code(
 
         try:
             # 安全地执行命令：cmd 是列表，使用 shell=False（默认）
+            # 显式指定 encoding='utf-8' 确保跨平台中文路径正确处理
             subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
                 check=True
             )
             success_count += 1

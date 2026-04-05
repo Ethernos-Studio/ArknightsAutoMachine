@@ -128,6 +128,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Ensure vcpkg submodule
+        run: |
+          git submodule update --init --recursive
+          if (-not (Test-Path "${{ github.workspace }}/vcpkg")) {
+            Write-Error "vcpkg directory not found after submodule update"
+            exit 1
+          }
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
@@ -141,10 +149,12 @@ jobs:
           arch: ${{ matrix.arch }}
 
       - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
           cmake -B build -S . `
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
-            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" `
             -DAAM_BUILD_TESTS=ON `
             -DAAM_ENABLE_CUDA=OFF `
             -DCMAKE_CXX_FLAGS="/W4 /WX"
@@ -187,6 +197,13 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
+          # 安装 LLVM 仓库以获取 clang-16
+          if [[ "${{ matrix.compiler }}" == "clang-16" ]]; then
+            sudo apt-get install -y wget lsb-release gnupg software-properties-common
+            wget https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh 16
+          fi
           sudo apt-get install -y \
             build-essential \
             ninja-build \
@@ -279,11 +296,13 @@ jobs:
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
       - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
           cmake -B build -S . \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake \
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" \
             -DAAM_BUILD_TESTS=ON \
             -DAAM_ENABLE_CUDA=OFF
 

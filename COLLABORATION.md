@@ -1,5 +1,9 @@
 # Arknights Auto Machine 协作规范
 
+> **文档定位**: 本文档面向外部贡献者，定义了参与 AAM 项目的基本协作流程和规范。
+> 
+> **内部团队**: 核心团队成员请同时参阅 [INTERNAL_COLLABORATION.md](./INTERNAL_COLLABORATION.md) 获取更详细的内部开发流程和工具使用指南。
+
 ## 概述
 
 本文档定义了 Arknights Auto Machine (AAM) 项目的协作流程、代码审查标准和贡献指南。所有贡献者必须遵守这些规范以确保代码质量和项目一致性。
