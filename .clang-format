@@ -111,7 +111,6 @@ BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
 BreakAfterAttributes: Leave
-BreakAfterReturnType: Automatic
 
 # =============================================================================
 # 短函数/语句处理
