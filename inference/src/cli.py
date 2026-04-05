@@ -1280,8 +1280,7 @@ class DataCommands:
             else:
                 # 列出所有干员
                 operators = manager.get_operators(
-                    sort_key=lambda op: op.rarity.value,
-                    reverse=True
+                    sort_key=lambda op: (-op.rarity.value, op.name)
                 )
                 print(f"\n共有 {len(operators)} 个干员")
                 print("\n前20个6星干员:")
@@ -1515,8 +1514,7 @@ class DataCommands:
                 # 列出材料
                 items = manager.get_items(
                     filter_func=lambda i: i.is_material,
-                    sort_key=lambda i: i.rarity.value,
-                    reverse=True
+                    sort_key=lambda i: (-i.rarity.value, i.name)
                 )
                 print(f"\n共有 {len(items)} 个材料")
                 print("\n前20个高稀有度材料:")
@@ -2239,6 +2237,8 @@ def main():
                     with open(output, 'w') as f:
                         json.dump(result.to_dict(), f, indent=2)
 
+                return 0
+
             elif args.batch:
                 format_map = {
                     'json': OutputFormat.JSON,
@@ -2252,9 +2252,11 @@ def main():
                     format=format_map[args.format],
                     recursive=args.recursive
                 )
+                return 0
             else:
                 detect_parser = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)][0].choices['detect']
                 detect_parser.print_help()
+                return 0
 
         elif args.command == 'monitor':
             commands.monitor(
