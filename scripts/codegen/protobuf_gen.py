@@ -216,6 +216,7 @@ def generate_cpp_code(
         try:
             # 安全地执行命令：cmd 是列表，使用 shell=False（默认）
             # 这是安全的做法，避免了命令注入风险
+            # nosec B603: cmd 是内部构建的列表，非外部输入；已使用 shell=False
             # 显式指定 encoding='utf-8' 确保跨平台中文路径正确处理
             # 添加 timeout=120 防止 protoc 挂起导致无限阻塞
             subprocess.run(
@@ -289,6 +290,7 @@ def generate_python_code(
         try:
             # 安全地执行命令：cmd 是列表，使用 shell=False（默认）
             # 这是安全的做法，避免了命令注入风险
+            # nosec B603: cmd 是内部构建的列表，非外部输入；已使用 shell=False
             # 显式指定 encoding='utf-8' 确保跨平台中文路径正确处理
             # 添加 timeout=120 防止 protoc 挂起导致无限阻塞
             subprocess.run(
