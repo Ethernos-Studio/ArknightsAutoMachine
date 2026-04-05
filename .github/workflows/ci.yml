@@ -43,6 +43,8 @@ on:
 env:
   BUILD_TYPE: Release
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # vcpkg 2026.03.18 Release - 包含 protobuf 3.20+ 兼容性修复和 MSVC constinit 支持
+  # 更新策略: 每季度检查 vcpkg 发布说明，验证关键依赖（protobuf, grpc, spdlog）兼容性后升级
   VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
 
 jobs:

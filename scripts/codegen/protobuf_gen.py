@@ -28,7 +28,6 @@
 
 import argparse
 import os
-import re
 import shutil
 import subprocess
 import sys
