@@ -53,13 +53,25 @@
 
 ### v0.1.0-alpha.3：持续集成
 
-- [ ] `.github/workflows/ci.yml`：三平台构建矩阵
-- [ ] `.github/workflows/codeql.yml`：安全分析
-- [ ] `scripts/codegen/protobuf_gen.py`：代码生成脚本
+- [x] `.github/workflows/ci.yml`：三平台构建矩阵
+  - Windows (MSVC 2022) x64 Release/Debug
+  - Linux (GCC-12, Clang-16) Release/Debug
+  - macOS (Apple Clang) Release/Debug
+  - 代码风格检查 (clang-format, cmake-lint)
+  - 协议兼容性检查 (Buf Breaking Change)
+- [x] `.github/workflows/codeql.yml`：安全分析
+  - C++ 代码安全扫描 (security-extended, security-and-quality)
+  - Python 代码安全扫描
+  - 自动检测 Critical/High 级别漏洞
+- [x] `scripts/codegen/protobuf_gen.py`：代码生成脚本
+  - 支持 C++ 和 Python 代码生成
+  - 自动检测 protoc 和 gRPC 插件
+  - 智能识别服务定义文件
+  - Python 包结构自动初始化
 
 **验收标准**
-- 三平台编译通过，零警告
-- CodeQL 扫描零 Critical/High 漏洞
+- [x] 三平台编译通过，零警告
+- [x] CodeQL 扫描零 Critical/High 漏洞
 
 ---
 

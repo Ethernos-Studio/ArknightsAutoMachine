@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "arknights-auto-machine",
+  "version": "0.1.0-alpha.3",
+  "description": "Arknights Auto Machine - AI-powered game automation system",
+  "license": "AGPL-3.0",
+  "dependencies": [
+    "spdlog",
+    "fmt",
+    "zlib",
+    "openssl",
+    "protobuf",
+    "grpc",
+    "zeromq",
+    "cppzmq",
+    "yaml-cpp",
+    "nlohmann-json",
+    "opencv4",
+    "eigen3"
+  ]
+}

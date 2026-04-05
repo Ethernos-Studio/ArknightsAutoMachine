@@ -4,7 +4,6 @@ package aam.inference;
 
 import "common/types.proto";
 import "ama/l1_perception.proto";
-import "ama/l2_action.proto";
 import "ama/l3_tactical.proto";
 import "ama/l4_state.proto";
 

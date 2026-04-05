@@ -111,7 +111,6 @@ BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
 BreakAfterAttributes: Leave
-BreakAfterReturnType: Automatic
 
 # =============================================================================
 # 短函数/语句处理
@@ -150,7 +149,6 @@ SpaceAroundPointerQualifiers: Default
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: true
-SpaceAroundPointerQualifiers: Default
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
 SpaceBeforeCpp11BracedList: false
@@ -227,8 +225,6 @@ IncludeCategories:
 BinPackArguments: false
 BinPackParameters: false
 ExperimentalAutoDetectBinPacking: false
-AllowAllParametersOfDeclarationOnASingleLine: false
-AllowAllArgumentsOnASameLine: false
 
 BitFieldColonSpacing: Both
 
@@ -282,20 +278,9 @@ QualifierOrder:
   - volatile
   - type
 
-# 行尾注释对齐
-AlignTrailingComments:
-  Kind: Always
-  OverEmptyLines: 0
-
 # 使用圆括号初始化
 RemoveBracesLLVM: false
 RemoveSemicolon: false
-
-# 概念与约束
-BreakBeforeConceptDeclarations: Always
-RequiresClausePosition: OwnLine
-IndentRequiresClause: true
-RequiresExpressionIndentation: OuterScope
 
 # =============================================================================
 # 版本特定（Clang-Format 16+）

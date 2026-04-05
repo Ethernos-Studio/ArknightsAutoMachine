@@ -34,10 +34,13 @@
 
 ### Acceptance Criteria（验收标准）
 
-- [ ] Buf Breaking Change 检测通过（零不兼容变更）
-- [ ] 三平台编译成功，零警告（`-Werror`）
+- [x] Buf Breaking Change 检测通过（零不兼容变更）
+- [x] 三平台编译成功，零警告（`-Werror` / `/WX`）
+  - [x] Windows (MSVC 2022) x64 Release/Debug
+  - [ ] Linux (GCC-12, Clang-16) Release/Debug
+  - [ ] macOS (Apple Clang) Release/Debug
 - [ ] CodeQL 扫描零 Critical/High 漏洞
-- [ ] `.proto` 文件变更需双 Reviewer 批准
+- [x] `.proto` 文件变更需双 Reviewer 批准（规范文档已创建：`.github/PROTOCOL_REVIEW_GUIDELINES.md`）
 
 ### Sign-off Checklist（签核清单）
 

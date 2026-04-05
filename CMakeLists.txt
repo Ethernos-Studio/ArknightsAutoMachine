@@ -30,10 +30,66 @@ cmake_minimum_required(VERSION 3.25)
 # 注意：如果用户通过命令行传递了 CMAKE_TOOLCHAIN_FILE，则优先使用用户指定的
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})
-        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-            CACHE STRING "Vcpkg toolchain file")
-        message(STATUS "Auto-configured vcpkg toolchain: $ENV{VCPKG_ROOT}")
+        # 检查 vcpkg 工具链文件是否存在
+        set(VCPKG_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+        if(EXISTS "${VCPKG_TOOLCHAIN_FILE}")
+            set(CMAKE_TOOLCHAIN_FILE "${VCPKG_TOOLCHAIN_FILE}"
+                CACHE STRING "Vcpkg toolchain file")
+            message(STATUS "Auto-configured vcpkg toolchain: $ENV{VCPKG_ROOT}")
+        else()
+            message(FATAL_ERROR "VCPKG_ROOT is set but vcpkg.cmake not found at: ${VCPKG_TOOLCHAIN_FILE}. "
+                "Please ensure vcpkg is properly installed or unset VCPKG_ROOT to use system packages.")
+        endif()
     endif()
+endif()
+
+# 如果 vcpkg_installed 目录存在，自动设置 CMAKE_PREFIX_PATH
+# 支持本地开发（已安装依赖）和 CI/其他开发者（未安装依赖）两种场景
+# 根据平台自动选择正确的 vcpkg triplet 路径
+
+# 允许用户通过缓存变量覆盖 triplet
+set(AAM_VCPKG_TRIPLET "" CACHE STRING "vcpkg triplet (e.g., x64-windows, arm64-osx, x64-linux)")
+
+if(AAM_VCPKG_TRIPLET)
+    # 用户使用 -DAAM_VCPKG_TRIPLET=xxx 指定了 triplet
+    set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${AAM_VCPKG_TRIPLET}")
+    message(STATUS "Using user-specified vcpkg triplet: ${AAM_VCPKG_TRIPLET}")
+else()
+    # 自动检测平台和架构
+    # 检测架构
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
+        set(_VCPKG_ARCH "x64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+        set(_VCPKG_ARCH "arm64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686|x86")
+        set(_VCPKG_ARCH "x86")
+    else()
+        set(_VCPKG_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    
+    # 检测平台
+    if(WIN32)
+        set(_VCPKG_PLATFORM "windows")
+    elseif(APPLE)
+        set(_VCPKG_PLATFORM "osx")
+    elseif(UNIX)
+        set(_VCPKG_PLATFORM "linux")
+    else()
+        set(_VCPKG_PLATFORM "unknown")
+    endif()
+    
+    set(_VCPKG_TRIPLET "${_VCPKG_ARCH}-${_VCPKG_PLATFORM}")
+    set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${_VCPKG_TRIPLET}")
+    message(STATUS "Auto-detected vcpkg triplet: ${_VCPKG_TRIPLET} (arch: ${CMAKE_SYSTEM_PROCESSOR})")
+endif()
+
+if(EXISTS "${VCPKG_INSTALLED_DIR}")
+    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
+    message(STATUS "Found vcpkg_installed at: ${VCPKG_INSTALLED_DIR}")
+    set(AAM_VCPKG_INSTALLED_FOUND TRUE)
+else()
+    message(STATUS "vcpkg_installed not found at ${VCPKG_INSTALLED_DIR}. Dependencies must be installed via vcpkg or system package manager.")
+    set(AAM_VCPKG_INSTALLED_FOUND FALSE)
 endif()
 
 # =============================================================================
@@ -43,7 +99,7 @@ project(
     AAM
     VERSION 0.1.0
     DESCRIPTION "Arknights Auto Machine - Industrial-grade Game Automation Framework"
-    HOMEPAGE_URL "https://github.com/AAM-Team/Arknights-Auto-Machine"
+    HOMEPAGE_URL "https://github.com/Ethernos-Studio/ArknightsAutoMachine"
     LANGUAGES CXX C
 )
 
@@ -122,6 +178,29 @@ include(cmake/compiler_flags.cmake)
 # =============================================================================
 # 依赖管理
 # =============================================================================
+# 优先使用 vcpkg 安装的依赖，避免找到系统/Anaconda 的库
+if(AAM_VCPKG_INSTALLED_FOUND AND DEFINED VCPKG_INSTALLED_DIR)
+    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
+    message(STATUS "Prioritizing vcpkg dependencies from: ${VCPKG_INSTALLED_DIR}")
+endif()
+
+# 检查依赖可用性
+if(NOT AAM_VCPKG_INSTALLED_FOUND AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    message(WARNING "\n"
+        "=====================================================================\n"
+        "  vcpkg dependencies not found!\n"
+        "  \n"
+        "  To build this project, you need to either:\n"
+        "  1. Install dependencies via vcpkg:\n"
+        "     vcpkg install --triplet=x64-windows @vcpkg.json\n"
+        "  2. Or set VCPKG_ROOT environment variable:\n"
+        "     $env:VCPKG_ROOT = 'C:/path/to/vcpkg'\n"
+        "  3. Or pass CMAKE_TOOLCHAIN_FILE:\n"
+        "     cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake\n"
+        "=====================================================================\n"
+    )
+endif()
+
 # 查找包路径（自定义 Find 模块）
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -148,7 +227,10 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(ZeroMQ REQUIRED)
-find_package(cppzmq CONFIG REQUIRED)
+# cppzmq 可能已由 FindZeroMQ.cmake 提供，避免重复查找
+if(NOT TARGET cppzmq AND NOT TARGET cppzmq-static)
+    find_package(cppzmq CONFIG REQUIRED)
+endif()
 
 # CUDA 配置（可选）
 if(AAM_ENABLE_CUDA)
@@ -183,12 +265,20 @@ file(GLOB_RECURSE PROTO_FILES CONFIGURE_DEPENDS
 # Protobuf 生成目标
 foreach(proto_file ${PROTO_FILES})
     get_filename_component(proto_name ${proto_file} NAME_WE)
-    get_filename_component(proto_dir ${proto_file} DIRECTORY)
+    file(RELATIVE_PATH proto_rel_path "${CMAKE_CURRENT_SOURCE_DIR}/proto" ${proto_file})
+    get_filename_component(proto_rel_dir "${proto_rel_path}" DIRECTORY)
     
-    set(proto_srcs "${PROTO_BINARY_DIR}/${proto_name}.pb.cc")
-    set(proto_hdrs "${PROTO_BINARY_DIR}/${proto_name}.pb.h")
-    set(grpc_srcs "${PROTO_BINARY_DIR}/${proto_name}.grpc.pb.cc")
-    set(grpc_hdrs "${PROTO_BINARY_DIR}/${proto_name}.grpc.pb.h")
+    # 生成的文件保持目录结构
+    if(proto_rel_dir)
+        set(output_dir "${PROTO_BINARY_DIR}/${proto_rel_dir}")
+    else()
+        set(output_dir "${PROTO_BINARY_DIR}")
+    endif()
+    
+    set(proto_srcs "${output_dir}/${proto_name}.pb.cc")
+    set(proto_hdrs "${output_dir}/${proto_name}.pb.h")
+    set(grpc_srcs "${output_dir}/${proto_name}.grpc.pb.cc")
+    set(grpc_hdrs "${output_dir}/${proto_name}.grpc.pb.h")
     
     add_custom_command(
         OUTPUT ${proto_srcs} ${proto_hdrs} ${grpc_srcs} ${grpc_hdrs}
@@ -233,6 +323,26 @@ add_library(aam_core STATIC
 
 add_dependencies(aam_core aam_proto_generation)
 
+# 为 Protobuf 生成的代码禁用特定的严格检查
+# Protobuf 3.20+ 使用 constinit，与 MSVC C++20/23 的 /WX 标志不兼容
+# 注意：protobuf 头文件会自动处理 MSVC 的 constinit 问题，不需要手动定义
+if(MSVC)
+    # 仅抑制 Protobuf 生成代码的特定警告，保留其他警告
+    # C4251: class needs dll-interface
+    # C4275: non dll-interface class used as base
+    # C4800: forcing value to bool
+    # C4244: conversion from 'type1' to 'type2', possible loss of data
+    # C4267: conversion from 'size_t' to 'type', possible loss of data
+    set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
+        COMPILE_FLAGS "/wd4251 /wd4275 /wd4800 /wd4244 /wd4267"
+    )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # GCC/Clang: 仅抑制特定警告
+    set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
+        COMPILE_FLAGS "-Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare"
+    )
+endif()
+
 # 目标属性配置
 target_include_directories(aam_core
     PUBLIC
@@ -257,7 +367,7 @@ target_link_libraries(aam_core
         opencv_imgcodecs
         Eigen3::Eigen
         ZeroMQ::ZeroMQ
-        cppzmq-static
+        $<IF:$<TARGET_EXISTS:cppzmq-static>,cppzmq-static,cppzmq>
     PRIVATE
         aam_compiler_flags
 )
@@ -329,6 +439,7 @@ endif()
 # =============================================================================
 include(GNUInstallDirs)
 
+# 安装主库目标（aam_compiler_flags 是 INTERFACE 库，仅供内部使用，不安装）
 install(TARGETS aam_core
     EXPORT aam-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

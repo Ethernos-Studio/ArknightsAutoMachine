@@ -461,5 +461,12 @@ FodyWeavers.xsd
 # VS Code files for those working on multiple tools
 .vscode/*
 
-# [Mark]Temp File
+# [Mark]Temp File 用于临时debug与测试
 temp.*
+
+# =============================================================================
+# C++
+# =============================================================================
+
+# vcpkg 安装的依赖
+vcpkg_installed/
