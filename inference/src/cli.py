@@ -94,6 +94,36 @@ class OutputFormat(Enum):
 
 
 # =============================================================================
+# 排序键函数
+# =============================================================================
+
+def operator_rarity_sort_key(op: Operator) -> Tuple[int, str]:
+    """
+    干员排序键：按稀有度降序，名称升序
+
+    Args:
+        op: 干员对象
+
+    Returns:
+        排序键元组 (负稀有度, 名称)
+    """
+    return (-op.rarity.value, op.name)
+
+
+def item_rarity_sort_key(item: Item) -> Tuple[int, str]:
+    """
+    物品排序键：按稀有度降序，名称升序
+
+    Args:
+        item: 物品对象
+
+    Returns:
+        排序键元组 (负稀有度, 名称)
+    """
+    return (-item.rarity.value, item.name)
+
+
+# =============================================================================
 # 日志配置
 # =============================================================================
 
@@ -1280,7 +1310,7 @@ class DataCommands:
             else:
                 # 列出所有干员
                 operators = manager.get_operators(
-                    sort_key=lambda op: (-op.rarity.value, op.name)
+                    sort_key=operator_rarity_sort_key
                 )
                 print(f"\n共有 {len(operators)} 个干员")
                 print("\n前20个6星干员:")
@@ -1514,7 +1544,7 @@ class DataCommands:
                 # 列出材料
                 items = manager.get_items(
                     filter_func=lambda i: i.is_material,
-                    sort_key=lambda i: (-i.rarity.value, i.name)
+                    sort_key=item_rarity_sort_key
                 )
                 print(f"\n共有 {len(items)} 个材料")
                 print("\n前20个高稀有度材料:")
@@ -2263,15 +2293,18 @@ def main():
                 interval=args.interval,
                 duration=args.duration
             )
+            return 0
 
         elif args.command == 'config':
             if args.show:
                 print("当前配置:")
                 print(json.dumps(asdict(cli_config), indent=2, ensure_ascii=False))
+                return 0
             elif args.reset:
                 cli_config = CLIConfig()
                 cli_config.save(args.config)
                 print("配置已重置")
+                return 0
             elif args.set:
                 for key, value in args.set:
                     # 简单类型转换
@@ -2287,10 +2320,13 @@ def main():
                         print(f"设置 {key} = {value}")
                     else:
                         print(f"未知配置项: {key}")
+                        return 1
                 cli_config.save(args.config)
+                return 0
             else:
                 config_parser = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)][0].choices['config']
                 config_parser.print_help()
+                return 0
 
         elif args.command == 'test':
             success = commands.test()
