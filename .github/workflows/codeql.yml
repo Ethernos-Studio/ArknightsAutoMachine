@@ -102,6 +102,10 @@ jobs:
             ninja-build \
             cmake \
             pkg-config \
+            autoconf \
+            autoconf-archive \
+            automake \
+            libtool \
             g++-12 \
             libopencv-dev \
             libeigen3-dev \

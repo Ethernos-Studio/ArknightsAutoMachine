@@ -213,6 +213,10 @@ jobs:
             ninja-build \
             cmake \
             pkg-config \
+            autoconf \
+            autoconf-archive \
+            automake \
+            libtool \
             ${{ matrix.compiler == 'gcc-12' && 'g++-12' || 'clang-16' }} \
             libopencv-dev \
             libeigen3-dev \
