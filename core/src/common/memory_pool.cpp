@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file memory_pool.cpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief 定长内存池实现
 // ==========================================================================
 

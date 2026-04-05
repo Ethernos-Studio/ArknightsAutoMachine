@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file frame_buffer.hpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief L0 无锁帧缓冲区实现
 // ==========================================================================
 

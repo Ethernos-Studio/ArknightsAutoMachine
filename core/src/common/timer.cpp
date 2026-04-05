@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file timer.cpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief 高精度计时器实现
 // ==========================================================================
 

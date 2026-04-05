@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file logger.hpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief spdlog 日志系统封装头文件
 // ==========================================================================
 // 版本: v0.2.0-alpha.1

@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file capture_backend.cpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief L0 捕获后端接口实现
 // ==========================================================================
 

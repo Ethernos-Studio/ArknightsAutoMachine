@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file capture_backend.hpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief L0 捕获后端接口定义
 // ==========================================================================
 // 版本: v0.2.0-alpha.1

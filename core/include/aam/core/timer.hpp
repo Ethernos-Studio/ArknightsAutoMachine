@@ -16,7 +16,7 @@
 // along with AAM. If not, see <https://www.gnu.org/licenses/>.
 // ==========================================================================
 // @file timer.hpp
-// @author AAM Development Team
+// @author dhjs0000
 // @brief 高精度计时器与时间管理工具
 // ==========================================================================
 // 版本: v0.2.0-alpha.1
