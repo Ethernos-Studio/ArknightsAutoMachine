@@ -26,6 +26,7 @@
 #    pragma warning(push)
 #    pragma warning(disable : 4324)  // 禁用"结构被填充"警告
 #endif
+
 #include <atomic>
 #include <concepts>
 #include <cstddef>

@@ -34,6 +34,36 @@
 include(FindPackageHandleStandardArgs)
 
 # =============================================================================
+# 检查 vcpkg 目标是否已存在
+# =============================================================================
+if(TARGET libzmq OR TARGET libzmq-static)
+    message(STATUS "ZeroMQ targets already defined by vcpkg config")
+    set(ZeroMQ_FOUND TRUE)
+    set(ZeroMQ_VERSION "4.3.5")
+    
+    # 获取包含目录
+    if(TARGET libzmq)
+        get_target_property(ZeroMQ_INCLUDE_DIR libzmq INTERFACE_INCLUDE_DIRECTORIES)
+    else()
+        get_target_property(ZeroMQ_INCLUDE_DIR libzmq-static INTERFACE_INCLUDE_DIRECTORIES)
+    endif()
+    
+    set(ZeroMQ_INCLUDE_DIRS ${ZeroMQ_INCLUDE_DIR})
+    set(ZeroMQ_LIBRARIES "")
+    
+    # 创建兼容目标
+    if(NOT TARGET ZeroMQ::ZeroMQ)
+        if(TARGET libzmq)
+            add_library(ZeroMQ::ZeroMQ ALIAS libzmq)
+        else()
+            add_library(ZeroMQ::ZeroMQ ALIAS libzmq-static)
+        endif()
+    endif()
+    
+    return()
+endif()
+
+# =============================================================================
 # 版本配置
 # =============================================================================
 set(ZeroMQ_MINIMUM_VERSION "4.3.4")
