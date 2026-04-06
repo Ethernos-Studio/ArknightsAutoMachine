@@ -29,11 +29,6 @@
 #ifndef AAM_L0_MAA_ADAPTER_HPP
 #define AAM_L0_MAA_ADAPTER_HPP
 
-#include "aam/l0/capture_backend.hpp"
-#include "aam/l0/frame_buffer.hpp"
-#include "aam/core/memory_pool.hpp"
-#include "aam/core/logger.hpp"
-
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -44,6 +39,11 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "aam/core/logger.hpp"
+#include "aam/core/memory_pool.hpp"
+#include "aam/l0/capture_backend.hpp"
+#include "aam/l0/frame_buffer.hpp"
 
 // MaaFramework C API
 #include <MaaFramework/MaaAPI.h>
@@ -161,8 +161,7 @@ public:
      * @complexity O(1)，无锁队列操作
      * @thread_safety 线程安全
      */
-    [[nodiscard]] std::expected<std::pair<FrameMetadata, std::vector<std::byte>>,
-                                CaptureError>
+    [[nodiscard]] std::expected<std::pair<FrameMetadata, std::vector<std::byte>>, CaptureError>
     GetFrame(core::Duration timeout) override;
 
     /**
@@ -259,8 +258,7 @@ public:
      * @complexity O(n)，n为已连接设备数
      * @thread_safety 线程安全
      */
-    [[nodiscard]] static std::expected<std::vector<std::string>, CaptureError>
-    EnumerateDevices();
+    [[nodiscard]] static std::expected<std::vector<std::string>, CaptureError> EnumerateDevices();
 
     /**
      * @brief 检查设备是否可用
@@ -284,8 +282,8 @@ public:
      * @complexity O(1)
      * @thread_safety 线程安全
      */
-    [[nodiscard]] std::expected<MaaTaskId, CaptureError>
-    ExecuteTask(std::string_view task_name, std::string_view task_params);
+    [[nodiscard]] std::expected<MaaTaskId, CaptureError> ExecuteTask(std::string_view task_name,
+                                                                     std::string_view task_params);
 
     /**
      * @brief 停止任务
@@ -315,13 +313,16 @@ private:
      */
     struct FrameBufferElement
     {
-        FrameMetadata              metadata;
-        std::vector<std::byte>     data;
-        core::Timestamp            enqueue_time;
+        FrameMetadata          metadata;
+        std::vector<std::byte> data;
+        core::Timestamp        enqueue_time;
 
         FrameBufferElement() = default;
+
         FrameBufferElement(FrameMetadata m, std::vector<std::byte> d)
-            : metadata(std::move(m)), data(std::move(d)), enqueue_time(core::Clock::now())
+            : metadata(std::move(m)),
+              data(std::move(d)),
+              enqueue_time(core::Clock::now())
         {
         }
     };
@@ -344,8 +345,8 @@ private:
      */
     enum class ConnectionType : std::uint8_t
     {
-        ADB,           ///< Android Debug Bridge
-        Win32,         ///< Windows Win32 API
+        ADB,    ///< Android Debug Bridge
+        Win32,  ///< Windows Win32 API
         Unknown = 255,
     };
 
@@ -407,8 +408,7 @@ private:
      * @return 连接类型和地址
      * @complexity O(1)
      */
-    [[nodiscard]] std::pair<ConnectionType, std::string>
-    ParseTargetId(std::string_view target_id);
+    [[nodiscard]] std::pair<ConnectionType, std::string> ParseTargetId(std::string_view target_id);
 
     // ==================================================================
     // 成员变量
@@ -427,22 +427,22 @@ private:
     std::thread capture_thread_;
 
     // 输出帧队列（生产者-消费者模式）
-    mutable std::mutex              queue_mutex_;
-    std::condition_variable         queue_cv_;
-    std::queue<FrameBufferElement>  frame_queue_;
-    std::size_t                     max_queue_size_ = 3;
+    mutable std::mutex             queue_mutex_;
+    std::condition_variable        queue_cv_;
+    std::queue<FrameBufferElement> frame_queue_;
+    std::size_t                    max_queue_size_ = 3;
 
     // MaaFramework 实例 (v2.0+ API)
-    MaaTasker*    maa_instance_    = nullptr;
-    MaaController*  maa_controller_  = nullptr;
-    MaaResource*    maa_resource_    = nullptr;
+    MaaTasker*     maa_instance_   = nullptr;
+    MaaController* maa_controller_ = nullptr;
+    MaaResource*   maa_resource_   = nullptr;
 
     // 内存池（用于帧数据分配）
     std::unique_ptr<core::FixedMemoryPool> memory_pool_;
 
     // 统计信息（原子操作）
-    mutable std::mutex stats_mutex_;
-    CaptureStats       stats_;
+    mutable std::mutex         stats_mutex_;
+    CaptureStats               stats_;
     std::atomic<std::uint64_t> frame_counter_{0};
 
     // 日志器

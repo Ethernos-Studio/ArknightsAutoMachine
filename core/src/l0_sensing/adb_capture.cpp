@@ -40,12 +40,13 @@
 
 // Windows 特定实现
 #ifdef _WIN32
-#    include <io.h>
 #    include <fcntl.h>
+#    include <io.h>
 #endif
 
 // FFmpeg 头文件 - 用于 H264 硬解码
-extern "C" {
+extern "C"
+{
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
@@ -82,8 +83,8 @@ constexpr std::string_view BACKEND_NAME    = "ADB";
 constexpr std::string_view BACKEND_VERSION = "1.0.0";
 
 // FFmpeg 相关常量
-constexpr int H264_DECODER_THREAD_COUNT = 4;  // 解码器线程数
-constexpr int MAX_DECODE_ERRORS = 10;         // 最大连续解码错误数
+constexpr int H264_DECODER_THREAD_COUNT = 4;   // 解码器线程数
+constexpr int MAX_DECODE_ERRORS         = 10;  // 最大连续解码错误数
 
 }  // namespace
 
@@ -101,8 +102,12 @@ constexpr int MAX_DECODE_ERRORS = 10;         // 最大连续解码错误数
 class AdbProcessManager
 {
 public:
-    AdbProcessManager()  = default;
-    ~AdbProcessManager() { Stop(); }
+    AdbProcessManager() = default;
+
+    ~AdbProcessManager()
+    {
+        Stop();
+    }
 
     // 禁用拷贝
     AdbProcessManager(const AdbProcessManager&)            = delete;
@@ -124,8 +129,8 @@ public:
             return false;  // 进程已在运行
         }
 
-        // 构建命令行
-        std::string command_line = std::string(adb_path) + " " + std::string(arguments);
+        // 构建命令行（使用引号包裹路径，防止空格问题）
+        std::string command_line = "\"" + std::string(adb_path) + "\" " + std::string(arguments);
 
         // 安全属性：允许子进程继承管道句柄
         SECURITY_ATTRIBUTES sa;
@@ -163,16 +168,16 @@ public:
         std::vector<char> cmd_line_buffer(command_line.begin(), command_line.end());
         cmd_line_buffer.push_back('\0');
 
-        BOOL created = CreateProcessA(
-            nullptr,                    // 不指定模块名
-            cmd_line_buffer.data(),     // 命令行
-            nullptr,                    // 进程安全属性
-            nullptr,                    // 线程安全属性
-            TRUE,                       // 继承句柄
-            CREATE_NO_WINDOW,           // 不创建窗口
-            nullptr,                    // 使用父进程环境
-            nullptr,                    // 使用父进程目录
-            &si, &pi);
+        BOOL created = CreateProcessA(nullptr,                 // 不指定模块名
+                                      cmd_line_buffer.data(),  // 命令行
+                                      nullptr,                 // 进程安全属性
+                                      nullptr,                 // 线程安全属性
+                                      TRUE,                    // 继承句柄
+                                      CREATE_NO_WINDOW,        // 不创建窗口
+                                      nullptr,                 // 使用父进程环境
+                                      nullptr,                 // 使用父进程目录
+                                      &si,
+                                      &pi);
 
         // 关闭写入端（子进程已继承）
         CloseHandle(stdout_write);
@@ -238,8 +243,9 @@ public:
             return -1;
         }
 
-        DWORD bytes_read = 0;
-        DWORD bytes_to_read = static_cast<DWORD>(std::min(size, static_cast<std::size_t>(std::numeric_limits<DWORD>::max())));
+        DWORD bytes_read    = 0;
+        DWORD bytes_to_read = static_cast<DWORD>(
+            std::min(size, static_cast<std::size_t>(std::numeric_limits<DWORD>::max())));
 
         if (!ReadFile(stdout_handle_, buffer, bytes_to_read, &bytes_read, nullptr)) {
             DWORD error = GetLastError();
@@ -324,7 +330,7 @@ public:
 
         // 配置解码器参数
         codec_context_->thread_count = H264_DECODER_THREAD_COUNT;
-        codec_context_->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+        codec_context_->thread_type  = FF_THREAD_FRAME | FF_THREAD_SLICE;
 
         // 打开解码器
         if (avcodec_open2(codec_context_, codec_, nullptr) < 0) {
@@ -362,7 +368,7 @@ public:
     }
 
     // 禁用拷贝
-    FFmpegH264Decoder(const FFmpegH264Decoder&) = delete;
+    FFmpegH264Decoder(const FFmpegH264Decoder&)            = delete;
     FFmpegH264Decoder& operator=(const FFmpegH264Decoder&) = delete;
 
     /**
@@ -374,11 +380,8 @@ public:
      * @return 解码后的 RGB24 数据，失败返回空 vector
      * @complexity O(n)，其中 n 为图像像素数
      */
-    [[nodiscard]] std::vector<std::uint8_t> Decode(
-        const std::uint8_t* data,
-        std::size_t size,
-        int out_width,
-        int out_height)
+    [[nodiscard]] std::vector<std::uint8_t>
+    Decode(const std::uint8_t* data, std::size_t size, int out_width, int out_height)
     {
         // 将数据追加到缓冲区
         annexb_buffer_.insert(annexb_buffer_.end(), data, data + size);
@@ -392,15 +395,15 @@ public:
         }
 
         // 提取一帧数据
-        std::vector<std::uint8_t> frame_data(
-            annexb_buffer_.begin() + buffer_pos_,
-            annexb_buffer_.begin() + frame_end);
+        std::vector<std::uint8_t> frame_data(annexb_buffer_.begin() + buffer_pos_,
+                                             annexb_buffer_.begin() + frame_end);
 
         // 更新缓冲区位置
         buffer_pos_ = frame_end;
 
         // 清理已处理的数据（当缓冲区过大时）
-        if (buffer_pos_ > annexb_buffer_.size() / 2 && annexb_buffer_.size() > DEFAULT_READ_BUFFER_SIZE) {
+        if (buffer_pos_ > annexb_buffer_.size() / 2
+            && annexb_buffer_.size() > DEFAULT_READ_BUFFER_SIZE) {
             annexb_buffer_.erase(annexb_buffer_.begin(), annexb_buffer_.begin() + buffer_pos_);
             buffer_pos_ = 0;
         }
@@ -418,7 +421,7 @@ public:
             avcodec_flush_buffers(codec_context_);
         }
         annexb_buffer_.clear();
-        buffer_pos_ = 0;
+        buffer_pos_         = 0;
         consecutive_errors_ = 0;
 
         if (sws_context_) {
@@ -444,9 +447,8 @@ private:
      * @return 下一帧起始位置，未找到返回 npos
      * @complexity O(n)，线性扫描
      */
-    [[nodiscard]] std::size_t FindNextFrameStart(
-        const std::vector<std::uint8_t>& buffer,
-        std::size_t start_pos)
+    [[nodiscard]] std::size_t FindNextFrameStart(const std::vector<std::uint8_t>& buffer,
+                                                 std::size_t                      start_pos)
     {
         // 至少需要 4 字节来检测起始码
         if (buffer.size() < start_pos + 4) {
@@ -455,8 +457,8 @@ private:
 
         for (std::size_t i = start_pos + 4; i < buffer.size() - 3; ++i) {
             // 检查 4 字节起始码 (0x00 0x00 0x00 0x01)
-            if (buffer[i] == 0x00 && buffer[i + 1] == 0x00 &&
-                buffer[i + 2] == 0x00 && buffer[i + 3] == 0x01) {
+            if (buffer[i] == 0x00 && buffer[i + 1] == 0x00 && buffer[i + 2] == 0x00
+                && buffer[i + 3] == 0x01) {
                 return i;
             }
             // 检查 3 字节起始码 (0x00 0x00 0x01)
@@ -475,11 +477,8 @@ private:
      * @param out_height 输出高度
      * @return RGB24 格式图像数据
      */
-    [[nodiscard]] std::vector<std::uint8_t> DecodeFrame(
-        const std::uint8_t* data,
-        std::size_t size,
-        int out_width,
-        int out_height)
+    [[nodiscard]] std::vector<std::uint8_t>
+    DecodeFrame(const std::uint8_t* data, std::size_t size, int out_width, int out_height)
     {
         // 填充数据包
         packet_->data = const_cast<std::uint8_t*>(data);
@@ -521,20 +520,24 @@ private:
     [[nodiscard]] std::vector<std::uint8_t> ConvertToRGB24(int out_width, int out_height)
     {
         // 如果尺寸不匹配，创建或更新 SwsContext
-        if (!sws_context_ ||
-            src_width_ != frame_->width ||
-            src_height_ != frame_->height) {
+        if (!sws_context_ || src_width_ != frame_->width || src_height_ != frame_->height) {
             if (sws_context_) {
                 sws_freeContext(sws_context_);
             }
 
-            src_width_ = frame_->width;
+            src_width_  = frame_->width;
             src_height_ = frame_->height;
 
-            sws_context_ = sws_getContext(
-                src_width_, src_height_, static_cast<AVPixelFormat>(frame_->format),
-                out_width, out_height, AV_PIX_FMT_RGB24,
-                SWS_BILINEAR, nullptr, nullptr, nullptr);
+            sws_context_ = sws_getContext(src_width_,
+                                          src_height_,
+                                          static_cast<AVPixelFormat>(frame_->format),
+                                          out_width,
+                                          out_height,
+                                          AV_PIX_FMT_RGB24,
+                                          SWS_BILINEAR,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr);
 
             if (!sws_context_) {
                 SPDLOG_ERROR("Failed to create SwsContext");
@@ -546,29 +549,27 @@ private:
         std::vector<std::uint8_t> rgb_data(out_width * out_height * 3);
 
         // 设置目标数据指针和行跨度
-        std::uint8_t* dst_data[1] = { rgb_data.data() };
-        int dst_linesize[1] = { out_width * 3 };
+        std::uint8_t* dst_data[1]     = {rgb_data.data()};
+        int           dst_linesize[1] = {out_width * 3};
 
         // 执行转换
-        sws_scale(sws_context_,
-                  frame_->data, frame_->linesize,
-                  0, src_height_,
-                  dst_data, dst_linesize);
+        sws_scale(
+            sws_context_, frame_->data, frame_->linesize, 0, src_height_, dst_data, dst_linesize);
 
         return rgb_data;
     }
 
-    const AVCodec* codec_ = nullptr;
+    const AVCodec*  codec_         = nullptr;
     AVCodecContext* codec_context_ = nullptr;
-    AVFrame* frame_ = nullptr;
-    AVPacket* packet_ = nullptr;
-    SwsContext* sws_context_ = nullptr;
+    AVFrame*        frame_         = nullptr;
+    AVPacket*       packet_        = nullptr;
+    SwsContext*     sws_context_   = nullptr;
 
     std::vector<std::uint8_t> annexb_buffer_;
-    std::size_t buffer_pos_ = 0;
-    int consecutive_errors_ = 0;
+    std::size_t               buffer_pos_         = 0;
+    int                       consecutive_errors_ = 0;
 
-    int src_width_ = 0;
+    int src_width_  = 0;
     int src_height_ = 0;
 };
 
@@ -625,9 +626,8 @@ AdbCaptureBackend::~AdbCaptureBackend()
     if (!config.target_id.empty()) {
         auto available = IsDeviceAvailable(config.target_id);
         if (!available || !*available) {
-            SPDLOG_LOGGER_ERROR(logger_.native(),
-                                "Target device not available: {}",
-                                config.target_id);
+            SPDLOG_LOGGER_ERROR(
+                logger_.native(), "Target device not available: {}", config.target_id);
             return std::unexpected(CaptureError::DeviceNotFound);
         }
     }
@@ -637,11 +637,11 @@ AdbCaptureBackend::~AdbCaptureBackend()
 
     // 初始化内存池
     core::MemoryPoolConfig pool_config;
-    pool_config.block_size      = config.max_frame_size;
-    pool_config.initial_blocks  = config.buffer_queue_size;
-    pool_config.allow_growth    = true;
+    pool_config.block_size        = config.max_frame_size;
+    pool_config.initial_blocks    = config.buffer_queue_size;
+    pool_config.allow_growth      = true;
     pool_config.track_allocations = true;
-    memory_pool_ = std::make_unique<core::FixedMemoryPool>(pool_config);
+    memory_pool_                  = std::make_unique<core::FixedMemoryPool>(pool_config);
 
     // 设置队列大小
     max_queue_size_ = config.buffer_queue_size;
@@ -650,9 +650,8 @@ AdbCaptureBackend::~AdbCaptureBackend()
     stats_.reset();
 
     state_ = State::Initialized;
-    SPDLOG_LOGGER_INFO(logger_.native(),
-                       "ADB capture backend initialized, target: {}",
-                       config.target_id);
+    SPDLOG_LOGGER_INFO(
+        logger_.native(), "ADB capture backend initialized, target: {}", config.target_id);
 
     return {};
 }
@@ -728,7 +727,7 @@ AdbCaptureBackend::~AdbCaptureBackend()
     // 启动捕获线程
     capture_thread_ = std::thread(&AdbCaptureBackend::CaptureThreadFunc, this);
 
-    state_ = State::Capturing;
+    state_               = State::Capturing;
     stats_.session_start = core::Clock::now();
 
     SPDLOG_LOGGER_INFO(logger_.native(), "ADB capture started");
@@ -829,8 +828,8 @@ AdbCaptureBackend::TryGetFrame()
     return std::make_pair(std::move(frame.metadata), std::move(frame.data));
 }
 
-[[nodiscard]] ICaptureBackend::Result AdbCaptureBackend::GetFrameWithCallback(
-    core::Duration timeout, FrameCallback callback)
+[[nodiscard]] ICaptureBackend::Result
+AdbCaptureBackend::GetFrameWithCallback(core::Duration timeout, FrameCallback callback)
 {
     auto result = GetFrame(timeout);
     if (!result) {
@@ -861,9 +860,9 @@ AdbCaptureBackend::TryGetFrame()
     }
 
     // 检查是否需要重启捕获（分辨率变更）
-    bool needs_restart = (config.target_width != config_.target_width) ||
-                         (config.target_height != config_.target_height) ||
-                         (config.target_fps != config_.target_fps);
+    bool needs_restart = (config.target_width != config_.target_width)
+                      || (config.target_height != config_.target_height)
+                      || (config.target_fps != config_.target_fps);
 
     if (needs_restart && state_ == State::Capturing) {
         // 需要重启捕获会话
@@ -918,7 +917,8 @@ AdbCaptureBackend::EnumerateDevices()
 
     // 解析设备列表
     while (std::getline(stream, line)) {
-        if (line.empty()) continue;
+        if (line.empty())
+            continue;
 
         // 格式: <serial> <status> [attributes...]
         std::istringstream line_stream(line);
@@ -936,14 +936,13 @@ AdbCaptureBackend::EnumerateDevices()
 [[nodiscard]] std::expected<bool, CaptureError>
 AdbCaptureBackend::IsDeviceAvailable(std::string_view device_id)
 {
-    auto result = ExecuteAdbCommand(std::string(device_id), "shell echo ok",
-                                    std::chrono::seconds(5));
+    auto result =
+        ExecuteAdbCommand(std::string(device_id), "shell echo ok", std::chrono::seconds(5));
     return result.has_value() && result->find("ok") != std::string::npos;
 }
 
-[[nodiscard]] std::expected<std::string, CaptureError>
-AdbCaptureBackend::ExecuteAdbCommand(std::string_view device_id, std::string_view command,
-                                      core::Duration timeout)
+[[nodiscard]] std::expected<std::string, CaptureError> AdbCaptureBackend::ExecuteAdbCommand(
+    std::string_view device_id, std::string_view command, core::Duration timeout)
 {
     std::string adb_path = FindAdbExecutable();
     if (adb_path.empty()) {
@@ -989,8 +988,16 @@ AdbCaptureBackend::ExecuteAdbCommand(std::string_view device_id, std::string_vie
     std::vector<char> cmd_line(full_command.begin(), full_command.end());
     cmd_line.push_back('\0');
 
-    if (!CreateProcessA(nullptr, cmd_line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
-                        nullptr, nullptr, &si, &pi)) {
+    if (!CreateProcessA(nullptr,
+                        cmd_line.data(),
+                        nullptr,
+                        nullptr,
+                        TRUE,
+                        CREATE_NO_WINDOW,
+                        nullptr,
+                        nullptr,
+                        &si,
+                        &pi)) {
         CloseHandle(stdout_read);
         CloseHandle(stdout_write);
         return std::unexpected(CaptureError::Unknown);
@@ -1013,10 +1020,10 @@ AdbCaptureBackend::ExecuteAdbCommand(std::string_view device_id, std::string_vie
     char        buffer[4096];
     DWORD       bytes_read = 0;
 
-    while (ReadFile(stdout_read, buffer, sizeof(buffer) - 1, &bytes_read, nullptr) &&
-           bytes_read > 0) {
-        buffer[bytes_read] = '\0';
-        output += buffer;
+    while (ReadFile(stdout_read, buffer, sizeof(buffer) - 1, &bytes_read, nullptr)
+           && bytes_read > 0) {
+        buffer[bytes_read]  = '\0';
+        output             += buffer;
     }
 
     CloseHandle(pi.hProcess);
@@ -1075,9 +1082,9 @@ void AdbCaptureBackend::CaptureThreadFunc()
         consecutive_errors_ = 0;
 
         // 解码 H264 数据
-        auto decode_result = DecodeH264Frame(
-            reinterpret_cast<const std::uint8_t*>(read_buffer.data()),
-            static_cast<std::size_t>(bytes_read));
+        auto decode_result =
+            DecodeH264Frame(reinterpret_cast<const std::uint8_t*>(read_buffer.data()),
+                            static_cast<std::size_t>(bytes_read));
 
         if (decode_result) {
             // 推送帧到队列
@@ -1097,8 +1104,8 @@ void AdbCaptureBackend::CaptureThreadFunc()
         arguments += "-s " + config_.target_id + " ";
     }
     arguments += "shell screenrecord --output-format=h264";
-    arguments += " --size=" + std::to_string(config_.target_width) + "x" +
-                 std::to_string(config_.target_height);
+    arguments += " --size=" + std::to_string(config_.target_width) + "x"
+               + std::to_string(config_.target_height);
     arguments += " --bit-rate=8000000";  // 8Mbps 比特率
     arguments += " -";
 
@@ -1125,7 +1132,8 @@ AdbCaptureBackend::DecodeH264Frame(const std::uint8_t* nal_data, std::size_t nal
     }
 
     // 使用 FFmpeg 解码 H264
-    auto rgb_data = decoder_->Decode(nal_data, nal_size, config_.target_width, config_.target_height);
+    auto rgb_data =
+        decoder_->Decode(nal_data, nal_size, config_.target_width, config_.target_height);
 
     if (rgb_data.empty()) {
         // 数据不完整或需要更多数据
@@ -1134,14 +1142,14 @@ AdbCaptureBackend::DecodeH264Frame(const std::uint8_t* nal_data, std::size_t nal
 
     // 创建帧元数据
     FrameMetadata metadata;
-    metadata.width         = config_.target_width;
-    metadata.height        = config_.target_height;
-    metadata.pixel_format  = PixelFormat::RGB24;
-    metadata.stride        = config_.target_width * 3;
-    metadata.frame_number  = frame_counter_.fetch_add(1);
-    metadata.sequence_id   = metadata.frame_number;
+    metadata.width             = config_.target_width;
+    metadata.height            = config_.target_height;
+    metadata.pixel_format      = PixelFormat::RGB24;
+    metadata.stride            = config_.target_width * 3;
+    metadata.frame_number      = frame_counter_.fetch_add(1);
+    metadata.sequence_id       = metadata.frame_number;
     metadata.capture_timestamp = core::Clock::now();
-    metadata.data_size     = rgb_data.size();
+    metadata.data_size         = rgb_data.size();
     metadata.process_timestamp = core::Clock::now();
 
     // 转换为 std::byte vector
@@ -1182,9 +1190,8 @@ void AdbCaptureBackend::UpdateStats(core::Duration latency)
     // 计算当前 FPS
     auto session_duration = stats_.get_session_duration();
     if (session_duration.count() > 0) {
-        stats_.current_fps =
-            static_cast<double>(stats_.frames_captured) /
-            (static_cast<double>(session_duration.count()) / 1'000'000'000.0);
+        stats_.current_fps = static_cast<double>(stats_.frames_captured)
+                           / (static_cast<double>(session_duration.count()) / 1'000'000'000.0);
     }
 }
 
@@ -1211,10 +1218,10 @@ void AdbCaptureBackend::UpdateStats(core::Duration latency)
     // 检查 PATH 环境变量
 #ifdef _WIN32
     std::array<char, 4096> path_buffer{};
-    DWORD path_len = GetEnvironmentVariableA("PATH", path_buffer.data(),
-                                              static_cast<DWORD>(path_buffer.size()));
+    DWORD                  path_len =
+        GetEnvironmentVariableA("PATH", path_buffer.data(), static_cast<DWORD>(path_buffer.size()));
     if (path_len > 0 && path_len < path_buffer.size()) {
-        std::string path_env(path_buffer.data(), path_len);
+        std::string        path_env(path_buffer.data(), path_len);
         std::istringstream path_stream(path_env);
         std::string        path_entry;
 

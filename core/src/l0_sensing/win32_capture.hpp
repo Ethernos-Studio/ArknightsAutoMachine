@@ -22,10 +22,6 @@
 
 #pragma once
 
-#include "aam/l0/capture_backend.hpp"
-#include "aam/core/logger.hpp"
-#include "aam/core/memory_pool.hpp"
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -43,25 +39,30 @@
 #include <utility>
 #include <vector>
 
+#include "aam/core/logger.hpp"
+#include "aam/core/memory_pool.hpp"
+#include "aam/l0/capture_backend.hpp"
+
 // Windows API 前向声明，避免在头文件中包含 windows.h
 #ifndef _WINDOWS_
-    struct HWND__;
-    typedef HWND__* HWND;
-    struct HBITMAP__;
-    typedef HBITMAP__* HBITMAP;
-    struct HDC__;
-    typedef HDC__* HDC;
-    using DWORD = unsigned long;
-    using UINT = unsigned int;
-    using LONG = long;
-    using BOOL = int;
-    using BYTE = unsigned char;
-    using RECT = struct _RECT;
+struct HWND__;
+typedef HWND__* HWND;
+struct HBITMAP__;
+typedef HBITMAP__* HBITMAP;
+struct HDC__;
+typedef HDC__* HDC;
+using DWORD = unsigned long;
+using UINT  = unsigned int;
+using LONG  = long;
+using BOOL  = int;
+using BYTE  = unsigned char;
+using RECT  = struct _RECT;
 #else
-    #include <windows.h>
+#    include <windows.h>
 #endif
 
-namespace aam::l0 {
+namespace aam::l0
+{
 
 // 前向声明
 class WindowsGraphicsCapture;
@@ -77,7 +78,8 @@ class BitBltCapture;
  * @note 捕获性能受窗口可见性和遮挡影响
  * @note 支持后台窗口捕获（使用 PrintWindow API）
  */
-class Win32CaptureBackend final : public ICaptureBackend {
+class Win32CaptureBackend final : public ICaptureBackend
+{
 public:
     // ==================================================================
     // 构造函数与析构函数
@@ -96,10 +98,10 @@ public:
     ~Win32CaptureBackend() override;
 
     // 禁止拷贝和移动
-    Win32CaptureBackend(const Win32CaptureBackend&) = delete;
+    Win32CaptureBackend(const Win32CaptureBackend&)            = delete;
     Win32CaptureBackend& operator=(const Win32CaptureBackend&) = delete;
-    Win32CaptureBackend(Win32CaptureBackend&&) = delete;
-    Win32CaptureBackend& operator=(Win32CaptureBackend&&) = delete;
+    Win32CaptureBackend(Win32CaptureBackend&&)                 = delete;
+    Win32CaptureBackend& operator=(Win32CaptureBackend&&)      = delete;
 
     // ==================================================================
     // ICaptureBackend 接口实现
@@ -158,10 +160,11 @@ public:
 
     /**
      * @brief 尝试获取一帧图像（非阻塞式）
-     * @return std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>, CaptureError>
-     *         成功时返回帧数据（如果有），失败时返回错误码
+     * @return std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>,
+     * CaptureError> 成功时返回帧数据（如果有），失败时返回错误码
      */
-    [[nodiscard]] std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>, CaptureError>
+    [[nodiscard]] std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>,
+                                CaptureError>
     TryGetFrame() override;
 
     /**
@@ -170,7 +173,8 @@ public:
      * @param callback 帧回调函数
      * @return Result 操作结果
      */
-    [[nodiscard]] Result GetFrameWithCallback(core::Duration timeout, FrameCallback callback) override;
+    [[nodiscard]] Result GetFrameWithCallback(core::Duration timeout,
+                                              FrameCallback  callback) override;
 
     /**
      * @brief 获取当前配置
@@ -229,7 +233,8 @@ public:
      * @param device_id 设备ID
      * @return std::expected<bool, CaptureError> 是否可用
      */
-    [[nodiscard]] static std::expected<bool, CaptureError> IsDeviceAvailable(std::string_view device_id);
+    [[nodiscard]] static std::expected<bool, CaptureError>
+    IsDeviceAvailable(std::string_view device_id);
 
     // ==================================================================
     // Win32 特定类型定义
@@ -238,20 +243,21 @@ public:
     /**
      * @brief 窗口信息结构
      */
-    struct WindowInfo {
-        std::string id;               ///< 窗口句柄ID（十六进制字符串）
-        std::string title;            ///< 窗口标题
-        std::string class_name;       ///< 窗口类名
-        std::string process_name;     ///< 进程名
-        int x{0};                     ///< 窗口X坐标
-        int y{0};                     ///< 窗口Y坐标
-        int width{0};                 ///< 窗口宽度
-        int height{0};                ///< 窗口高度
-        int client_width{0};          ///< 客户区宽度
-        int client_height{0};         ///< 客户区高度
-        bool is_visible{false};       ///< 是否可见
-        bool is_minimized{false};     ///< 是否最小化
-        HWND hwnd{nullptr};           ///< 窗口句柄
+    struct WindowInfo
+    {
+        std::string id;                   ///< 窗口句柄ID（十六进制字符串）
+        std::string title;                ///< 窗口标题
+        std::string class_name;           ///< 窗口类名
+        std::string process_name;         ///< 进程名
+        int         x{0};                 ///< 窗口X坐标
+        int         y{0};                 ///< 窗口Y坐标
+        int         width{0};             ///< 窗口宽度
+        int         height{0};            ///< 窗口高度
+        int         client_width{0};      ///< 客户区宽度
+        int         client_height{0};     ///< 客户区高度
+        bool        is_visible{false};    ///< 是否可见
+        bool        is_minimized{false};  ///< 是否最小化
+        HWND        hwnd{nullptr};        ///< 窗口句柄
     };
 
     // ==================================================================
@@ -272,7 +278,8 @@ public:
      * @param window_id 窗口ID（十六进制句柄字符串）
      * @return std::expected<WindowInfo, CaptureError> 窗口信息
      */
-    [[nodiscard]] static std::expected<WindowInfo, CaptureError> GetWindowInfo(std::string_view window_id);
+    [[nodiscard]] static std::expected<WindowInfo, CaptureError>
+    GetWindowInfo(std::string_view window_id);
 
     /**
      * @brief 通过窗口标题查找窗口
@@ -324,13 +331,16 @@ private:
      */
     struct FrameBufferElement
     {
-        FrameMetadata              metadata;
-        std::vector<std::byte>     data;
-        core::Timestamp            enqueue_time;
+        FrameMetadata          metadata;
+        std::vector<std::byte> data;
+        core::Timestamp        enqueue_time;
 
         FrameBufferElement() = default;
+
         FrameBufferElement(FrameMetadata m, std::vector<std::byte> d)
-            : metadata(std::move(m)), data(std::move(d)), enqueue_time(core::Clock::now())
+            : metadata(std::move(m)),
+              data(std::move(d)),
+              enqueue_time(core::Clock::now())
         {
         }
     };
@@ -362,14 +372,16 @@ private:
      * @param bgra_data BGRA 源数据
      * @return std::vector<std::uint8_t> RGB24 数据
      */
-    [[nodiscard]] std::vector<std::uint8_t> ConvertBGRAtoRGB24(const std::vector<std::uint8_t>& bgra_data);
+    [[nodiscard]] std::vector<std::uint8_t>
+    ConvertBGRAtoRGB24(const std::vector<std::uint8_t>& bgra_data);
 
     /**
      * @brief 创建帧
      * @param rgb_data RGB 数据
      * @return std::optional<FrameBufferElement> 帧元素
      */
-    [[nodiscard]] std::optional<FrameBufferElement> CreateFrame(std::vector<std::uint8_t>&& rgb_data);
+    [[nodiscard]] std::optional<FrameBufferElement>
+    CreateFrame(std::vector<std::uint8_t>&& rgb_data);
 
     /**
      * @brief 推送帧到队列
@@ -389,8 +401,8 @@ private:
      * @param exact_match 是否精确匹配
      * @return std::vector<WindowInfo> 窗口信息列表
      */
-    [[nodiscard]] static std::vector<WindowInfo> EnumerateWindowsInternal(
-        const std::string& title_filter, bool exact_match);
+    [[nodiscard]] static std::vector<WindowInfo>
+    EnumerateWindowsInternal(const std::string& title_filter, bool exact_match);
 
     /**
      * @brief 获取窗口信息内部实现
@@ -405,45 +417,45 @@ private:
 
     // 状态管理
     std::atomic<State> state_{State::Uninitialized};  ///< 当前状态
-    mutable std::mutex state_mutex_;                   ///< 状态互斥锁
+    mutable std::mutex state_mutex_;                  ///< 状态互斥锁
 
     // 配置
-    CaptureConfig config_;                             ///< 捕获配置
-    mutable std::mutex config_mutex_;                  ///< 配置互斥锁
+    CaptureConfig      config_;        ///< 捕获配置
+    mutable std::mutex config_mutex_;  ///< 配置互斥锁
 
     // 窗口相关
-    HWND target_window_{nullptr};                      ///< 目标窗口句柄
+    HWND target_window_{nullptr};  ///< 目标窗口句柄
 
     // 捕获实现
-    std::unique_ptr<WindowsGraphicsCapture> wgc_capture_;  ///< WGC 捕获器
-    std::unique_ptr<BitBltCapture> bitblt_capture_;        ///< BitBlt 捕获器
-    bool use_wgc_{false};                                  ///< 是否使用 WGC
+    std::unique_ptr<WindowsGraphicsCapture> wgc_capture_;     ///< WGC 捕获器
+    std::unique_ptr<BitBltCapture>          bitblt_capture_;  ///< BitBlt 捕获器
+    bool                                    use_wgc_{false};  ///< 是否使用 WGC
 
     // 捕获线程
-    std::thread capture_thread_;                       ///< 捕获线程
-    std::atomic<bool> stop_requested_{false};          ///< 停止请求标志
+    std::thread       capture_thread_;         ///< 捕获线程
+    std::atomic<bool> stop_requested_{false};  ///< 停止请求标志
 
     // 帧队列
-    std::queue<FrameBufferElement> frame_queue_;       ///< 帧队列
-    mutable std::mutex queue_mutex_;                   ///< 队列互斥锁
-    std::condition_variable queue_cv_;                 ///< 队列条件变量
-    size_t max_queue_size_{10};                        ///< 最大队列大小
+    std::queue<FrameBufferElement> frame_queue_;         ///< 帧队列
+    mutable std::mutex             queue_mutex_;         ///< 队列互斥锁
+    std::condition_variable        queue_cv_;            ///< 队列条件变量
+    size_t                         max_queue_size_{10};  ///< 最大队列大小
 
     // 内存池
-    std::unique_ptr<core::FixedMemoryPool> memory_pool_;   ///< 内存池
+    std::unique_ptr<core::FixedMemoryPool> memory_pool_;  ///< 内存池
 
     // 统计信息
-    CaptureStats stats_;                               ///< 统计信息
-    mutable std::mutex stats_mutex_;                   ///< 统计信息互斥锁
+    CaptureStats       stats_;        ///< 统计信息
+    mutable std::mutex stats_mutex_;  ///< 统计信息互斥锁
 
     // 日志
-    core::Logger logger_;                              ///< 日志记录器
+    core::Logger logger_;  ///< 日志记录器
 
     // 帧计数器
-    std::atomic<std::uint64_t> frame_counter_{0};      ///< 帧计数器
+    std::atomic<std::uint64_t> frame_counter_{0};  ///< 帧计数器
 
     // 连续错误计数
-    std::atomic<std::uint64_t> consecutive_errors_{0}; ///< 连续错误计数
+    std::atomic<std::uint64_t> consecutive_errors_{0};  ///< 连续错误计数
 };
 
-} // namespace aam::l0
+}  // namespace aam::l0

@@ -29,11 +29,6 @@
 #ifndef AAM_L0_ADB_CAPTURE_HPP
 #define AAM_L0_ADB_CAPTURE_HPP
 
-#include "aam/l0/capture_backend.hpp"
-#include "aam/l0/frame_buffer.hpp"
-#include "aam/core/memory_pool.hpp"
-#include "aam/core/logger.hpp"
-
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -42,6 +37,11 @@
 #include <queue>
 #include <thread>
 #include <vector>
+
+#include "aam/core/logger.hpp"
+#include "aam/core/memory_pool.hpp"
+#include "aam/l0/capture_backend.hpp"
+#include "aam/l0/frame_buffer.hpp"
 
 // Windows 特定头文件
 #ifdef _WIN32
@@ -172,8 +172,7 @@ public:
      * @complexity O(1)，无锁队列操作
      * @thread_safety 线程安全
      */
-    [[nodiscard]] std::expected<std::pair<FrameMetadata, std::vector<std::byte>>,
-                                CaptureError>
+    [[nodiscard]] std::expected<std::pair<FrameMetadata, std::vector<std::byte>>, CaptureError>
     GetFrame(core::Duration timeout) override;
 
     /**
@@ -270,8 +269,7 @@ public:
      * @complexity O(n)，n为已连接设备数
      * @thread_safety 线程安全
      */
-    [[nodiscard]] static std::expected<std::vector<std::string>, CaptureError>
-    EnumerateDevices();
+    [[nodiscard]] static std::expected<std::vector<std::string>, CaptureError> EnumerateDevices();
 
     /**
      * @brief 检查 ADB 设备是否可用
@@ -293,8 +291,9 @@ public:
      * @thread_safety 线程安全
      */
     [[nodiscard]] static std::expected<std::string, CaptureError>
-    ExecuteAdbCommand(std::string_view device_id, std::string_view command,
-                      core::Duration timeout = std::chrono::seconds(30));
+    ExecuteAdbCommand(std::string_view device_id,
+                      std::string_view command,
+                      core::Duration   timeout = std::chrono::seconds(30));
 
 private:
     // ==================================================================
@@ -306,13 +305,16 @@ private:
      */
     struct FrameBufferElement
     {
-        FrameMetadata              metadata;
-        std::vector<std::byte>     data;
-        core::Timestamp            enqueue_time;
+        FrameMetadata          metadata;
+        std::vector<std::byte> data;
+        core::Timestamp        enqueue_time;
 
         FrameBufferElement() = default;
+
         FrameBufferElement(FrameMetadata m, std::vector<std::byte> d)
-            : metadata(std::move(m)), data(std::move(d)), enqueue_time(core::Clock::now())
+            : metadata(std::move(m)),
+              data(std::move(d)),
+              enqueue_time(core::Clock::now())
         {
         }
     };
@@ -403,10 +405,10 @@ private:
     std::thread capture_thread_;
 
     // 输出帧队列（生产者-消费者模式）
-    mutable std::mutex              queue_mutex_;
-    std::condition_variable         queue_cv_;
-    std::queue<FrameBufferElement>  frame_queue_;
-    std::size_t                     max_queue_size_ = 3;
+    mutable std::mutex             queue_mutex_;
+    std::condition_variable        queue_cv_;
+    std::queue<FrameBufferElement> frame_queue_;
+    std::size_t                    max_queue_size_ = 3;
 
     // ADB 进程管理
     std::unique_ptr<AdbProcessManager> adb_process_;
@@ -418,8 +420,8 @@ private:
     std::unique_ptr<core::FixedMemoryPool> memory_pool_;
 
     // 统计信息（原子操作）
-    mutable std::mutex stats_mutex_;
-    CaptureStats       stats_;
+    mutable std::mutex         stats_mutex_;
+    CaptureStats               stats_;
     std::atomic<std::uint64_t> frame_counter_{0};
 
     // 日志器

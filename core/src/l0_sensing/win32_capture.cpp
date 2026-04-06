@@ -41,26 +41,26 @@
 
 // Windows 头文件
 #ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
 #endif
 #ifndef NOMINMAX
-#define NOMINMAX
+#    define NOMINMAX
 #endif
-#include <windows.h>
-#include <psapi.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <psapi.h>
+#include <windows.h>
 
 // Windows Graphics Capture API (WinRT)
 #include <windows.graphics.capture.h>
 #include <windows.graphics.capture.interop.h>
 #include <windows.graphics.directx.direct3d11.h>
 #include <windows.graphics.directx.direct3d11.interop.h>
-#include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Metadata.h>
+#include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Graphics.Capture.h>
-#include <winrt/Windows.Graphics.DirectX.h>
 #include <winrt/Windows.Graphics.DirectX.Direct3d11.h>
+#include <winrt/Windows.Graphics.DirectX.h>
 #include <winrt/Windows.System.h>
 
 // COM 智能指针
@@ -97,7 +97,8 @@ constexpr int MIN_CAPTURE_INTERVAL_MS = 16;  // ~60 FPS
 constexpr int WGC_MIN_BUILD = 19041;  // Windows 10 2004
 
 // 枚举窗口回调上下文
-struct EnumWindowsContext {
+struct EnumWindowsContext
+{
     std::vector<Win32CaptureBackend::WindowInfo> windows;
     std::string                                  target_title;
     bool                                         exact_match = false;
@@ -119,7 +120,11 @@ class WindowsGraphicsCapture
 {
 public:
     WindowsGraphicsCapture() = default;
-    ~WindowsGraphicsCapture() { Stop(); }
+
+    ~WindowsGraphicsCapture()
+    {
+        Stop();
+    }
 
     // 禁用拷贝
     WindowsGraphicsCapture(const WindowsGraphicsCapture&)            = delete;
@@ -250,6 +255,9 @@ public:
         d3d_device_      = nullptr;
 
         is_initialized_ = false;
+
+        // 清理 WinRT apartment
+        winrt::uninit_apartment();
     }
 
     /**
@@ -268,8 +276,7 @@ public:
 
         // 等待帧可用
         auto deadline = std::chrono::steady_clock::now() + timeout;
-        while (latest_frame_.empty() &&
-               std::chrono::steady_clock::now() < deadline) {
+        while (latest_frame_.empty() && std::chrono::steady_clock::now() < deadline) {
             lock.unlock();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             lock.lock();
@@ -316,17 +323,16 @@ private:
             D3D_FEATURE_LEVEL_10_0,
         };
 
-        HRESULT hr = D3D11CreateDevice(
-            nullptr,                    // 默认适配器
-            D3D_DRIVER_TYPE_HARDWARE,   // 硬件驱动
-            nullptr,                    // 无软件驱动
-            create_device_flags,
-            feature_levels,
-            ARRAYSIZE(feature_levels),
-            D3D11_SDK_VERSION,
-            &d3d_device_,
-            nullptr,
-            &d3d_context_);
+        HRESULT hr = D3D11CreateDevice(nullptr,                   // 默认适配器
+                                       D3D_DRIVER_TYPE_HARDWARE,  // 硬件驱动
+                                       nullptr,                   // 无软件驱动
+                                       create_device_flags,
+                                       feature_levels,
+                                       ARRAYSIZE(feature_levels),
+                                       D3D11_SDK_VERSION,
+                                       &d3d_device_,
+                                       nullptr,
+                                       &d3d_context_);
 
         if (FAILED(hr)) {
             SPDLOG_ERROR("D3D11CreateDevice failed: 0x{:08X}", static_cast<unsigned int>(hr));
@@ -375,11 +381,11 @@ private:
      * @return Direct3D 设备
      */
     [[nodiscard]] winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice
-        CreateDirect3DDevice()
+    CreateDirect3DDevice()
     {
         // 获取 DXGI 设备
         ComPtr<IDXGIDevice> dxgi_device;
-        HRESULT hr = d3d_device_.As(&dxgi_device);
+        HRESULT             hr = d3d_device_.As(&dxgi_device);
         if (FAILED(hr)) {
             SPDLOG_ERROR("Failed to get DXGI device: 0x{:08X}", static_cast<unsigned int>(hr));
             return nullptr;
@@ -417,8 +423,9 @@ private:
                 winrt::Windows::Graphics::SizeInt32{width_, height_});
 
             // 注册帧到达事件
-            frame_arrived_token_ = frame_pool_.FrameArrived(
-                [this](auto&&, auto&&) { OnFrameArrived(); });
+            frame_arrived_token_ = frame_pool_.FrameArrived([this](auto&&, auto&&) {
+                OnFrameArrived();
+            });
 
             return true;
         }
@@ -449,8 +456,7 @@ private:
 
             // 禁用边框高亮
             if (winrt::Windows::Foundation::Metadata::ApiInformation::IsPropertyPresent(
-                    L"Windows.Graphics.Capture.GraphicsCaptureSession",
-                    L"IsBorderRequired")) {
+                    L"Windows.Graphics.Capture.GraphicsCaptureSession", L"IsBorderRequired")) {
                 capture_session_.IsBorderRequired(false);
             }
 
@@ -482,9 +488,10 @@ private:
             }
 
             // 将表面转换为纹理
-            auto access = surface.as<Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
+            auto access =
+                surface.as<Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
             ComPtr<ID3D11Texture2D> texture;
-            HRESULT hr = access->GetInterface(IID_PPV_ARGS(&texture));
+            HRESULT                 hr = access->GetInterface(IID_PPV_ARGS(&texture));
             if (FAILED(hr)) {
                 return;
             }
@@ -513,10 +520,10 @@ private:
 
         // 创建暂存纹理用于 CPU 读取
         D3D11_TEXTURE2D_DESC staging_desc = desc;
-        staging_desc.Usage          = D3D11_USAGE_STAGING;
-        staging_desc.BindFlags      = 0;
-        staging_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        staging_desc.MiscFlags      = 0;
+        staging_desc.Usage                = D3D11_USAGE_STAGING;
+        staging_desc.BindFlags            = 0;
+        staging_desc.CPUAccessFlags       = D3D11_CPU_ACCESS_READ;
+        staging_desc.MiscFlags            = 0;
 
         ComPtr<ID3D11Texture2D> staging_texture;
         HRESULT hr = d3d_device_->CreateTexture2D(&staging_desc, nullptr, &staging_texture);
@@ -535,8 +542,8 @@ private:
         }
 
         // 复制数据
-        std::size_t row_pitch = mapped.RowPitch;
-        std::size_t data_size = row_pitch * desc.Height;
+        std::size_t               row_pitch = mapped.RowPitch;
+        std::size_t               data_size = row_pitch * desc.Height;
         std::vector<std::uint8_t> data(data_size);
 
         if (row_pitch == desc.Width * 4) {
@@ -571,7 +578,7 @@ private:
     ComPtr<ID3D11Device>        d3d_device_;
     ComPtr<ID3D11DeviceContext> d3d_context_;
 
-    winrt::Windows::Graphics::Capture::GraphicsCaptureItem       capture_item_{nullptr};
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem        capture_item_{nullptr};
     winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool frame_pool_{nullptr};
     winrt::Windows::Graphics::Capture::GraphicsCaptureSession     capture_session_{nullptr};
     winrt::event_token                                            frame_arrived_token_;
@@ -592,7 +599,11 @@ class BitBltCapture
 {
 public:
     BitBltCapture() = default;
-    ~BitBltCapture() { Cleanup(); }
+
+    ~BitBltCapture()
+    {
+        Cleanup();
+    }
 
     // 禁用拷贝
     BitBltCapture(const BitBltCapture&)            = delete;
@@ -642,8 +653,8 @@ public:
         bmi.bmiHeader.biBitCount    = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
 
-        void*    bits    = nullptr;
-        hbitmap_ = CreateDIBSection(hdc_mem_, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
+        void* bits = nullptr;
+        hbitmap_   = CreateDIBSection(hdc_mem_, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
         if (!hbitmap_) {
             SPDLOG_ERROR("Failed to create DIB section");
             Cleanup();
@@ -687,12 +698,8 @@ public:
         ClientToScreen(hwnd_, &client_origin);
 
         // 执行 BitBlt
-        BOOL result = BitBlt(hdc_mem_,
-                             0, 0,
-                             width_, height_,
-                             hdc_window,
-                             0, 0,
-                             SRCCOPY | CAPTUREBLT);
+        BOOL result =
+            BitBlt(hdc_mem_, 0, 0, width_, height_, hdc_window, 0, 0, SRCCOPY | CAPTUREBLT);
 
         ReleaseDC(hwnd_, hdc_window);
 
@@ -770,9 +777,8 @@ Win32CaptureBackend::Win32CaptureBackend()
       use_wgc_(WindowsGraphicsCapture::IsSupported()),
       logger_(core::LoggerManager::create_logger("Win32CaptureBackend", core::LoggerConfig{}))
 {
-    SPDLOG_LOGGER_INFO(logger_.native(),
-                       "Win32 capture backend created, WGC support: {}",
-                       use_wgc_);
+    SPDLOG_LOGGER_INFO(
+        logger_.native(), "Win32 capture backend created, WGC support: {}", use_wgc_);
 }
 
 Win32CaptureBackend::~Win32CaptureBackend()
@@ -842,7 +848,7 @@ Win32CaptureBackend::~Win32CaptureBackend()
     pool_config.initial_blocks    = config.buffer_queue_size;
     pool_config.allow_growth      = true;
     pool_config.track_allocations = true;
-    memory_pool_ = std::make_unique<core::FixedMemoryPool>(pool_config);
+    memory_pool_                  = std::make_unique<core::FixedMemoryPool>(pool_config);
 
     // 设置队列大小
     max_queue_size_ = config.buffer_queue_size;
@@ -918,15 +924,15 @@ Win32CaptureBackend::~Win32CaptureBackend()
     if (use_wgc) {
         // 使用 Windows Graphics Capture
         wgc_capture_ = std::make_unique<WindowsGraphicsCapture>();
-        if (!wgc_capture_->Initialize(target_window_, config_.target_width, config_.target_height)) {
+        if (!wgc_capture_->Initialize(
+                target_window_, config_.target_width, config_.target_height)) {
             SPDLOG_LOGGER_WARN(logger_.native(),
                                "WGC initialization failed, falling back to BitBlt");
             wgc_capture_.reset();
             use_wgc = false;
         }
         else if (!wgc_capture_->Start()) {
-            SPDLOG_LOGGER_WARN(logger_.native(),
-                               "WGC start failed, falling back to BitBlt");
+            SPDLOG_LOGGER_WARN(logger_.native(), "WGC start failed, falling back to BitBlt");
             wgc_capture_.reset();
             use_wgc = false;
         }
@@ -935,7 +941,8 @@ Win32CaptureBackend::~Win32CaptureBackend()
     if (!use_wgc) {
         // 使用 BitBlt
         bitblt_capture_ = std::make_unique<BitBltCapture>();
-        if (!bitblt_capture_->Initialize(target_window_, config_.target_width, config_.target_height)) {
+        if (!bitblt_capture_->Initialize(
+                target_window_, config_.target_width, config_.target_height)) {
             SPDLOG_LOGGER_ERROR(logger_.native(), "BitBlt initialization failed");
             state_ = State::Error;
             return std::unexpected(CaptureError::DeviceError);
@@ -945,12 +952,11 @@ Win32CaptureBackend::~Win32CaptureBackend()
     // 启动捕获线程
     capture_thread_ = std::thread(&Win32CaptureBackend::CaptureThreadFunc, this);
 
-    state_ = State::Capturing;
+    state_               = State::Capturing;
     stats_.session_start = core::Clock::now();
 
-    SPDLOG_LOGGER_INFO(logger_.native(),
-                       "Win32 capture started (method: {})",
-                       use_wgc ? "WGC" : "BitBlt");
+    SPDLOG_LOGGER_INFO(
+        logger_.native(), "Win32 capture started (method: {})", use_wgc ? "WGC" : "BitBlt");
 
     return {};
 }
@@ -1050,8 +1056,8 @@ Win32CaptureBackend::TryGetFrame()
     return std::make_pair(std::move(frame.metadata), std::move(frame.data));
 }
 
-[[nodiscard]] ICaptureBackend::Result Win32CaptureBackend::GetFrameWithCallback(
-    core::Duration timeout, FrameCallback callback)
+[[nodiscard]] ICaptureBackend::Result
+Win32CaptureBackend::GetFrameWithCallback(core::Duration timeout, FrameCallback callback)
 {
     auto result = GetFrame(timeout);
     if (!result) {
@@ -1082,9 +1088,9 @@ Win32CaptureBackend::TryGetFrame()
     }
 
     // 检查是否需要重启捕获（分辨率或窗口变更）
-    bool needs_restart = (config.target_width != config_.target_width) ||
-                         (config.target_height != config_.target_height) ||
-                         (config.target_id != config_.target_id);
+    bool needs_restart = (config.target_width != config_.target_width)
+                      || (config.target_height != config_.target_height)
+                      || (config.target_id != config_.target_id);
 
     if (needs_restart && state_ == State::Capturing) {
         // 需要重启捕获会话
@@ -1125,7 +1131,7 @@ Win32CaptureBackend::TryGetFrame()
 Win32CaptureBackend::EnumerateDevices()
 {
     // 枚举所有可见窗口作为设备
-    auto windows = EnumerateWindowsInternal("", false);
+    auto                     windows = EnumerateWindowsInternal("", false);
     std::vector<std::string> device_ids;
     device_ids.reserve(windows.size());
     for (const auto& window : windows) {
@@ -1187,8 +1193,7 @@ Win32CaptureBackend::FindWindowByTitle(std::string_view title, bool exact_match)
     return windows[0];
 }
 
-[[nodiscard]] std::expected<std::string, CaptureError>
-Win32CaptureBackend::GetForegroundWindowId()
+[[nodiscard]] std::expected<std::string, CaptureError> Win32CaptureBackend::GetForegroundWindowId()
 {
     HWND hwnd = GetForegroundWindow();
     if (!hwnd) {
@@ -1237,7 +1242,8 @@ void Win32CaptureBackend::CaptureThreadFunc()
 
     while (!stop_requested_.load()) {
         auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_capture_time);
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - last_capture_time);
 
         // 控制帧率
         if (elapsed.count() < MIN_CAPTURE_INTERVAL_MS) {
@@ -1284,10 +1290,10 @@ void Win32CaptureBackend::CaptureThreadFunc()
     SPDLOG_LOGGER_INFO(logger_.native(), "Capture thread stopped");
 }
 
-[[nodiscard]] std::vector<std::uint8_t> Win32CaptureBackend::ConvertBGRAtoRGB24(
-    const std::vector<std::uint8_t>& bgra_data)
+[[nodiscard]] std::vector<std::uint8_t>
+Win32CaptureBackend::ConvertBGRAtoRGB24(const std::vector<std::uint8_t>& bgra_data)
 {
-    std::size_t pixel_count = bgra_data.size() / 4;
+    std::size_t               pixel_count = bgra_data.size() / 4;
     std::vector<std::uint8_t> rgb_data(pixel_count * 3);
 
     for (std::size_t i = 0; i < pixel_count; ++i) {
@@ -1303,7 +1309,8 @@ void Win32CaptureBackend::CaptureThreadFunc()
 [[nodiscard]] std::optional<Win32CaptureBackend::FrameBufferElement>
 Win32CaptureBackend::CreateFrame(std::vector<std::uint8_t>&& rgb_data)
 {
-    if (rgb_data.size() != static_cast<std::size_t>(config_.target_width * config_.target_height * 3)) {
+    if (rgb_data.size()
+        != static_cast<std::size_t>(config_.target_width * config_.target_height * 3)) {
         return std::nullopt;
     }
 
@@ -1357,14 +1364,13 @@ void Win32CaptureBackend::UpdateStats(core::Duration latency)
     // 计算当前 FPS
     auto session_duration = stats_.get_session_duration();
     if (session_duration.count() > 0) {
-        stats_.current_fps =
-            static_cast<double>(stats_.frames_captured) /
-            (static_cast<double>(session_duration.count()) / 1'000'000'000.0);
+        stats_.current_fps = static_cast<double>(stats_.frames_captured)
+                           / (static_cast<double>(session_duration.count()) / 1'000'000'000.0);
     }
 }
 
-[[nodiscard]] std::vector<Win32CaptureBackend::WindowInfo> Win32CaptureBackend::EnumerateWindowsInternal(
-    const std::string& title_filter, bool exact_match)
+[[nodiscard]] std::vector<Win32CaptureBackend::WindowInfo>
+Win32CaptureBackend::EnumerateWindowsInternal(const std::string& title_filter, bool exact_match)
 {
     std::vector<Win32CaptureBackend::WindowInfo> windows;
 
@@ -1393,9 +1399,11 @@ void Win32CaptureBackend::UpdateStats(core::Duration latency)
             title.resize(title_length);
 
             // 转换为 UTF-8
-            int utf8_size = WideCharToMultiByte(CP_UTF8, 0, title.c_str(), -1, nullptr, 0, nullptr, nullptr);
+            int utf8_size =
+                WideCharToMultiByte(CP_UTF8, 0, title.c_str(), -1, nullptr, 0, nullptr, nullptr);
             std::string utf8_title(utf8_size - 1, '\0');
-            WideCharToMultiByte(CP_UTF8, 0, title.c_str(), -1, utf8_title.data(), utf8_size, nullptr, nullptr);
+            WideCharToMultiByte(
+                CP_UTF8, 0, title.c_str(), -1, utf8_title.data(), utf8_size, nullptr, nullptr);
 
             // 过滤
             if (!ctx->target_title.empty()) {
@@ -1443,7 +1451,7 @@ void Win32CaptureBackend::UpdateStats(core::Duration latency)
 [[nodiscard]] Win32CaptureBackend::WindowInfo Win32CaptureBackend::GetWindowInfoInternal(HWND hwnd)
 {
     Win32CaptureBackend::WindowInfo info;
-    info.id = std::to_string(reinterpret_cast<std::uintptr_t>(hwnd));
+    info.id   = std::to_string(reinterpret_cast<std::uintptr_t>(hwnd));
     info.hwnd = hwnd;
 
     // 获取窗口标题
@@ -1453,35 +1461,49 @@ void Win32CaptureBackend::UpdateStats(core::Duration latency)
         GetWindowTextW(hwnd, title.data(), title_length + 1);
         title.resize(title_length);
 
-        int utf8_size = WideCharToMultiByte(CP_UTF8, 0, title.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        int utf8_size =
+            WideCharToMultiByte(CP_UTF8, 0, title.c_str(), -1, nullptr, 0, nullptr, nullptr);
         info.title.resize(utf8_size - 1);
-        WideCharToMultiByte(CP_UTF8, 0, title.c_str(), -1, info.title.data(), utf8_size, nullptr, nullptr);
+        WideCharToMultiByte(
+            CP_UTF8, 0, title.c_str(), -1, info.title.data(), utf8_size, nullptr, nullptr);
     }
 
     // 获取窗口类名
     wchar_t class_name[256];
     if (GetClassNameW(hwnd, class_name, 256) > 0) {
-        int utf8_size = WideCharToMultiByte(CP_UTF8, 0, class_name, -1, nullptr, 0, nullptr, nullptr);
+        int utf8_size =
+            WideCharToMultiByte(CP_UTF8, 0, class_name, -1, nullptr, 0, nullptr, nullptr);
         info.class_name.resize(utf8_size - 1);
-        WideCharToMultiByte(CP_UTF8, 0, class_name, -1, info.class_name.data(), utf8_size, nullptr, nullptr);
+        WideCharToMultiByte(
+            CP_UTF8, 0, class_name, -1, info.class_name.data(), utf8_size, nullptr, nullptr);
     }
 
     // 获取进程名
     DWORD process_id = 0;
     GetWindowThreadProcessId(hwnd, &process_id);
     if (process_id != 0) {
-        HANDLE process_handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process_id);
+        HANDLE process_handle =
+            OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process_id);
         if (process_handle != nullptr) {
             wchar_t process_name[MAX_PATH];
             if (GetModuleFileNameExW(process_handle, nullptr, process_name, MAX_PATH) > 0) {
                 // 提取文件名（不含路径）
                 std::wstring full_path(process_name);
-                size_t pos = full_path.find_last_of(L"\\/");
-                std::wstring file_name = (pos != std::wstring::npos) ? full_path.substr(pos + 1) : full_path;
+                size_t       pos = full_path.find_last_of(L"\\/");
+                std::wstring file_name =
+                    (pos != std::wstring::npos) ? full_path.substr(pos + 1) : full_path;
 
-                int utf8_size = WideCharToMultiByte(CP_UTF8, 0, file_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                int utf8_size = WideCharToMultiByte(
+                    CP_UTF8, 0, file_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
                 info.process_name.resize(utf8_size - 1);
-                WideCharToMultiByte(CP_UTF8, 0, file_name.c_str(), -1, info.process_name.data(), utf8_size, nullptr, nullptr);
+                WideCharToMultiByte(CP_UTF8,
+                                    0,
+                                    file_name.c_str(),
+                                    -1,
+                                    info.process_name.data(),
+                                    utf8_size,
+                                    nullptr,
+                                    nullptr);
             }
             CloseHandle(process_handle);
         }
@@ -1504,7 +1526,7 @@ void Win32CaptureBackend::UpdateStats(core::Duration latency)
     }
 
     // 检查是否可见和最小化
-    info.is_visible = IsWindowVisible(hwnd) != FALSE;
+    info.is_visible   = IsWindowVisible(hwnd) != FALSE;
     info.is_minimized = IsIconic(hwnd) != FALSE;
 
     return info;
