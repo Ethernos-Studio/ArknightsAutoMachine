@@ -72,7 +72,7 @@ ArknightsAutoMachine/
 
 ### 环境要求
 
-- Windows 11 [教程](./) / Linux / macOS
+- Windows 11 [教程](./docs/WindowsTutorial/SelectLanguage.md) / Linux / macOS
 - Python 3.11+
 - CMake 3.25+
 - Visual Studio 2022 (Windows) / GCC 13 (Linux)
