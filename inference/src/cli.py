@@ -41,9 +41,12 @@ from contextlib import contextmanager
 import cv2
 import numpy as np
 
-# 确保src目录在路径中
-sys.path.insert(0, str(Path(__file__).parent))
+# 确保 src 目录的父目录在路径中（这样 src 可以作为包导入）
+parent_path = str(Path(__file__).parent.parent)
+if parent_path not in sys.path:
+    sys.path.insert(0, parent_path)
 
+# 使用 src 包导入
 from src.vision import (
     GameStateDetector,
     DetectorConfig,
@@ -63,16 +66,19 @@ from src.vision.enhanced_gui_matcher import (
     UIElement,
     UIElementType,
 )
+from src.vision.squad_recognizer import SquadRecognizer, SquadConfig, OperatorCard, EliteLevel
+from src.vision.squad_analyzer import SquadAnalyzer, SquadAnalysisResult
 from src.data import (
     DataManager,
     ManagerConfig,
     CacheConfig,
+)
+from src.data.models import (
     Operator,
     Stage,
     Item,
 )
-from src.vision.squad_recognizer import SquadRecognizer, SquadConfig
-from src.vision.squad_analyzer import SquadAnalyzer
+from src.data.operator_matcher import OperatorMatcher, MatchResult 
 
 
 # =============================================================================
@@ -233,8 +239,19 @@ class ImageLoader:
         if path.suffix.lower() not in cls.SUPPORTED_EXTENSIONS:
             return None
 
-        image = cv2.imread(str(path))
-        return image
+        # 使用 cv2.imdecode 读取图像以支持中文路径
+        try:
+            # 先用普通方式读取
+            image = cv2.imread(str(path))
+            if image is None:
+                # 如果失败，尝试用文件流方式读取（支持中文路径）
+                with open(path, 'rb') as f:
+                    file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
+                    image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            return image
+        except Exception as e:
+            logging.error(f"加载图像失败：{e}")
+            return None
 
     @classmethod
     def load_batch(cls, directory: Path, recursive: bool = False) -> List[Tuple[Path, np.ndarray]]:
