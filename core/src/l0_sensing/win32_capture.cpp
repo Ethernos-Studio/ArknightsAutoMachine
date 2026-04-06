@@ -798,13 +798,16 @@ Win32CaptureBackend::~Win32CaptureBackend()
         // 尝试将 target_id 解析为窗口句柄
         HWND hwnd = nullptr;
         try {
-            hwnd = reinterpret_cast<HWND>(std::stoull(config.target_id, nullptr, 16));
+            // 使用 std::uintptr_t 作为中间转换类型，避免 32 位系统上的指针截断
+            std::uintptr_t hwnd_value = std::stoull(config.target_id, nullptr, 16);
+            hwnd                      = reinterpret_cast<HWND>(hwnd_value);
         }
         catch (...) {
             // 不是句柄，尝试按窗口标题查找
             auto windows = EnumerateWindowsInternal(config.target_id, false);
             if (!windows.empty()) {
-                hwnd = reinterpret_cast<HWND>(std::stoull(windows[0].id, nullptr, 16));
+                std::uintptr_t hwnd_value = std::stoull(windows[0].id, nullptr, 16);
+                hwnd                      = reinterpret_cast<HWND>(hwnd_value);
             }
         }
 

@@ -333,26 +333,64 @@ add_custom_target(aam_proto_generation
 # =============================================================================
 set(MAAFW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/maafw")
 
-# 如果目录不存在，克隆并初始化子模块
+# 如果目录不存在，克隆并初始化子模块（带重试机制）
 if(NOT EXISTS "${MAAFW_DIR}/CMakeLists.txt")
     message(STATUS "MaaFramework not found, cloning from Ethernos-Studio fork...")
-    execute_process(
-        COMMAND git clone --recursive https://github.com/Ethernos-Studio/MaaFramework.git "${MAAFW_DIR}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
-        RESULT_VARIABLE GIT_CLONE_RESULT
-    )
-    if(NOT GIT_CLONE_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to clone MaaFramework")
-    endif()
-    
-    # 切换到 fix 分支
-    execute_process(
-        COMMAND git checkout fix/submodule-compatibility
-        WORKING_DIRECTORY "${MAAFW_DIR}"
-        RESULT_VARIABLE GIT_CHECKOUT_RESULT
-    )
-    if(NOT GIT_CHECKOUT_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to checkout fix/submodule-compatibility branch")
+
+    # 配置重试参数
+    set(MAX_RETRY_COUNT 3)
+    set(RETRY_DELAY_SECONDS 5)
+    set(CLONE_SUCCESS FALSE)
+
+    # 尝试克隆（带重试）
+    foreach(RETRY_INDEX RANGE 1 ${MAX_RETRY_COUNT})
+        if(RETRY_INDEX GREATER 1)
+            message(STATUS "Retry ${RETRY_INDEX}/${MAX_RETRY_COUNT}: Waiting ${RETRY_DELAY_SECONDS} seconds before next attempt...")
+            execute_process(COMMAND ${CMAKE_COMMAND} -E sleep ${RETRY_DELAY_SECONDS})
+        endif()
+
+        message(STATUS "Attempt ${RETRY_INDEX}/${MAX_RETRY_COUNT}: Cloning MaaFramework...")
+        execute_process(
+            COMMAND git clone --recursive https://github.com/Ethernos-Studio/MaaFramework.git "${MAAFW_DIR}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+            RESULT_VARIABLE GIT_CLONE_RESULT
+            OUTPUT_VARIABLE GIT_CLONE_OUTPUT
+            ERROR_VARIABLE GIT_CLONE_ERROR
+            TIMEOUT 300  # 5分钟超时
+        )
+
+        if(GIT_CLONE_RESULT EQUAL 0)
+            set(CLONE_SUCCESS TRUE)
+            message(STATUS "Successfully cloned MaaFramework")
+            break()
+        else()
+            message(WARNING "Clone attempt ${RETRY_INDEX} failed: ${GIT_CLONE_ERROR}")
+            # 清理失败的克隆目录
+            if(EXISTS "${MAAFW_DIR}")
+                file(REMOVE_RECURSE "${MAAFW_DIR}")
+            endif()
+        endif()
+    endforeach()
+
+    if(NOT CLONE_SUCCESS)
+        message(WARNING "Failed to clone MaaFramework after ${MAX_RETRY_COUNT} attempts. "
+                        "MaaFramework support will be disabled. "
+                        "To retry manually, run: git clone --recursive https://github.com/Ethernos-Studio/MaaFramework.git ${MAAFW_DIR}")
+        # 创建空标记文件以跳过后续尝试
+        file(WRITE "${MAAFW_DIR}/.clone_failed" "Clone failed at ${CMAKE_CURRENT_TIMESTAMP}")
+    else()
+        # 切换到 fix 分支
+        execute_process(
+            COMMAND git checkout fix/submodule-compatibility
+            WORKING_DIRECTORY "${MAAFW_DIR}"
+            RESULT_VARIABLE GIT_CHECKOUT_RESULT
+            OUTPUT_VARIABLE GIT_CHECKOUT_OUTPUT
+            ERROR_VARIABLE GIT_CHECKOUT_ERROR
+        )
+        if(NOT GIT_CHECKOUT_RESULT EQUAL 0)
+            message(WARNING "Failed to checkout fix/submodule-compatibility branch: ${GIT_CHECKOUT_ERROR}. "
+                            "Using default branch instead.")
+        endif()
     endif()
 endif()
 
@@ -480,6 +518,7 @@ target_compile_definitions(aam_core
         $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:NOMINMAX>
         $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:WIN32_LEAN_AND_MEAN>
         $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:_CRT_SECURE_NO_WARNINGS>
+        $<$<BOOL:${AAM_MAAFW_ENABLED}>:AAM_MAAFW_DIR="${MAAFW_DIR}">
 )
 
 # 编译器特定选项已由 aam_compiler_flags 提供，此处无需重复设置

@@ -592,15 +592,24 @@ void MaaCaptureBackend::CaptureThreadFunc()
 
         spdlog::info("Creating ADB controller with path: {}, address: {}", adb_path, address);
 
-        // Agent 路径 - 使用相对路径或环境变量
+        // Agent 路径 - 使用 CMake 配置的绝对路径、环境变量或默认路径
         std::string agent_path;
         if (const char* env_path = std::getenv("MAA_AGENT_PATH")) {
+            // 优先使用环境变量指定的路径
             agent_path = env_path;
         }
+#ifdef AAM_MAAFW_DIR
         else {
-            // 默认使用相对于可执行文件的路径
+            // 使用 CMake 配置的绝对路径，避免运行时工作目录问题
+            agent_path = std::string(AAM_MAAFW_DIR) + "/3rdparty/MaaAgentBinary";
+        }
+#else
+        else {
+            // 回退到相对路径（仅当 CMake 未配置时）
+            spdlog::warn("AAM_MAAFW_DIR not defined, falling back to relative path for agent");
             agent_path = "third_party/maafw/3rdparty/MaaAgentBinary";
         }
+#endif
 
         // 创建 ADB 控制器
         maa_controller_ = MaaAdbControllerCreate(adb_path.c_str(),
@@ -769,13 +778,15 @@ MaaCaptureBackend::CaptureScreenshot()
     }
 
     // 创建 OpenCV Mat (使用 BGR 格式，与 MaaFramework 默认输出一致)
+    // 重要：cv::Mat 与 MaaImageBuffer 共享内存，raw_data 指向 MaaImageBuffer 的内部缓冲区
+    // 因此 cv::Mat 的生命周期不能超过 image_buffer，必须在 MaaImageBufferDestroy 之前完成所有使用
     cv::Mat image(
         static_cast<int>(height), static_cast<int>(width), CV_8UC3, const_cast<uint8_t*>(raw_data));
 
-    // 处理图像
+    // 处理图像 - 在 image_buffer 被释放前完成所有对 image 的操作
     FrameBufferElement frame = ProcessScreenshot(image);
 
-    // 释放 MAA 图像缓冲区
+    // 释放 MAA 图像缓冲区 - 此后 image 中的数据指针将失效，不得再访问
     MaaImageBufferDestroy(image_buffer);
 
     return frame;

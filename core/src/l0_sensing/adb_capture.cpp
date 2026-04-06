@@ -53,6 +53,24 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 
+// FFmpeg 版本检查宏 - 确保 API 兼容性
+// FFmpeg 4.4+ 才支持 const_cast 方式的数据包处理
+#define REQUIRED_FFMPEG_VERSION_MAJOR 4
+#define REQUIRED_FFMPEG_VERSION_MINOR 4
+
+/**
+ * @brief 检查 FFmpeg 运行时版本是否满足要求
+ * @return true 如果版本 >= 4.4
+ */
+[[nodiscard]] inline bool CheckFFmpegVersion()
+{
+    unsigned int version = avcodec_version();
+    int          major   = (version >> 16) & 0xFF;
+    int          minor   = (version >> 8) & 0xFF;
+    return (major > REQUIRED_FFMPEG_VERSION_MAJOR)
+        || (major == REQUIRED_FFMPEG_VERSION_MAJOR && minor >= REQUIRED_FFMPEG_VERSION_MINOR);
+}
+
 namespace aam::l0
 {
 
@@ -317,6 +335,12 @@ public:
     FFmpegH264Decoder()
     {
         // 初始化 FFmpeg（新版本不需要显式注册）
+
+        // 检查 FFmpeg 版本兼容性
+        if (!CheckFFmpegVersion()) {
+            throw std::runtime_error(
+                "FFmpeg version >= 4.4 required for packet data compatibility");
+        }
 
         // 查找 H264 解码器
         codec_ = avcodec_find_decoder(AV_CODEC_ID_H264);
@@ -1110,6 +1134,12 @@ void AdbCaptureBackend::CaptureThreadFunc()
                + std::to_string(config_.target_height);
     arguments += " --bit-rate=8000000";  // 8Mbps 比特率
     arguments += " -";
+
+    // 检查 adb_path_ 是否有效
+    if (adb_path_.empty()) {
+        SPDLOG_LOGGER_ERROR(logger_.native(), "ADB path is empty, cannot start process");
+        return std::unexpected(CaptureError::DeviceNotFound);
+    }
 
     if (!adb_process_->Start(adb_path_, arguments)) {
         SPDLOG_LOGGER_ERROR(logger_.native(), "Failed to start ADB process");
