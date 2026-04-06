@@ -108,6 +108,11 @@ if(WIN32)
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_features2d4.dll
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_video4.dll
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_photo4.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_calib3d4.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_dnn4.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_ml4.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_objdetect4.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/opencv_stitching4.dll
         # Core libraries
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/fmt.dll
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/spdlog.dll
@@ -138,4 +143,31 @@ if(WIN32)
     add_custom_command(TARGET aam_capture_test_cli POST_BUILD
         COMMENT "Copied vcpkg DLLs to output directory"
     )
+    
+    # 复制 MaaFramework DLL
+    set(AAM_RUNTIME_DLLS
+        MaaFramework.dll
+        MaaToolkit.dll
+        MaaUtils.dll
+        MaaAdbControlUnit.dll
+        MaaWin32ControlUnit.dll
+        MaaCustomControlUnit.dll
+        MaaRecordControlUnit.dll
+        MaaReplayControlUnit.dll
+        MaaGamepadControlUnit.dll
+        fastdeploy_ppocr_maa.dll
+        onnxruntime_maa.dll
+        DirectML.dll
+        ViGEmClient.dll
+        opencv_world4_maa.dll
+    )
+    
+    foreach(dll ${AAM_RUNTIME_DLLS})
+        add_custom_command(TARGET aam_capture_test_cli POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}/${dll}
+                $<TARGET_FILE_DIR:aam_capture_test_cli>
+            COMMENT "Copying ${dll} for aam_capture_test_cli"
+        )
+    endforeach()
 endif()
