@@ -21,8 +21,8 @@
 // ==========================================================================
 // 版本: v0.2.0-alpha.2
 // 功能: 通过 ADB shell screenrecord 实现 H264 视频流捕获
-// 依赖: C++23, OpenCV (H264 解码), Windows Process API
-// 算法: 管道读取 → H264 NAL 解析 → OpenCV 解码 → RGB24 输出
+// 依赖: C++23, FFmpeg (libavcodec/libavformat), Windows Process API
+// 算法: 管道读取 → H264 NAL 解析 → FFmpeg 解码 → RGB24 输出
 // 性能: P99 延迟 < 20ms @ 1920x1080@60fps
 // ==========================================================================
 

@@ -29,7 +29,7 @@
 import io
 import math
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple, Union, Callable
+from typing import List, Dict, Optional, Tuple
 from enum import Enum, auto
 from pathlib import Path
 import logging
@@ -310,13 +310,10 @@ class MapVisualizer:
         """渲染部署位标记"""
         if tile.can_deploy_melee() and tile.can_deploy_ranged():
             color = self.config.color_scheme.deploy_both
-            marker = 'B'
         elif tile.can_deploy_melee():
             color = self.config.color_scheme.deploy_melee
-            marker = 'M'
         elif tile.can_deploy_ranged():
             color = self.config.color_scheme.deploy_ranged
-            marker = 'R'
         else:
             return
         
@@ -375,7 +372,7 @@ class MapVisualizer:
         # 计算方向
         dx = end[0] - start[0]
         dy = end[1] - start[1]
-        length = math.sqrt(dx * dx + dy * dy)
+        length = math.hypot(dx, dy)
         
         if length < 1:
             return
@@ -414,8 +411,10 @@ class MapVisualizer:
         
         # 计算总长度
         total_length = sum(
-            math.sqrt((points[i+1][0] - points[i][0])**2 + 
-                     (points[i+1][1] - points[i][1])**2)
+            math.hypot(
+                points[i+1][0] - points[i][0],
+                points[i+1][1] - points[i][1],
+            )
             for i in range(len(points) - 1)
         )
         
@@ -424,9 +423,9 @@ class MapVisualizer:
         current_length = 0
         
         for i in range(len(points) - 1):
-            segment_length = math.sqrt(
-                (points[i+1][0] - points[i][0])**2 + 
-                (points[i+1][1] - points[i][1])**2
+            segment_length = math.hypot(
+                points[i+1][0] - points[i][0],
+                points[i+1][1] - points[i][1],
             )
             
             if current_length + segment_length >= target_length:
@@ -497,7 +496,7 @@ class MapVisualizer:
         # 尝试加载字体
         try:
             font = ImageFont.truetype("arial.ttf", 10)
-        except:
+        except Exception:
             font = ImageFont.load_default()
         
         text_color = self.config.color_scheme.text
