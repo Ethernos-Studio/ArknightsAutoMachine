@@ -17,7 +17,7 @@
 # =============================================================================
 # Arknights Auto Machine (AAM) - Root CMake Configuration
 # =============================================================================
-# 版本: v0.1.0-alpha.2
+# 版本: v0.2.0-alpha.2
 # 目标: C++23 标准，aam_core 静态库构建
 # 作者: dhjs0000
 # =============================================================================
@@ -104,7 +104,7 @@ endif()
 # =============================================================================
 project(
     AAM
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "Arknights Auto Machine - Industrial-grade Game Automation Framework"
     HOMEPAGE_URL "https://github.com/Ethernos-Studio/ArknightsAutoMachine"
     LANGUAGES CXX C
