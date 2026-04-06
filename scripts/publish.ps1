@@ -827,9 +827,27 @@ function Test-BuildDirectory {
     包含工具路径和类型的哈希表
 #>
 function Find-CompressionTool {
+    <#
+    .SYNOPSIS
+        查找可用的压缩工具
+
+    .DESCRIPTION
+        根据所需的压缩格式查找支持该格式的工具
+
+    .PARAMETER RequiredFormat
+        所需的压缩格式 (zip, tar.gz, tar.bz2, 7z)
+
+    .OUTPUTS
+        System.Collections.Hashtable
+        包含 Path, Type, Available 的工具信息
+    #>
     [CmdletBinding()]
     [OutputType([hashtable])]
-    param()
+    param(
+        [Parameter()]
+        [ValidateSet('zip', 'tar.gz', 'tar.bz2', '7z', '')]
+        [string]$RequiredFormat = ''
+    )
 
     Write-PublishLog '查找压缩工具...' -Level Debug
 
@@ -839,7 +857,7 @@ function Find-CompressionTool {
         Available = $false
     }
 
-    # 优先查找 7z
+    # 检查 7z 是否可用（支持所有格式）
     $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
     if (-not $sevenZip) {
         # 检查常见安装路径
@@ -856,7 +874,13 @@ function Find-CompressionTool {
         }
     }
 
-    if ($sevenZip) {
+    # 如果指定了格式，检查 7z 是否支持
+    $sevenZipSupportsFormat = $true
+    if ($RequiredFormat -eq 'tar.gz' -or $RequiredFormat -eq 'tar.bz2') {
+        # 7z 支持这些格式，但需要正确处理
+    }
+
+    if ($sevenZip -and $sevenZipSupportsFormat) {
         $tool.Path = $sevenZip.Source
         $tool.Type = '7z'
         $tool.Available = $true
@@ -864,20 +888,28 @@ function Find-CompressionTool {
         return $tool
     }
 
-    # 查找 tar（Windows 10+ 内置，或 Linux/macOS 自带）
-    $tar = Get-Command tar -ErrorAction SilentlyContinue
-    if ($tar) {
-        $tool.Path = $tar.Source
-        $tool.Type = 'tar'
+    # 查找 tar（支持 tar.gz 和 tar.bz2）
+    if ($RequiredFormat -eq 'tar.gz' -or $RequiredFormat -eq 'tar.bz2' -or [string]::IsNullOrEmpty($RequiredFormat)) {
+        $tar = Get-Command tar -ErrorAction SilentlyContinue
+        if ($tar) {
+            $tool.Path = $tar.Source
+            $tool.Type = 'tar'
+            $tool.Available = $true
+            Write-PublishLog "找到 tar: $($tool.Path)" -Level Debug
+            return $tool
+        }
+    }
+
+    # PowerShell Compress-Archive 仅支持 zip
+    if ($RequiredFormat -eq 'zip' -or [string]::IsNullOrEmpty($RequiredFormat)) {
+        $tool.Type = 'powershell'
         $tool.Available = $true
-        Write-PublishLog "找到 tar: $($tool.Path)" -Level Debug
+        Write-PublishLog '使用 PowerShell Compress-Archive' -Level Debug
         return $tool
     }
 
-    # 查找 PowerShell Compress-Archive
-    $tool.Type = 'powershell'
-    $tool.Available = $true
-    Write-PublishLog '使用 PowerShell Compress-Archive' -Level Debug
+    # 没有找到支持所需格式的工具
+    Write-PublishLog "未找到支持格式 '$RequiredFormat' 的压缩工具" -Level Debug
     return $tool
 }
 
@@ -1278,6 +1310,9 @@ function New-VersionManifest {
 .PARAMETER OutputPath
     输出文件路径
 
+.PARAMETER CompressFormat
+    压缩格式 (zip, tar.gz, tar.bz2, 7z)。如果未指定，根据平台自动选择。
+
 .OUTPUTS
     System.String
     成功返回包文件路径，失败返回 $null
@@ -1290,14 +1325,33 @@ function New-PublishPackage {
         [string]$StagingDirectory,
 
         [Parameter(Mandatory = $true)]
-        [string]$OutputPath
+        [string]$OutputPath,
+
+        [Parameter()]
+        [ValidateSet('zip', 'tar.gz', 'tar.bz2', '7z', '')]
+        [string]$CompressFormat = ''
     )
 
     Write-PublishLog '创建发布包...' -Level Debug
 
-    $tool = Find-CompressionTool
+    # 确定压缩格式
+    $format = $CompressFormat
+    if ([string]::IsNullOrEmpty($format)) {
+        # 根据平台选择默认格式
+        if ($IsLinux -or $IsMacOS) {
+            $format = 'tar.gz'
+        }
+        else {
+            $format = 'zip'
+        }
+    }
+
+    Write-PublishLog "使用压缩格式: $format" -Level Debug
+
+    # 查找压缩工具
+    $tool = Find-CompressionTool -RequiredFormat $format
     if (-not $tool.Available) {
-        Write-PublishLog '未找到可用的压缩工具' -Level Error
+        Write-PublishLog "未找到支持格式 '$format' 的压缩工具" -Level Error
         return $null
     }
 
@@ -1315,14 +1369,22 @@ function New-PublishPackage {
 
         switch ($tool.Type) {
             '7z' {
-                # 使用 7z 创建 zip 文件，显示进度信息
+                # 使用 7z 创建压缩文件
                 # -mx=3: 快速压缩（平衡速度和压缩率）
                 # -mmt=on: 启用多线程压缩
                 # -bsp1: 显示进度信息到 stdout
-                Write-PublishLog '使用 7-Zip 进行多线程压缩...' -Level Info
+                Write-PublishLog "使用 7-Zip 创建 $format 文件..." -Level Info
                 Push-Location $StagingDirectory
                 try {
-                    & $tool.Path a -tzip -mx=3 -mmt=on -bsp1 $OutputPath * 2>&1 | ForEach-Object {
+                    $archiveType = switch ($format) {
+                        'zip' { 'zip' }
+                        '7z' { '7z' }
+                        'tar.gz' { 'gzip' }
+                        'tar.bz2' { 'bzip2' }
+                        default { 'zip' }
+                    }
+                    $typeArg = "-t$archiveType"
+                    & $tool.Path a $typeArg -mx=3 -mmt=on -bsp1 $OutputPath * 2>&1 | ForEach-Object {
                         if ($_ -match '%') {
                             Write-PublishLog "  压缩进度: $_" -Level Debug
                         }
@@ -1333,17 +1395,26 @@ function New-PublishPackage {
                 }
             }
             'tar' {
-                Write-PublishLog '使用 tar 进行压缩...' -Level Info
-                $tarPath = Split-Path $OutputPath -Leaf
+                Write-PublishLog "使用 tar 创建 $format 文件..." -Level Info
+                $compressOption = switch ($format) {
+                    'tar.gz' { 'z' }
+                    'tar.bz2' { 'j' }
+                    default { 'z' }
+                }
                 Push-Location (Split-Path $StagingDirectory -Parent)
                 try {
-                    & $tool.Path -czf $tarPath (Split-Path $StagingDirectory -Leaf) 2>&1 | Out-Null
+                    $stagingName = Split-Path $StagingDirectory -Leaf
+                    & $tool.Path -c${compressOption}f $OutputPath $stagingName 2>&1 | Out-Null
                 }
                 finally {
                     Pop-Location
                 }
             }
             'powershell' {
+                if ($format -ne 'zip') {
+                    Write-PublishLog "PowerShell Compress-Archive 仅支持 zip 格式" -Level Error
+                    return $null
+                }
                 Write-PublishLog '使用 PowerShell Compress-Archive 进行压缩（较慢）...' -Level Warning
                 Write-PublishLog '建议安装 7-Zip 以获得更快的压缩速度' -Level Warning
                 Compress-Archive -Path "$StagingDirectory\*" -DestinationPath $OutputPath -Force
@@ -1598,6 +1669,21 @@ function Invoke-Publish {
 
         Write-StageFooter
     }
+    else {
+        # 即使跳过构建检查，仍然需要发现构建产物
+        Write-StageHeader -StageName '构建产物发现'
+        Write-PublishLog '跳过构建检查，仅发现构建产物...' -Level Warning
+
+        $artifacts = Find-BuildArtifacts
+        if ($artifacts.Count -eq 0) {
+            Write-PublishLog '未找到任何构建产物' -Level Error
+            return $script:ExitCode.BuildArtifactsInvalid
+        }
+
+        $script:PublishState.Artifacts = $artifacts
+        Write-PublishLog "共发现 $($artifacts.Count) 个构建产物" -Level Success
+        Write-StageFooter
+    }
 
     # ============================================================================
     # 阶段 3: 发布包组装
@@ -1638,11 +1724,30 @@ function Invoke-Publish {
             return $script:ExitCode.PackagingFailed
         }
 
+        # 确定压缩格式和扩展名
+        $format = $CompressFormat
+        if ([string]::IsNullOrEmpty($format)) {
+            if ($IsLinux -or $IsMacOS) {
+                $format = 'tar.gz'
+            }
+            else {
+                $format = 'zip'
+            }
+        }
+
+        $extension = switch ($format) {
+            'zip' { 'zip' }
+            '7z' { '7z' }
+            'tar.gz' { 'tar.gz' }
+            'tar.bz2' { 'tar.bz2' }
+            default { 'zip' }
+        }
+
         # 创建发布包
-        $packageName = "aam-$($script:PublishState.Version)-$($script:PublishState.Platform).zip"
+        $packageName = "aam-$($script:PublishState.Version)-$($script:PublishState.Platform).$extension"
         $packagePath = Join-Path $outputPath $packageName
 
-        $packageResult = New-PublishPackage -StagingDirectory $stagingDir -OutputPath $packagePath
+        $packageResult = New-PublishPackage -StagingDirectory $stagingDir -OutputPath $packagePath -CompressFormat $format
         if (-not $packageResult) {
             return $script:ExitCode.PackagingFailed
         }
