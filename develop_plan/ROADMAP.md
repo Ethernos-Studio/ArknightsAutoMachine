@@ -15,7 +15,7 @@
 | 版本 | 代号 | 目标 | 状态 |
 |------|------|------|------|
 | v0.1.0-alpha | 契约冻结版 | 接口契约与构建系统 | ❌ |
-| v0.2.0-alpha | 感知硬化版 | L0 帧捕获 | ❌ |
+| v0.2.0-alpha | 感知硬化版 | L0 帧捕获 | 🔶 后端实现完成 |
 | v0.3.0-alpha | 空间映射版 | L2 坐标映射 | ❌ |
 | v0.4.0-alpha | 记忆架构版 | L4 状态机与存储 | 🔶 Python部分完成 |
 | v0.5.0-alpha | 视觉皮层版 | L1 视觉处理 | 🔶 Python部分完成 |
@@ -86,9 +86,9 @@
 
 ### v0.2.0-alpha.2：捕获后端
 
-- [ ] `src/l0_sensing/adb_capture.cpp`：ADB H264 管道捕获
-- [ ] `src/l0_sensing/maa_adapter.cpp`：MaaFramework 桥接
-- [ ] `src/l0_sensing/win32_window_capture.cpp`：Win32 后备方案
+- [x] `src/l0_sensing/adb_capture.cpp`：ADB H264 管道捕获
+- [x] `src/l0_sensing/maa_adapter.cpp`：MaaFramework 桥接
+- [x] `src/l0_sensing/win32_window_capture.cpp`：Win32 后备方案
 
 ### v0.2.0-alpha.3：传输层
 

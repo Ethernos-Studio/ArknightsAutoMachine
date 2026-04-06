@@ -107,6 +107,7 @@ jobs:
             automake \
             libtool \
             g++-12 \
+            nasm \
             libopencv-dev \
             libeigen3-dev \
             libprotobuf-dev \

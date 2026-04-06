@@ -27,69 +27,76 @@ cmake_minimum_required(VERSION 3.25)
 # =============================================================================
 # vcpkg 工具链配置（必须在 project() 之前）
 # =============================================================================
-# 注意：如果用户通过命令行传递了 CMAKE_TOOLCHAIN_FILE，则优先使用用户指定的
-if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    if(DEFINED ENV{VCPKG_ROOT})
-        # 检查 vcpkg 工具链文件是否存在
-        set(VCPKG_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-        if(EXISTS "${VCPKG_TOOLCHAIN_FILE}")
-            set(CMAKE_TOOLCHAIN_FILE "${VCPKG_TOOLCHAIN_FILE}"
-                CACHE STRING "Vcpkg toolchain file")
-            message(STATUS "Auto-configured vcpkg toolchain: $ENV{VCPKG_ROOT}")
-        else()
-            message(FATAL_ERROR "VCPKG_ROOT is set but vcpkg.cmake not found at: ${VCPKG_TOOLCHAIN_FILE}. "
-                "Please ensure vcpkg is properly installed or unset VCPKG_ROOT to use system packages.")
-        endif()
-    endif()
-endif()
-
-# 如果 vcpkg_installed 目录存在，自动设置 CMAKE_PREFIX_PATH
-# 支持本地开发（已安装依赖）和 CI/其他开发者（未安装依赖）两种场景
-# 根据平台自动选择正确的 vcpkg triplet 路径
+# 注意：如果本地 vcpkg_installed 目录存在，优先使用本地已安装的依赖
+# 避免触发 vcpkg 工具链的自动构建流程
 
 # 允许用户通过缓存变量覆盖 triplet
 set(AAM_VCPKG_TRIPLET "" CACHE STRING "vcpkg triplet (e.g., x64-windows, arm64-osx, x64-linux)")
 
-if(AAM_VCPKG_TRIPLET)
-    # 用户使用 -DAAM_VCPKG_TRIPLET=xxx 指定了 triplet
-    set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${AAM_VCPKG_TRIPLET}")
-    message(STATUS "Using user-specified vcpkg triplet: ${AAM_VCPKG_TRIPLET}")
+# 在 project() 之前检测架构（CMAKE_SYSTEM_PROCESSOR 还未设置）
+# 使用 CMAKE_HOST_SYSTEM_PROCESSOR 或环境变量
+if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
+    set(_VCPKG_ARCH "x64")
+elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+    set(_VCPKG_ARCH "arm64")
+elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "i386|i686|x86")
+    set(_VCPKG_ARCH "x86")
 else()
-    # 自动检测平台和架构
-    # 检测架构
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
-        set(_VCPKG_ARCH "x64")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
-        set(_VCPKG_ARCH "arm64")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686|x86")
-        set(_VCPKG_ARCH "x86")
+    # 回退到环境变量检测
+    if(DEFINED ENV{PROCESSOR_ARCHITECTURE})
+        if($ENV{PROCESSOR_ARCHITECTURE} MATCHES "AMD64")
+            set(_VCPKG_ARCH "x64")
+        else()
+            set(_VCPKG_ARCH "$ENV{PROCESSOR_ARCHITECTURE}")
+        endif()
     else()
-        set(_VCPKG_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+        set(_VCPKG_ARCH "x64")  # 默认假设 x64
     endif()
-    
-    # 检测平台
-    if(WIN32)
-        set(_VCPKG_PLATFORM "windows")
-    elseif(APPLE)
-        set(_VCPKG_PLATFORM "osx")
-    elseif(UNIX)
-        set(_VCPKG_PLATFORM "linux")
-    else()
-        set(_VCPKG_PLATFORM "unknown")
-    endif()
-    
-    set(_VCPKG_TRIPLET "${_VCPKG_ARCH}-${_VCPKG_PLATFORM}")
-    set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${_VCPKG_TRIPLET}")
-    message(STATUS "Auto-detected vcpkg triplet: ${_VCPKG_TRIPLET} (arch: ${CMAKE_SYSTEM_PROCESSOR})")
 endif()
 
-if(EXISTS "${VCPKG_INSTALLED_DIR}")
-    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
-    message(STATUS "Found vcpkg_installed at: ${VCPKG_INSTALLED_DIR}")
-    set(AAM_VCPKG_INSTALLED_FOUND TRUE)
+if(WIN32)
+    set(_VCPKG_PLATFORM "windows")
+elseif(APPLE)
+    set(_VCPKG_PLATFORM "osx")
+elseif(UNIX)
+    set(_VCPKG_PLATFORM "linux")
 else()
-    message(STATUS "vcpkg_installed not found at ${VCPKG_INSTALLED_DIR}. Dependencies must be installed via vcpkg or system package manager.")
+    set(_VCPKG_PLATFORM "unknown")
+endif()
+
+if(AAM_VCPKG_TRIPLET)
+    set(_VCPKG_TRIPLET "${AAM_VCPKG_TRIPLET}")
+else()
+    set(_VCPKG_TRIPLET "${_VCPKG_ARCH}-${_VCPKG_PLATFORM}")
+endif()
+
+# 检查本地 vcpkg_installed 目录
+set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${_VCPKG_TRIPLET}")
+
+if(EXISTS "${VCPKG_INSTALLED_DIR}")
+    # 优先使用本地已安装的 vcpkg 包，不设置 CMAKE_TOOLCHAIN_FILE
+    # 这样可以避免 vcpkg 工具链触发重新构建
+    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
+    set(AAM_VCPKG_INSTALLED_FOUND TRUE)
+    message(STATUS "Using local vcpkg_installed: ${VCPKG_INSTALLED_DIR}")
+    message(STATUS "Skipping vcpkg toolchain to avoid rebuilds")
+else()
     set(AAM_VCPKG_INSTALLED_FOUND FALSE)
+    message(STATUS "Local vcpkg_installed not found at: ${VCPKG_INSTALLED_DIR}")
+    
+    # 只有在没有本地安装的情况下才使用 vcpkg 工具链
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+        if(DEFINED ENV{VCPKG_ROOT})
+            set(VCPKG_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+            if(EXISTS "${VCPKG_TOOLCHAIN_FILE}")
+                set(CMAKE_TOOLCHAIN_FILE "${VCPKG_TOOLCHAIN_FILE}"
+                    CACHE STRING "Vcpkg toolchain file")
+                message(STATUS "Auto-configured vcpkg toolchain: $ENV{VCPKG_ROOT}")
+            else()
+                message(FATAL_ERROR "VCPKG_ROOT is set but vcpkg.cmake not found at: ${VCPKG_TOOLCHAIN_FILE}")
+            endif()
+        endif()
+    endif()
 endif()
 
 # =============================================================================
@@ -154,7 +161,6 @@ endif()
 # =============================================================================
 if(WIN32)
     set(AAM_PLATFORM_WINDOWS TRUE)
-    add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS)
     # Windows 特定：启用 UTF-8 编码
     add_compile_options(/utf-8)
 elseif(UNIX AND NOT APPLE)
@@ -207,14 +213,23 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # =============================================================================
 # 第三方依赖查找
 # =============================================================================
-# 尝试使用 vcpkg 的 ZeroMQ Config 模式（优先）
+# 首先查找 vcpkg 的 ZeroMQ 配置（这会定义 libzmq 目标）
 find_package(ZeroMQ CONFIG QUIET)
 if(ZeroMQ_FOUND)
     message(STATUS "Using vcpkg provided ZeroMQ config")
-    # 创建兼容的导入目标 ZeroMQ::ZeroMQ
-    if(NOT TARGET ZeroMQ::ZeroMQ AND TARGET ZeroMQ::libzmq)
-        add_library(ZeroMQ::ZeroMQ ALIAS ZeroMQ::libzmq)
+    if(NOT TARGET ZeroMQ::ZeroMQ)
+        if(TARGET libzmq)
+            add_library(ZeroMQ::ZeroMQ ALIAS libzmq)
+        elseif(TARGET libzmq-static)
+            add_library(ZeroMQ::ZeroMQ ALIAS libzmq-static)
+        endif()
     endif()
+endif()
+
+# 然后查找 cppzmq（它会使用上面定义的 ZeroMQ 目标）
+find_package(cppzmq CONFIG QUIET)
+if(cppzmq_FOUND)
+    message(STATUS "Using vcpkg provided cppzmq config")
 endif()
 
 find_package(Threads REQUIRED)
@@ -226,10 +241,21 @@ find_package(yaml-cpp CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
-find_package(ZeroMQ REQUIRED)
-# cppzmq 可能已由 FindZeroMQ.cmake 提供，避免重复查找
-if(NOT TARGET cppzmq AND NOT TARGET cppzmq-static)
-    find_package(cppzmq CONFIG REQUIRED)
+
+# ============================================================================
+# cppzmq 目标修复
+# ============================================================================
+# vcpkg 的 cppzmq-static 目标链接到 libzmq-static，但 vcpkg 只提供 libzmq（动态库）
+# 这里创建 libzmq-static 别名指向 libzmq，以解决链接错误
+if(TARGET libzmq AND NOT TARGET libzmq-static)
+    add_library(libzmq-static ALIAS libzmq)
+    message(STATUS "Created libzmq-static alias for libzmq")
+endif()
+
+# 确保 cppzmq 别名存在
+if(TARGET cppzmq-static AND NOT TARGET cppzmq)
+    add_library(cppzmq ALIAS cppzmq-static)
+    message(STATUS "Created cppzmq alias for cppzmq-static")
 endif()
 
 # CUDA 配置（可选）
@@ -303,6 +329,83 @@ add_custom_target(aam_proto_generation
 )
 
 # =============================================================================
+# MaaFramework 配置（必须在 aam_core 目标定义之前）
+# =============================================================================
+set(MAAFW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/maafw")
+
+# 如果目录不存在，克隆并初始化子模块（带重试机制）
+if(NOT EXISTS "${MAAFW_DIR}/CMakeLists.txt")
+    message(STATUS "MaaFramework not found, cloning from Ethernos-Studio fork...")
+
+    # 配置重试参数
+    set(MAX_RETRY_COUNT 3)
+    set(RETRY_DELAY_SECONDS 5)
+    set(CLONE_SUCCESS FALSE)
+
+    # 尝试克隆（带重试）
+    foreach(RETRY_INDEX RANGE 1 ${MAX_RETRY_COUNT})
+        if(RETRY_INDEX GREATER 1)
+            message(STATUS "Retry ${RETRY_INDEX}/${MAX_RETRY_COUNT}: Waiting ${RETRY_DELAY_SECONDS} seconds before next attempt...")
+            execute_process(COMMAND ${CMAKE_COMMAND} -E sleep ${RETRY_DELAY_SECONDS})
+        endif()
+
+        message(STATUS "Attempt ${RETRY_INDEX}/${MAX_RETRY_COUNT}: Cloning MaaFramework...")
+        execute_process(
+            COMMAND git clone --recursive https://github.com/Ethernos-Studio/MaaFramework.git "${MAAFW_DIR}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+            RESULT_VARIABLE GIT_CLONE_RESULT
+            OUTPUT_VARIABLE GIT_CLONE_OUTPUT
+            ERROR_VARIABLE GIT_CLONE_ERROR
+            TIMEOUT 300  # 5分钟超时
+        )
+
+        if(GIT_CLONE_RESULT EQUAL 0)
+            set(CLONE_SUCCESS TRUE)
+            message(STATUS "Successfully cloned MaaFramework")
+            break()
+        else()
+            message(WARNING "Clone attempt ${RETRY_INDEX} failed: ${GIT_CLONE_ERROR}")
+            # 清理失败的克隆目录
+            if(EXISTS "${MAAFW_DIR}")
+                file(REMOVE_RECURSE "${MAAFW_DIR}")
+            endif()
+        endif()
+    endforeach()
+
+    if(NOT CLONE_SUCCESS)
+        message(WARNING "Failed to clone MaaFramework after ${MAX_RETRY_COUNT} attempts. "
+                        "MaaFramework support will be disabled. "
+                        "To retry manually, run: git clone --recursive https://github.com/Ethernos-Studio/MaaFramework.git ${MAAFW_DIR}")
+        # 创建空标记文件以跳过后续尝试
+        file(WRITE "${MAAFW_DIR}/.clone_failed" "Clone failed at ${CMAKE_CURRENT_TIMESTAMP}")
+    else()
+        # 切换到 fix 分支
+        execute_process(
+            COMMAND git checkout fix/submodule-compatibility
+            WORKING_DIRECTORY "${MAAFW_DIR}"
+            RESULT_VARIABLE GIT_CHECKOUT_RESULT
+            OUTPUT_VARIABLE GIT_CHECKOUT_OUTPUT
+            ERROR_VARIABLE GIT_CHECKOUT_ERROR
+        )
+        if(NOT GIT_CHECKOUT_RESULT EQUAL 0)
+            message(WARNING "Failed to checkout fix/submodule-compatibility branch: ${GIT_CHECKOUT_ERROR}. "
+                            "Using default branch instead.")
+        endif()
+    endif()
+endif()
+
+if(EXISTS "${MAAFW_DIR}/CMakeLists.txt")
+    option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+    option(MAA_DEBUG "Enable debug output" OFF)
+    add_subdirectory(${MAAFW_DIR} EXCLUDE_FROM_ALL)
+    set(AAM_MAAFW_ENABLED TRUE)
+    message(STATUS "MaaFramework enabled: ${MAAFW_DIR}")
+else()
+    set(AAM_MAAFW_ENABLED FALSE)
+    message(STATUS "MaaFramework not found at ${MAAFW_DIR}")
+endif()
+
+# =============================================================================
 # 核心库目标: aam_core
 # =============================================================================
 # 收集核心库源文件
@@ -353,6 +456,8 @@ target_include_directories(aam_core
         ${CMAKE_CURRENT_SOURCE_DIR}/core/src
 )
 
+
+
 target_link_libraries(aam_core
     PUBLIC
         Threads::Threads
@@ -369,6 +474,16 @@ target_link_libraries(aam_core
         ZeroMQ::ZeroMQ
         $<IF:$<TARGET_EXISTS:cppzmq-static>,cppzmq-static,cppzmq>
         aam_compiler_flags
+        $<$<BOOL:${AAM_MAAFW_ENABLED}>:MaaFramework>
+        $<$<BOOL:${AAM_MAAFW_ENABLED}>:MaaToolkit>
+        # FFmpeg 库
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/avcodec.lib>
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/avformat.lib>
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/avutil.lib>
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/swscale.lib>
+        # Windows Runtime 库 (用于 WinRT/C++ 和 Windows Graphics Capture)
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:WindowsApp>
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:runtimeobject>
 )
 
 # CUDA 链接（如果启用）
@@ -398,6 +513,12 @@ target_compile_definitions(aam_core
         $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:AAM_PLATFORM_WINDOWS>
         $<$<BOOL:${AAM_PLATFORM_LINUX}>:AAM_PLATFORM_LINUX>
         $<$<BOOL:${AAM_PLATFORM_MACOS}>:AAM_PLATFORM_MACOS>
+        $<$<BOOL:${AAM_MAAFW_ENABLED}>:AAM_MAAFW_ENABLED>
+    PRIVATE
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:NOMINMAX>
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:WIN32_LEAN_AND_MEAN>
+        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:_CRT_SECURE_NO_WARNINGS>
+        $<$<BOOL:${AAM_MAAFW_ENABLED}>:AAM_MAAFW_DIR="${MAAFW_DIR}">
 )
 
 # 编译器特定选项已由 aam_compiler_flags 提供，此处无需重复设置
@@ -432,6 +553,25 @@ endif()
 # GUI 模块配置（v0.9.0-beta 预留）
 # =============================================================================
 # add_subdirectory(gui/qt)  # 将在 v0.9.0 启用
+
+# =============================================================================
+# 工具模块配置
+# =============================================================================
+# 查找 cxxopts 用于 CLI 工具
+find_package(cxxopts CONFIG QUIET)
+if(cxxopts_FOUND)
+    add_subdirectory(tools/capture_test_cli)
+    message(STATUS "Capture test CLI enabled")
+else()
+    message(STATUS "cxxopts not found, capture test CLI disabled")
+endif()
+
+# =============================================================================
+# MaaFramework 头文件路径（已在上面的配置中添加）
+# =============================================================================
+if(AAM_MAAFW_ENABLED)
+    target_include_directories(aam_core PRIVATE ${MAAFW_DIR}/include)
+endif()
 
 # =============================================================================
 # 安装配置

@@ -16,6 +16,9 @@
     "yaml-cpp",
     "nlohmann-json",
     "opencv4",
-    "eigen3"
+    "eigen3",
+    "gtest",
+    "cxxopts",
+    "ffmpeg"
   ]
 }

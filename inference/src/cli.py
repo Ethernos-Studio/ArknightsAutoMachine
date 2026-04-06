@@ -2406,16 +2406,17 @@ def main():
             return 0
 
         elif args.command == 'level':
-            from src.map import LevelAnalyzer, MapVisualizer
+            from src.map import LevelAnalyzer, MapVisualizer, LevelDataLoader
+
+            # 加载关卡数据
+            try:
+                level_data = LevelDataLoader.load_from_json(args.level_path)
+            except Exception as e:
+                print(f"加载关卡失败: {args.level_path}, 错误: {e}")
+                return 1
 
             # 创建分析器
-            level_analyzer = LevelAnalyzer()
-
-            # 加载关卡
-            level_data = level_analyzer.load_level(args.level_path)
-            if not level_data:
-                print(f"加载关卡失败: {args.level_path}")
-                return 1
+            level_analyzer = LevelAnalyzer(level_data)
 
             # 显示基本信息
             if args.info:
@@ -2437,11 +2438,12 @@ def main():
                 print("=" * 70)
 
             # 创建可视化器
-            visualizer = MapVisualizer()
+            visualizer = MapVisualizer(level_data)
 
             # 输出地图
             if args.map:
-                visualizer.visualize_map(level_data, output_path=args.map)
+                image = visualizer.render()
+                image.save(args.map)
                 print(f"地图已保存: {args.map}")
 
             # 时间区间分析
