@@ -83,8 +83,10 @@ constexpr std::string_view BACKEND_NAME    = "ADB";
 constexpr std::string_view BACKEND_VERSION = "1.0.0";
 
 // FFmpeg 相关常量
-constexpr int H264_DECODER_THREAD_COUNT = 4;   // 解码器线程数
-constexpr int MAX_DECODE_ERRORS         = 10;  // 最大连续解码错误数
+// 解码器线程数：根据硬件并发数动态调整，最少 1 个，最多 4 个
+const int H264_DECODER_THREAD_COUNT =
+    std::clamp(static_cast<int>(std::thread::hardware_concurrency() / 2), 1, 4);
+constexpr int MAX_DECODE_ERRORS = 10;  // 最大连续解码错误数
 
 }  // namespace
 

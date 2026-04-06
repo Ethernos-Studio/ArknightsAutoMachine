@@ -1,592 +1,700 @@
-# =============================================================================
-# Copyright (C) 2026 Ethernos Studio
-# This file is part of Arknights Auto Machine (AAM).
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#Copyright(C) 2026 Ethernos Studio
+#This file is part of Arknights Auto Machine(AAM).
 #
-# AAM is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#AAM is free software : you can redistribute it and / or modify
+#it under the terms of the GNU Affero General Public License as published
+#by the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
 #
-# AAM is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License for more details.
+#AAM is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR        PURPOSE.See the
+#GNU Affero General Public License for more         details.
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with AAM. If not, see <https://www.gnu.org/licenses/>.
-# =============================================================================
-# Arknights Auto Machine (AAM) - Root CMake Configuration
-# =============================================================================
-# 版本: v0.1.0-alpha.2
-# 目标: C++23 标准，aam_core 静态库构建
-# 作者: dhjs0000
-# =============================================================================
+#You should have received a copy of the GNU Affero General Public License
+#along with AAM.If not, see < https:  // www.gnu.org/licenses/>.
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#Arknights Auto Machine(AAM) - Root CMake Configuration
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#版本 : v0.1.0 - alpha.2
+#目标 : C++ 23 标准，aam_core 静态库构建
+#作者 : dhjs0000
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
 
 cmake_minimum_required(VERSION 3.25)
 
-# =============================================================================
-# vcpkg 工具链配置（必须在 project() 之前）
-# =============================================================================
-# 注意：如果本地 vcpkg_installed 目录存在，优先使用本地已安装的依赖
-# 避免触发 vcpkg 工具链的自动构建流程
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#vcpkg 工具链配置（必须在 project() 之前）
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#注意：如果本地 vcpkg_installed 目录存在，优先使用本地已安装的依赖
+#避免触发 vcpkg 工具链的自动构建流程
 
-# 允许用户通过缓存变量覆盖 triplet
-set(AAM_VCPKG_TRIPLET "" CACHE STRING "vcpkg triplet (e.g., x64-windows, arm64-osx, x64-linux)")
+#允许用户通过缓存变量覆盖 triplet
+    set(AAM_VCPKG_TRIPLET "" CACHE STRING "vcpkg triplet (e.g., x64-windows, arm64-osx, x64-linux)")
 
-# 在 project() 之前检测架构（CMAKE_SYSTEM_PROCESSOR 还未设置）
-# 使用 CMAKE_HOST_SYSTEM_PROCESSOR 或环境变量
-if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
-    set(_VCPKG_ARCH "x64")
-elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
-    set(_VCPKG_ARCH "arm64")
-elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "i386|i686|x86")
-    set(_VCPKG_ARCH "x86")
-else()
-    # 回退到环境变量检测
-    if(DEFINED ENV{PROCESSOR_ARCHITECTURE})
-        if($ENV{PROCESSOR_ARCHITECTURE} MATCHES "AMD64")
-            set(_VCPKG_ARCH "x64")
-        else()
-            set(_VCPKG_ARCH "$ENV{PROCESSOR_ARCHITECTURE}")
-        endif()
-    else()
-        set(_VCPKG_ARCH "x64")  # 默认假设 x64
-    endif()
-endif()
+#在 project() 之前检测架构（CMAKE_SYSTEM_PROCESSOR 还未设置）
+#使用 CMAKE_HOST_SYSTEM_PROCESSOR 或环境变量
+        if (CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64") set(_VCPKG_ARCH "x64")
+            elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64") set(_VCPKG_ARCH "arm64")
+                elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "i386|i686|x86")
+                    set(_VCPKG_ARCH "x86") else()
+#回退到环境变量检测
+                        if (DEFINED ENV{
+                                PROCESSOR_ARCHITECTURE}) if ($ENV{PROCESSOR_ARCHITECTURE} MATCHES
+                                                             "AMD64") set(_VCPKG_ARCH "x64") else()
+                            set(_VCPKG_ARCH "$ENV{PROCESSOR_ARCHITECTURE}") endif() else()
+                                set(_VCPKG_ARCH "x64") #默认假设 x64
+    endif() endif()
 
-if(WIN32)
-    set(_VCPKG_PLATFORM "windows")
-elseif(APPLE)
-    set(_VCPKG_PLATFORM "osx")
-elseif(UNIX)
-    set(_VCPKG_PLATFORM "linux")
-else()
-    set(_VCPKG_PLATFORM "unknown")
-endif()
+        if (WIN32) set(_VCPKG_PLATFORM "windows") elseif(APPLE) set(_VCPKG_PLATFORM "osx") elseif(
+            UNIX) set(_VCPKG_PLATFORM "linux") else() set(_VCPKG_PLATFORM "unknown") endif()
 
-if(AAM_VCPKG_TRIPLET)
-    set(_VCPKG_TRIPLET "${AAM_VCPKG_TRIPLET}")
-else()
-    set(_VCPKG_TRIPLET "${_VCPKG_ARCH}-${_VCPKG_PLATFORM}")
-endif()
+            if (AAM_VCPKG_TRIPLET) set(_VCPKG_TRIPLET "${AAM_VCPKG_TRIPLET}") else() set(
+                _VCPKG_TRIPLET "${_VCPKG_ARCH}-${_VCPKG_PLATFORM}") endif()
 
-# 检查本地 vcpkg_installed 目录
-set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${_VCPKG_TRIPLET}")
+#检查本地 vcpkg_installed 目录
+                set(VCPKG_INSTALLED_DIR
+                    "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${_VCPKG_TRIPLET}")
 
-if(EXISTS "${VCPKG_INSTALLED_DIR}")
-    # 优先使用本地已安装的 vcpkg 包，不设置 CMAKE_TOOLCHAIN_FILE
-    # 这样可以避免 vcpkg 工具链触发重新构建
-    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
-    set(AAM_VCPKG_INSTALLED_FOUND TRUE)
-    message(STATUS "Using local vcpkg_installed: ${VCPKG_INSTALLED_DIR}")
-    message(STATUS "Skipping vcpkg toolchain to avoid rebuilds")
-else()
-    set(AAM_VCPKG_INSTALLED_FOUND FALSE)
-    message(STATUS "Local vcpkg_installed not found at: ${VCPKG_INSTALLED_DIR}")
-    
-    # 只有在没有本地安装的情况下才使用 vcpkg 工具链
-    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-        if(DEFINED ENV{VCPKG_ROOT})
-            set(VCPKG_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-            if(EXISTS "${VCPKG_TOOLCHAIN_FILE}")
-                set(CMAKE_TOOLCHAIN_FILE "${VCPKG_TOOLCHAIN_FILE}"
-                    CACHE STRING "Vcpkg toolchain file")
-                message(STATUS "Auto-configured vcpkg toolchain: $ENV{VCPKG_ROOT}")
-            else()
-                message(FATAL_ERROR "VCPKG_ROOT is set but vcpkg.cmake not found at: ${VCPKG_TOOLCHAIN_FILE}")
-            endif()
-        endif()
-    endif()
-endif()
+                    if (EXISTS "${VCPKG_INSTALLED_DIR}")
+#优先使用本地已安装的 vcpkg 包，不设置 CMAKE_TOOLCHAIN_FILE
+#这样可以避免 vcpkg 工具链触发重新构建
+                        list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}") set(
+                            AAM_VCPKG_INSTALLED_FOUND
+                                TRUE) message(STATUS
+                                              "Using local vcpkg_installed: ${VCPKG_INSTALLED_DIR}")
+                            message(STATUS "Skipping vcpkg toolchain to avoid rebuilds") else() set(
+                                AAM_VCPKG_INSTALLED_FOUND
+                                    FALSE) message(STATUS "Local vcpkg_installed not found at: "
+                                                          "${VCPKG_INSTALLED_DIR}")
 
-# =============================================================================
-# 项目定义与版本管理
-# =============================================================================
-project(
-    AAM
-    VERSION 0.1.0
-    DESCRIPTION "Arknights Auto Machine - Industrial-grade Game Automation Framework"
-    HOMEPAGE_URL "https://github.com/Ethernos-Studio/ArknightsAutoMachine"
-    LANGUAGES CXX C
-)
+#只有在没有本地安装的情况下才使用 vcpkg 工具链
+                                if (NOT DEFINED CMAKE_TOOLCHAIN_FILE) if (
+                                    DEFINED ENV{
+                                        VCPKG_ROOT}) set(VCPKG_TOOLCHAIN_FILE
+                                                         "$ENV{VCPKG_ROOT}/scripts/buildsystems/"
+                                                         "vcpkg.cmake") if (EXISTS
+                                                                            "${VCPKG_TOOLCHAIN_"
+                                                                            "FILE}") set(CMAKE_TOOLCHAIN_FILE
+                                                                                         "${VCPKG_"
+                                                                                         "TOOLCHAIN"
+                                                                                         "_FILE"
+                                                                                         "}" CACHE STRING
+                                                                                         "Vcpkg "
+                                                                                         "toolchain"
+                                                                                         " file")
+                                    message(STATUS "Auto-configured vcpkg toolchain: "
+                                                   "$ENV{VCPKG_ROOT}") else() message(
+                                        FATAL_ERROR
+                                        "VCPKG_ROOT is set but vcpkg.cmake not found at: "
+                                        "${VCPKG_TOOLCHAIN_FILE}") endif() endif() endif() endif()
 
-# =============================================================================
-# C++ 标准配置
-# =============================================================================
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#项目定义与版本管理
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                        project(AAM VERSION 0.1.0 DESCRIPTION
+                                                "Arknights Auto Machine - Industrial-grade Game "
+                                                "Automation Framework" HOMEPAGE_URL
+                                                "https://github.com/Ethernos-Studio/"
+                                                "ArknightsAutoMachine" LANGUAGES CXX C)
 
-# 导出编译命令数据库（用于 clangd 等工具）
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
-    set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES
-        ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#C++ 标准配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                            set(CMAKE_CXX_STANDARD 23) set(
+                                                CMAKE_CXX_STANDARD_REQUIRED
+                                                    ON) set(CMAKE_CXX_EXTENSIONS OFF)
 
-# =============================================================================
-# 构建类型与选项
-# =============================================================================
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
+#导出编译命令数据库（用于 clangd 等工具）
+                                                set(CMAKE_EXPORT_COMPILE_COMMANDS ON) if (
+                                                    CMAKE_EXPORT_COMPILE_COMMANDS) set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${
+                                                    CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}) endif()
 
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#构建类型与选项
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                    if (NOT CMAKE_BUILD_TYPE) set(
+                                                        CMAKE_BUILD_TYPE Release CACHE STRING
+                                                        "Build type" FORCE) endif()
 
-# 构建选项
-option(AAM_BUILD_TESTS "Build test suite" ON)
-option(AAM_BUILD_EXAMPLES "Build example applications" ON)
-option(AAM_ENABLE_CUDA "Enable CUDA support for GPU acceleration" ON)
-option(AAM_ENABLE_PROFILING "Enable performance profiling instrumentation" OFF)
-option(AAM_ENABLE_SANITIZERS "Enable address/thread sanitizers in Debug mode" ON)
-option(AAM_USE_VCPKG "Use vcpkg for dependency management" ON)
-option(AAM_STATIC_LINK "Static link runtime libraries" OFF)
-option(AAM_ENABLE_STATIC_ANALYSIS "Enable static analysis with clang-tidy" ON)
+                                                        set_property(
+                                                            CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+                                                            "Debug"
+                                                            "Release"
+                                                            "RelWithDebInfo"
+                                                            "MinSizeRel")
 
-# =============================================================================
-# 静态分析集成
-# =============================================================================
-if(AAM_ENABLE_STATIC_ANALYSIS)
-    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
-    if(CLANG_TIDY_EXE)
-        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
-        message(STATUS "Static analysis enabled: ${CLANG_TIDY_EXE}")
-    else()
-        message(WARNING "clang-tidy not found, static analysis disabled")
-    endif()
-endif()
+#构建选项
+                                                            option(AAM_BUILD_TESTS "Build test "
+                                                                                   "suite" ON) option(
+                                                                AAM_BUILD_EXAMPLES
+                                                                "Build example applications" ON)
+                                                                option(AAM_ENABLE_CUDA "Enable "
+                                                                                       "CUDA "
+                                                                                       "support "
+                                                                                       "for GPU "
+                                                                                       "acceleratio"
+                                                                                       "n" ON) option(
+                                                                    AAM_ENABLE_PROFILING
+                                                                    "Enable performance profiling "
+                                                                    "instrumentation" OFF)
+                                                                    option(
+                                                                        AAM_ENABLE_SANITIZERS
+                                                                        "Enable address/thread "
+                                                                        "sanitizers in Debug "
+                                                                        "mode" ON) option(AAM_USE_VCPKG
+                                                                                          "Use "
+                                                                                          "vcpkg "
+                                                                                          "for "
+                                                                                          "dependen"
+                                                                                          "cy "
+                                                                                          "manageme"
+                                                                                          "nt" ON)
+                                                                        option(AAM_STATIC_LINK "Sta"
+                                                                                               "tic"
+                                                                                               " li"
+                                                                                               "nk "
+                                                                                               "run"
+                                                                                               "tim"
+                                                                                               "e "
+                                                                                               "lib"
+                                                                                               "rar"
+                                                                                               "ie"
+                                                                                               "s" OFF) option(
+                                                                            AAM_ENABLE_STATIC_ANALYSIS
+                                                                            "Enable static "
+                                                                            "analysis with "
+                                                                            "clang-tidy" ON)
 
-# =============================================================================
-# 平台检测与配置
-# =============================================================================
-if(WIN32)
-    set(AAM_PLATFORM_WINDOWS TRUE)
-    # Windows 特定：启用 UTF-8 编码
-    add_compile_options(/utf-8)
-elseif(UNIX AND NOT APPLE)
-    set(AAM_PLATFORM_LINUX TRUE)
-elseif(APPLE)
-    set(AAM_PLATFORM_MACOS TRUE)
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#静态分析集成
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                            if (AAM_ENABLE_STATIC_ANALYSIS) find_program(
+                                                                                CLANG_TIDY_EXE NAMES
+                                                                                    clang
+                                                                                - tidy) if (CLANG_TIDY_EXE) set(CMAKE_CXX_CLANG_TIDY
+                                                                                                                "${CLANG_TIDY_EXE}")
+                                                                                message(STATUS "Sta"
+                                                                                               "tic"
+                                                                                               " an"
+                                                                                               "aly"
+                                                                                               "sis"
+                                                                                               " en"
+                                                                                               "abl"
+                                                                                               "ed:"
+                                                                                               " ${"
+                                                                                               "CLA"
+                                                                                               "NG_"
+                                                                                               "TID"
+                                                                                               "Y_"
+                                                                                               "EXE"
+                                                                                               "}") else() message(
+                                                                                    WARNING
+                                                                                    "clang-tidy "
+                                                                                    "not found, "
+                                                                                    "static "
+                                                                                    "analysis "
+                                                                                    "disabled") endif() endif()
 
-# 架构检测
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
-    set(AAM_ARCH_X64 TRUE)
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
-    set(AAM_ARCH_ARM64 TRUE)
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#平台检测与配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                    if (WIN32) set(
+                                                                                        AAM_PLATFORM_WINDOWS
+                                                                                            TRUE)
+#Windows 特定：启用 UTF - 8 编码
+                                                                                        add_compile_options(/ utf - 8) elseif(
+                                                                                            UNIX AND NOT
+                                                                                                APPLE) set(AAM_PLATFORM_LINUX
+                                                                                                               TRUE)
+                                                                                            elseif(APPLE) set(
+                                                                                                AAM_PLATFORM_MACOS
+                                                                                                    TRUE) endif()
 
-# =============================================================================
-# 编译器标志配置
-# =============================================================================
-include(cmake/compiler_flags.cmake)
+#架构检测
+                                                                                                if (CMAKE_SYSTEM_PROCESSOR MATCHES
+                                                                                                    "AMD64|x86_64|x64")
+                                                                                                    set(AAM_ARCH_X64
+                                                                                                            TRUE)
+                                                                                                        elseif(
+                                                                                                            CMAKE_SYSTEM_PROCESSOR MATCHES
+                                                                                                            "ARM64|aarch64")
+                                                                                                            set(AAM_ARCH_ARM64
+                                                                                                                    TRUE)
+                                                                                                                endif()
 
-# =============================================================================
-# 依赖管理
-# =============================================================================
-# 优先使用 vcpkg 安装的依赖，避免找到系统/Anaconda 的库
-if(AAM_VCPKG_INSTALLED_FOUND AND DEFINED VCPKG_INSTALLED_DIR)
-    list(INSERT CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
-    message(STATUS "Prioritizing vcpkg dependencies from: ${VCPKG_INSTALLED_DIR}")
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#编译器标志配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                    include(cmake
+                                                                                                                            / compiler_flags
+                                                                                                                                  .cmake)
 
-# 检查依赖可用性
-if(NOT AAM_VCPKG_INSTALLED_FOUND AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    message(WARNING "\n"
-        "=====================================================================\n"
-        "  vcpkg dependencies not found!\n"
-        "  \n"
-        "  To build this project, you need to either:\n"
-        "  1. Install dependencies via vcpkg:\n"
-        "     vcpkg install --triplet=x64-windows @vcpkg.json\n"
-        "  2. Or set VCPKG_ROOT environment variable:\n"
-        "     $env:VCPKG_ROOT = 'C:/path/to/vcpkg'\n"
-        "  3. Or pass CMAKE_TOOLCHAIN_FILE:\n"
-        "     cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake\n"
-        "=====================================================================\n"
-    )
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#依赖管理
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#优先使用 vcpkg 安装的依赖，避免找到系统 / Anaconda 的库
+                                                                                                                        if (AAM_VCPKG_INSTALLED_FOUND
+                                                                                                                                AND DEFINED VCPKG_INSTALLED_DIR)
+                                                                                                                            list(
+                                                                                                                                INSERT
+                                                                                                                                    CMAKE_PREFIX_PATH 0 "${VCPKG_INSTALLED_DIR}")
+                                                                                                                                message(STATUS
+                                                                                                                                        "Prioritizing vcpkg dependencies from: ${VCPKG_INSTALLED_DIR}")
+                                                                                                                                    endif()
 
-# 查找包路径（自定义 Find 模块）
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+#检查依赖可用性
+                                                                                                                                        if (NOT AAM_VCPKG_INSTALLED_FOUND
+                                                                                                                                                AND NOT DEFINED CMAKE_TOOLCHAIN_FILE) message(WARNING "\n"
+                                                                                                                                                                                                      "=====================================================================\n"
+                                                                                                                                                                                                      "  vcpkg dependencies not found!\n"
+                                                                                                                                                                                                      "  \n"
+                                                                                                                                                                                                      "  To build this project, you need to either:\n"
+                                                                                                                                                                                                      "  1. Install dependencies via vcpkg:\n"
+                                                                                                                                                                                                      "     vcpkg install --triplet=x64-windows @vcpkg.json\n"
+                                                                                                                                                                                                      "  2. Or set VCPKG_ROOT environment variable:\n"
+                                                                                                                                                                                                      "     $env:VCPKG_ROOT = 'C:/path/to/vcpkg'\n"
+                                                                                                                                                                                                      "  3. Or pass CMAKE_TOOLCHAIN_FILE:\n"
+                                                                                                                                                                                                      "     cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake\n"
+                                                                                                                                                                                                      "=====================================================================\n")
+                                                                                                                                            endif()
 
-# =============================================================================
-# 第三方依赖查找
-# =============================================================================
-# 首先查找 vcpkg 的 ZeroMQ 配置（这会定义 libzmq 目标）
-find_package(ZeroMQ CONFIG QUIET)
-if(ZeroMQ_FOUND)
-    message(STATUS "Using vcpkg provided ZeroMQ config")
-    if(NOT TARGET ZeroMQ::ZeroMQ)
-        if(TARGET libzmq)
-            add_library(ZeroMQ::ZeroMQ ALIAS libzmq)
-        elseif(TARGET libzmq-static)
-            add_library(ZeroMQ::ZeroMQ ALIAS libzmq-static)
-        endif()
-    endif()
-endif()
+#查找包路径（自定义 Find 模块）
+                                                                                                                                                list(
+                                                                                                                                                    APPEND CMAKE_MODULE_PATH
+                                                                                                                                                    "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# 然后查找 cppzmq（它会使用上面定义的 ZeroMQ 目标）
-find_package(cppzmq CONFIG QUIET)
-if(cppzmq_FOUND)
-    message(STATUS "Using vcpkg provided cppzmq config")
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#第三方依赖查找
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#首先查找 vcpkg 的 ZeroMQ 配置（这会定义 libzmq 目标）
+                                                                                                                                                    find_package(ZeroMQ CONFIG QUIET) if (ZeroMQ_FOUND) message(STATUS "Using vcpkg provided ZeroMQ config") if (NOT TARGET ZeroMQ::ZeroMQ) if (
+                                                                                                                                                        TARGET
+                                                                                                                                                            libzmq) add_library(ZeroMQ::ZeroMQ
+                                                                                                                                                                                    ALIAS libzmq)
+                                                                                                                                                        elseif(TARGET libzmq - static)
+                                                                                                                                                            add_library(ZeroMQ::ZeroMQ ALIAS libzmq
+                                                                                                                                                                        - static)
+                                                                                                                                                                endif() endif()
+                                                                                                                                                                    endif()
 
-find_package(Threads REQUIRED)
-find_package(Protobuf CONFIG REQUIRED)
-find_package(gRPC CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
-find_package(yaml-cpp CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(OpenCV CONFIG REQUIRED)
-find_package(Eigen3 CONFIG REQUIRED)
-# cppzmq 已在上面查找，确保别名存在
-if(TARGET cppzmq-static AND NOT TARGET cppzmq)
-    add_library(cppzmq ALIAS cppzmq-static)
-    message(STATUS "Created cppzmq alias for cppzmq-static")
-endif()
+#然后查找 cppzmq（它会使用上面定义的 ZeroMQ 目标）
+                                                                                                                                                                        find_package(
+                                                                                                                                                                            cppzmq CONFIG
+                                                                                                                                                                                QUIET) if (cppzmq_FOUND) message(STATUS "Using vcpkg provided cppzmq config")
+                                                                                                                                                                            endif()
 
-# CUDA 配置（可选）
-if(AAM_ENABLE_CUDA)
-    include(CheckLanguage)
-    check_language(CUDA)
-    if(CMAKE_CUDA_COMPILER)
-        enable_language(CUDA)
-        set(CMAKE_CUDA_STANDARD 17)
-        set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-        find_package(CUDAToolkit REQUIRED)
-        set(AAM_CUDA_ENABLED TRUE)
-        message(STATUS "CUDA support enabled: ${CMAKE_CUDA_COMPILER_VERSION}")
-    else()
-        message(WARNING "CUDA compiler not found, GPU acceleration disabled")
-        set(AAM_CUDA_ENABLED FALSE)
-    endif()
-else()
-    set(AAM_CUDA_ENABLED FALSE)
-endif()
+                                                                                                                                                                                find_package(
+                                                                                                                                                                                    Threads
+                                                                                                                                                                                        REQUIRED)
+                                                                                                                                                                                    find_package(Protobuf CONFIG
+                                                                                                                                                                                                     REQUIRED)
+                                                                                                                                                                                        find_package(
+                                                                                                                                                                                            gRPC CONFIG REQUIRED)
+                                                                                                                                                                                            find_package(
+                                                                                                                                                                                                spdlog
+                                                                                                                                                                                                    CONFIG REQUIRED) find_package(fmt CONFIG REQUIRED) find_package(yaml - cpp CONFIG REQUIRED)
+                                                                                                                                                                                                find_package(nlohmann_json CONFIG REQUIRED)
+                                                                                                                                                                                                    find_package(OpenCV CONFIG REQUIRED)
+                                                                                                                                                                                                        find_package(Eigen3 CONFIG REQUIRED)
+#cppzmq 已在上面查找，确保别名存在
+                                                                                                                                                                                                            if (TARGET cppzmq - static AND NOT TARGET cppzmq) add_library(cppzmq ALIAS
+                                                                                                                                                                                                                                                                              cppzmq
+                                                                                                                                                                                                                                                                          - static)
+                                                                                                                                                                                                                message(
+                                                                                                                                                                                                                    STATUS
+                                                                                                                                                                                                                    "Created cppzmq alias for cppzmq-static") endif()
 
-# =============================================================================
-# 代码生成配置（Protobuf）
-# =============================================================================
-set(PROTO_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-file(MAKE_DIRECTORY ${PROTO_BINARY_DIR})
+#FFmpeg 查找（跨平台）
+                                                                                                                                                                                                                    find_package(
+                                                                                                                                                                                                                        FFmpeg COMPONENTS avcodec avformat
+                                                                                                                                                                                                                            avutil swscale) if (FFmpeg_FOUND) message(STATUS "FFmpeg found: ${FFmpeg_INCLUDE_DIRS}") else()
+#回退到手动查找（vcpkg 旧版本兼容）
+                                                                                                                                                                                                                        message(
+                                                                                                                                                                                                                            STATUS
+                                                                                                                                                                                                                            "FFmpeg not found via find_package, using fallback") if (AAM_PLATFORM_WINDOWS) set(FFMPEG_LIBRARIES
+                                                                                                                                                                                                                                                                                                                   ${VCPKG_INSTALLED_DIR}
+                                                                                                                                                                                                                                                                                                               / lib
+                                                                                                                                                                                                                                                                                                               / avcodec
+                                                                                                                                                                                                                                                                                                                     .lib ${VCPKG_INSTALLED_DIR}
+                                                                                                                                                                                                                                                                                                               / lib
+                                                                                                                                                                                                                                                                                                               / avformat
+                                                                                                                                                                                                                                                                                                                     .lib ${VCPKG_INSTALLED_DIR}
+                                                                                                                                                                                                                                                                                                               / lib
+                                                                                                                                                                                                                                                                                                               / avutil
+                                                                                                                                                                                                                                                                                                                     .lib ${VCPKG_INSTALLED_DIR}
+                                                                                                                                                                                                                                                                                                               / lib
+                                                                                                                                                                                                                                                                                                               / swscale
+                                                                                                                                                                                                                                                                                                                     .lib) else()
+#Linux / macOS : 使用 pkg - config 或标准库路径
+                                                                                                                                                                                                                            find_package(PkgConfig QUIET) if (PkgConfig_FOUND) pkg_check_modules(
+                                                                                                                                                                                                                                FFMPEG REQUIRED libavcodec libavformat libavutil
+                                                                                                                                                                                                                                    libswscale) else()
+#手动查找库
+                                                                                                                                                                                                                                find_library(
+                                                                                                                                                                                                                                    AVCODEC_LIBRARY avcodec) find_library(AVFORMAT_LIBRARY
+                                                                                                                                                                                                                                                                              avformat)
+                                                                                                                                                                                                                                    find_library(
+                                                                                                                                                                                                                                        AVUTIL_LIBRARY
+                                                                                                                                                                                                                                            avutil)
+                                                                                                                                                                                                                                        find_library(
+                                                                                                                                                                                                                                            SWSCALE_LIBRARY
+                                                                                                                                                                                                                                                swscale)
+                                                                                                                                                                                                                                            set(FFMPEG_LIBRARIES
+                                                                                                                                                                                                                                                    ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${
+                                                                                                                                                                                                                                                        SWSCALE_LIBRARY})
+                                                                                                                                                                                                                                                endif() endif() endif()
 
-# 收集所有 .proto 文件
-file(GLOB_RECURSE PROTO_FILES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/proto/*.proto"
-)
+#CUDA 配置（可选）
+                                                                                                                                                                                                                                                    if (AAM_ENABLE_CUDA)
+                                                                                                                                                                                                                                                        include(
+                                                                                                                                                                                                                                                            CheckLanguage) check_language(CUDA) if (CMAKE_CUDA_COMPILER)
+                                                                                                                                                                                                                                                            enable_language(
+                                                                                                                                                                                                                                                                CUDA) set(CMAKE_CUDA_STANDARD 17)
+                                                                                                                                                                                                                                                                set(CMAKE_CUDA_STANDARD_REQUIRED
+                                                                                                                                                                                                                                                                        ON)
+                                                                                                                                                                                                                                                                    find_package(CUDAToolkit REQUIRED)
+                                                                                                                                                                                                                                                                        set(AAM_CUDA_ENABLED
+                                                                                                                                                                                                                                                                                TRUE)
+                                                                                                                                                                                                                                                                            message(
+                                                                                                                                                                                                                                                                                STATUS
+                                                                                                                                                                                                                                                                                "CUDA support enabled: ${CMAKE_CUDA_COMPILER_VERSION}") else()
+                                                                                                                                                                                                                                                                                message(WARNING
+                                                                                                                                                                                                                                                                                        "CUDA compiler not found, GPU acceleration disabled") set(AAM_CUDA_ENABLED
+                                                                                                                                                                                                                                                                                                                                                      FALSE)
+                                                                                                                                                                                                                                                                                    endif() else() set(AAM_CUDA_ENABLED
+                                                                                                                                                                                                                                                                                                           FALSE) endif()
 
-# Protobuf 生成目标
-foreach(proto_file ${PROTO_FILES})
-    get_filename_component(proto_name ${proto_file} NAME_WE)
-    file(RELATIVE_PATH proto_rel_path "${CMAKE_CURRENT_SOURCE_DIR}/proto" ${proto_file})
-    get_filename_component(proto_rel_dir "${proto_rel_path}" DIRECTORY)
-    
-    # 生成的文件保持目录结构
-    if(proto_rel_dir)
-        set(output_dir "${PROTO_BINARY_DIR}/${proto_rel_dir}")
-    else()
-        set(output_dir "${PROTO_BINARY_DIR}")
-    endif()
-    
-    set(proto_srcs "${output_dir}/${proto_name}.pb.cc")
-    set(proto_hdrs "${output_dir}/${proto_name}.pb.h")
-    set(grpc_srcs "${output_dir}/${proto_name}.grpc.pb.cc")
-    set(grpc_hdrs "${output_dir}/${proto_name}.grpc.pb.h")
-    
-    add_custom_command(
-        OUTPUT ${proto_srcs} ${proto_hdrs} ${grpc_srcs} ${grpc_hdrs}
-        COMMAND protobuf::protoc
-        ARGS 
-            --grpc_out=${PROTO_BINARY_DIR}
-            --cpp_out=${PROTO_BINARY_DIR}
-            --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/proto
-            --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
-            ${proto_file}
-        DEPENDS ${proto_file}
-        COMMENT "Generating Protobuf and gRPC code for ${proto_name}"
-        VERBATIM
-    )
-    
-    list(APPEND PROTO_GENERATED_SOURCES ${proto_srcs} ${grpc_srcs})
-    list(APPEND PROTO_GENERATED_HEADERS ${proto_hdrs} ${grpc_hdrs})
-endforeach()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#代码生成配置（Protobuf）
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                        set(PROTO_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+                                                                                                                                                                                                                                                                                            file(
+                                                                                                                                                                                                                                                                                                MAKE_DIRECTORY
+                                                                                                                                                                                                                                                                                                    ${PROTO_BINARY_DIR})
 
-add_custom_target(aam_proto_generation 
-    DEPENDS ${PROTO_GENERATED_SOURCES} ${PROTO_GENERATED_HEADERS}
-)
+#收集所有.proto 文件
+                                                                                                                                                                                                                                                                                                file(
+                                                                                                                                                                                                                                                                                                    GLOB_RECURSE
+                                                                                                                                                                                                                                                                                                        PROTO_FILES CONFIGURE_DEPENDS
+                                                                                                                                                                                                                                                                                                    "${CMAKE_CURRENT_SOURCE_DIR}/proto/*.proto")
 
-# =============================================================================
-# MaaFramework 配置（必须在 aam_core 目标定义之前）
-# =============================================================================
-set(MAAFW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/maafw")
+#Protobuf 生成目标
+                                                                                                                                                                                                                                                                                                    foreach (
+                                                                                                                                                                                                                                                                                                        proto_file
+                                                                                                                                                                                                                                                                                                            ${PROTO_FILES}) get_filename_component(proto_name ${
+                                                                                                                                                                                                                                                                                                        proto_file} NAME_WE)
+                                                                                                                                                                                                                                                                                                        file(
+                                                                                                                                                                                                                                                                                                            RELATIVE_PATH proto_rel_path
+                                                                                                                                                                                                                                                                                                            "${CMAKE_CURRENT_SOURCE_DIR}/proto" ${proto_file})
+                                                                                                                                                                                                                                                                                                            get_filename_component(
+                                                                                                                                                                                                                                                                                                                proto_rel_dir "${proto_rel_path}" DIRECTORY)
 
-# 如果目录不存在，克隆并初始化子模块
-if(NOT EXISTS "${MAAFW_DIR}/CMakeLists.txt")
-    message(STATUS "MaaFramework not found, cloning from Ethernos-Studio fork...")
-    execute_process(
-        COMMAND git clone --recursive https://github.com/Ethernos-Studio/MaaFramework.git "${MAAFW_DIR}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
-        RESULT_VARIABLE GIT_CLONE_RESULT
-    )
-    if(NOT GIT_CLONE_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to clone MaaFramework")
-    endif()
-    
-    # 切换到 fix 分支
-    execute_process(
-        COMMAND git checkout fix/submodule-compatibility
-        WORKING_DIRECTORY "${MAAFW_DIR}"
-        RESULT_VARIABLE GIT_CHECKOUT_RESULT
-    )
-    if(NOT GIT_CHECKOUT_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to checkout fix/submodule-compatibility branch")
-    endif()
-endif()
+#生成的文件保持目录结构
+                                                                                                                                                                                                                                                                                                                if (proto_rel_dir) set(output_dir "${PROTO_BINARY_DIR}/${proto_rel_dir}") else()
+                                                                                                                                                                                                                                                                                                                    set(output_dir
+                                                                                                                                                                                                                                                                                                                        "${PROTO_BINARY_DIR}")
+                                                                                                                                                                                                                                                                                                                        endif()
 
-if(EXISTS "${MAAFW_DIR}/CMakeLists.txt")
-    option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-    option(MAA_DEBUG "Enable debug output" OFF)
-    add_subdirectory(${MAAFW_DIR} EXCLUDE_FROM_ALL)
-    set(AAM_MAAFW_ENABLED TRUE)
-    message(STATUS "MaaFramework enabled: ${MAAFW_DIR}")
-else()
-    set(AAM_MAAFW_ENABLED FALSE)
-    message(STATUS "MaaFramework not found at ${MAAFW_DIR}")
-endif()
+                                                                                                                                                                                                                                                                                                                            set(proto_srcs
+                                                                                                                                                                                                                                                                                                                                "${output_dir}/${proto_name}.pb.cc") set(proto_hdrs
+                                                                                                                                                                                                                                                                                                                                                                         "${output_dir}/${proto_name}.pb.h")
+                                                                                                                                                                                                                                                                                                                                set(grpc_srcs "${output_dir}/${proto_name}.grpc.pb.cc") set(
+                                                                                                                                                                                                                                                                                                                                    grpc_hdrs
+                                                                                                                                                                                                                                                                                                                                    "${output_dir}/${proto_name}.grpc.pb.h")
 
-# =============================================================================
-# 核心库目标: aam_core
-# =============================================================================
-# 收集核心库源文件
-file(GLOB_RECURSE AAM_CORE_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/core/src/*.cpp"
-)
+                                                                                                                                                                                                                                                                                                                                    add_custom_command(
+                                                                                                                                                                                                                                                                                                                                        OUTPUT
+                                                                                                                                                                                                                                                                                                                                            ${proto_srcs} ${proto_hdrs} ${grpc_srcs} ${grpc_hdrs} COMMAND protobuf::
+                                                                                                                                                                                                                                                                                                                                                protoc ARGS-- grpc_out =
+                                                                                                                                                                                                                                                                                                                                                    $ {
+                                                                                                                                                                                                                                                                                                                                                        PROTO_BINARY_DIR
+                                                                                                                                                                                                                                                                                                                                                    } --cpp_out =
+                                                                                                                                                                                                                                                                                                                                                        $ {
+                                                                                                                                                                                                                                                                                                                                                            PROTO_BINARY_DIR
+                                                                                                                                                                                                                                                                                                                                                        } --proto_path =
+                                                                                                                                                                                                                                                                                                                                                            ${CMAKE_CURRENT_SOURCE_DIR}
+                                                                                                                                                                                                                                                                                                                                                            / proto-- plugin = protoc - gen - grpc =
+                                                                                                                                                                                                                                                                                                                                                                $
+                                                                                                                                                                                                                                                                                                                                                                < TARGET_FILE : gRPC::grpc_cpp_plugin > ${proto_file} DEPENDS ${
+                                                                                                                                                                                                                                                                                                                                                                    proto_file} COMMENT
+                                                                                                                                                                                                                                                                                                                                                                "Generating Protobuf and gRPC code for ${proto_name}" VERBATIM)
 
-file(GLOB_RECURSE AAM_CORE_HEADERS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/core/include/*.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/core/include/*.h"
-)
+                                                                                                                                                                                                                                                                                                                                        list(
+                                                                                                                                                                                                                                                                                                                                            APPEND
+                                                                                                                                                                                                                                                                                                                                                PROTO_GENERATED_SOURCES ${proto_srcs} ${grpc_srcs}) list(APPEND
+                                                                                                                                                                                                                                                                                                                                                                                                             PROTO_GENERATED_HEADERS
+                                                                                                                                                                                                                                                                                                                                                                                                                 ${
+                                                                                                                                                                                                                                                                                                                                                                                                                     proto_hdrs} ${grpc_hdrs})
+                                                                                                                                                                                                                                                                                                                                            endforeach()
 
-# 创建静态库
-add_library(aam_core STATIC
-    ${AAM_CORE_SOURCES}
-    ${PROTO_GENERATED_SOURCES}
-)
+                                                                                                                                                                                                                                                                                                                                                add_custom_target(
+                                                                                                                                                                                                                                                                                                                                                    aam_proto_generation DEPENDS
+                                                                                                                                                                                                                                                                                                                                                        ${PROTO_GENERATED_SOURCES} ${PROTO_GENERATED_HEADERS})
 
-add_dependencies(aam_core aam_proto_generation)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#MaaFramework 配置（必须在 aam_core 目标定义之前）
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                    set(MAAFW_DIR
+                                                                                                                                                                                                                                                                                                                                                        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/maafw")
 
-# 为 Protobuf 生成的代码禁用特定的严格检查
-# Protobuf 3.20+ 使用 constinit，与 MSVC C++20/23 的 /WX 标志不兼容
-# 注意：protobuf 头文件会自动处理 MSVC 的 constinit 问题，不需要手动定义
-if(MSVC)
-    # 仅抑制 Protobuf 生成代码的特定警告，保留其他警告
-    # C4251: class needs dll-interface
-    # C4275: non dll-interface class used as base
-    # C4800: forcing value to bool
-    # C4244: conversion from 'type1' to 'type2', possible loss of data
-    # C4267: conversion from 'size_t' to 'type', possible loss of data
-    set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
-        COMPILE_FLAGS "/wd4251 /wd4275 /wd4800 /wd4244 /wd4267"
-    )
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # GCC/Clang: 仅抑制特定警告
-    set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES
-        COMPILE_FLAGS "-Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare"
-    )
-endif()
+#如果目录不存在，克隆并初始化子模块
+                                                                                                                                                                                                                                                                                                                                                        if (NOT EXISTS
+                                                                                                                                                                                                                                                                                                                                                            "${MAAFW_DIR}/CMakeLists.txt") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                   "MaaFramework not found, cloning from Ethernos-Studio fork...")
+                                                                                                                                                                                                                                                                                                                                                            execute_process(
+                                                                                                                                                                                                                                                                                                                                                                COMMAND git
+                                                                                                                                                                                                                                                                                                                                                                    clone-- recursive
+                                                                                                                                                                                                                                                                                                                                                                        https :  // github.com/Ethernos-Studio/MaaFramework.git "${MAAFW_DIR}"
+                                                                                                                                                                                                                                                                                                                                                                WORKING_DIRECTORY
+                                                                                                                                                                                                                                                                                                                                                                "${CMAKE_CURRENT_SOURCE_DIR}/third_party" RESULT_VARIABLE
+                                                                                                                                                                                                                                                                                                                                                                    GIT_CLONE_RESULT) if (NOT GIT_CLONE_RESULT EQUAL 0) message(FATAL_ERROR "Failed to clone MaaFramework")
+                                                                                                                                                                                                                                                                                                                                                                endif()
 
-# 目标属性配置
-target_include_directories(aam_core
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/include>
-        $<BUILD_INTERFACE:${PROTO_BINARY_DIR}>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/core/src
-)
+#切换到 fix 分支
+                                                                                                                                                                                                                                                                                                                                                                    execute_process(
+                                                                                                                                                                                                                                                                                                                                                                        COMMAND git checkout fix / submodule - compatibility WORKING_DIRECTORY "${MAAFW_DIR}" RESULT_VARIABLE GIT_CHECKOUT_RESULT) if (NOT GIT_CHECKOUT_RESULT EQUAL 0) message(FATAL_ERROR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                "Failed to checkout fix/submodule-compatibility branch") endif() endif()
 
+                                                                                                                                                                                                                                                                                                                                                                        if (EXISTS
+                                                                                                                                                                                                                                                                                                                                                                            "${MAAFW_DIR}/CMakeLists.txt") option(BUILD_SHARED_LIBS "Build shared libraries" OFF) option(MAA_DEBUG
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                         "Enable debug output" OFF) add_subdirectory(${
+                                                                                                                                                                                                                                                                                                                                                                            MAAFW_DIR} EXCLUDE_FROM_ALL) set(AAM_MAAFW_ENABLED TRUE) message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                             "MaaFramework enabled: ${MAAFW_DIR}") else() set(AAM_MAAFW_ENABLED
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  FALSE) message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "MaaFramework not found at ${MAAFW_DIR}")
+                                                                                                                                                                                                                                                                                                                                                                            endif()
 
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#核心库目标 : aam_core
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#收集核心库源文件
+                                                                                                                                                                                                                                                                                                                                                                                file(
+                                                                                                                                                                                                                                                                                                                                                                                    GLOB_RECURSE
+                                                                                                                                                                                                                                                                                                                                                                                        AAM_CORE_SOURCES CONFIGURE_DEPENDS
+                                                                                                                                                                                                                                                                                                                                                                                    "${CMAKE_CURRENT_SOURCE_DIR}/core/src/*.cpp")
 
-target_link_libraries(aam_core
-    PUBLIC
-        Threads::Threads
-        protobuf::libprotobuf
-        gRPC::grpc++
-        spdlog::spdlog
-        fmt::fmt
-        yaml-cpp
-        nlohmann_json::nlohmann_json
-        opencv_core
-        opencv_imgproc
-        opencv_imgcodecs
-        Eigen3::Eigen
-        ZeroMQ::ZeroMQ
-        $<IF:$<TARGET_EXISTS:cppzmq-static>,cppzmq-static,cppzmq>
-        aam_compiler_flags
-        $<$<BOOL:${AAM_MAAFW_ENABLED}>:MaaFramework>
-        $<$<BOOL:${AAM_MAAFW_ENABLED}>:MaaToolkit>
-        # FFmpeg 库
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/avcodec.lib>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/avformat.lib>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/avutil.lib>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:${VCPKG_INSTALLED_DIR}/lib/swscale.lib>
-        # Windows Runtime 库 (用于 WinRT/C++ 和 Windows Graphics Capture)
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:WindowsApp>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:runtimeobject>
-)
+                                                                                                                                                                                                                                                                                                                                                                                    file(
+                                                                                                                                                                                                                                                                                                                                                                                        GLOB_RECURSE
+                                                                                                                                                                                                                                                                                                                                                                                            AAM_CORE_HEADERS CONFIGURE_DEPENDS
+                                                                                                                                                                                                                                                                                                                                                                                        "${CMAKE_CURRENT_SOURCE_DIR}/core/include/*.hpp"
+                                                                                                                                                                                                                                                                                                                                                                                        "${CMAKE_CURRENT_SOURCE_DIR}/core/include/*.h")
 
-# CUDA 链接（如果启用）
-if(AAM_CUDA_ENABLED)
-    target_link_libraries(aam_core
-        PUBLIC
-            CUDA::cudart
-            CUDA::cuda_driver
-    )
-    target_include_directories(aam_core
-        PUBLIC
-            ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    )
-endif()
+#创建静态库
+                                                                                                                                                                                                                                                                                                                                                                                        add_library(aam_core STATIC ${
+                                                                                                                                                                                                                                                                                                                                                                                            AAM_CORE_SOURCES} ${
+                                                                                                                                                                                                                                                                                                                                                                                            PROTO_GENERATED_SOURCES})
 
-# 编译特性
-target_compile_features(aam_core PUBLIC cxx_std_23)
+                                                                                                                                                                                                                                                                                                                                                                                            add_dependencies(
+                                                                                                                                                                                                                                                                                                                                                                                                aam_core
+                                                                                                                                                                                                                                                                                                                                                                                                    aam_proto_generation)
 
-# 预处理器定义
-target_compile_definitions(aam_core
-    PUBLIC
-        AAM_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-        AAM_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-        AAM_VERSION_PATCH=${PROJECT_VERSION_PATCH}
-        AAM_VERSION_STRING="${PROJECT_VERSION}"
-        $<$<BOOL:${AAM_CUDA_ENABLED}>:AAM_ENABLE_CUDA>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:AAM_PLATFORM_WINDOWS>
-        $<$<BOOL:${AAM_PLATFORM_LINUX}>:AAM_PLATFORM_LINUX>
-        $<$<BOOL:${AAM_PLATFORM_MACOS}>:AAM_PLATFORM_MACOS>
-        $<$<BOOL:${AAM_MAAFW_ENABLED}>:AAM_MAAFW_ENABLED>
-    PRIVATE
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:NOMINMAX>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:WIN32_LEAN_AND_MEAN>
-        $<$<BOOL:${AAM_PLATFORM_WINDOWS}>:_CRT_SECURE_NO_WARNINGS>
-)
+#为 Protobuf 生成的代码禁用特定的严格检查
+#Protobuf 3.20 + 使用 constinit，与 MSVC C++ 20 / 23 的 / WX 标志不兼容
+#注意：protobuf 头文件会自动处理 MSVC    的 constinit 问题，不需要手动定义
+                                                                                                                                                                                                                                                                                                                                                                                                if (MSVC)
+#仅抑制 Protobuf 生成代码的特定警告，保留其他警告
+#C4251 : class needs dll - interface
+#C4275 : non dll - interface class used as base
+#C4800 : forcing value                  to bool
+#C4244 : conversion from 'type1' to 'type2', possible loss of data
+#C4267 : conversion from 'size_t' to 'type', possible loss of data
+                                                                                                                                                                                                                                                                                                                                                                                                    set_source_files_properties(${
+                                                                                                                                                                                                                                                                                                                                                                                                        PROTO_GENERATED_SOURCES} PROPERTIES COMPILE_FLAGS "/wd4251 /wd4275 /wd4800 /wd4244 /wd4267") elseif(CMAKE_CXX_COMPILER_ID MATCHES
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "GNU|Clang")
+#GCC / Clang : 仅抑制特定警告
+                                                                                                                                                                                                                                                                                                                                                                                                        set_source_files_properties(${PROTO_GENERATED_SOURCES} PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter -Wno-unused-variable -Wno-sign-compare")
+                                                                                                                                                                                                                                                                                                                                                                                                            endif()
 
-# 编译器特定选项已由 aam_compiler_flags 提供，此处无需重复设置
+#目标属性配置
+                                                                                                                                                                                                                                                                                                                                                                                                                target_include_directories(
+                                                                                                                                                                                                                                                                                                                                                                                                                    aam_core PUBLIC $<BUILD_INTERFACE : ${CMAKE_CURRENT_SOURCE_DIR} / core / include> $<BUILD_INTERFACE : ${PROTO_BINARY_DIR}> $<INSTALL_INTERFACE : include> PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} / core / src)
 
-# 静态链接配置
-if(AAM_STATIC_LINK AND MSVC)
-    set_property(TARGET aam_core PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
+                                                                                                                                                                                                                                                                                                                                                                                                                    target_link_libraries(aam_core PUBLIC Threads::Threads
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      protobuf::libprotobuf gRPC::grpc++ spdlog::spdlog fmt::fmt yaml
+                                                                                                                                                                                                                                                                                                                                                                                                                                                  - cpp
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      nlohmann_json::nlohmann_json opencv_core opencv_imgproc opencv_imgcodecs Eigen3::Eigen ZeroMQ::ZeroMQ $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < IF : $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < TARGET_EXISTS : cppzmq
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    - static
+                                                                                                                                                                                                                                                                                                                                                                                                                                              >,
+                                                                                                                                                                                                                                                                                                                                                                                                                                          cppzmq
+                                                                                                                                                                                                                                                                                                                                                                                                                                              - static,
+                                                                                                                                                                                                                                                                                                                                                                                                                                          cppzmq
+                                                                                                                                                                                                                                                                                                                                                                                                                                              > aam_compiler_flags
+                                                                                                                                                                                                                                                                                                                                                                                                                                                  $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < BOOL : ${AAM_MAAFW_ENABLED} > : MaaFramework > $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < $ < BOOL : ${AAM_MAAFW_ENABLED} > : MaaToolkit
+                                                                                                                                                                                                                                                                                                                                                                                                                                              >
+#FFmpeg 库（跨平台）
+                                                                                                                                                                                                                                                                                                                                                                                                                                              ${FFMPEG_LIBRARIES}
+#Windows Runtime 库(用于 WinRT / C++ 和 Windows Graphics Capture)
+                                                                                                                                                                                                                                                                                                                                                                                                                                              $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < $
+                                                                                                                                                                                                                                                                                                                                                                                                                                              < BOOL : ${AAM_PLATFORM_WINDOWS}
+                                                                                                                                                                                                                                                                                                                                                                                                                                              > : WindowsApp > $ < $ < BOOL : ${AAM_PLATFORM_WINDOWS}
+                                                                                                                                                                                                                                                                                                                                                                                                                                              > : runtimeobject
+                                                                                                                                                                                                                                                                                                                                                                                                                                              >)
 
-# =============================================================================
-# 测试配置
-# =============================================================================
-if(AAM_BUILD_TESTS)
-    enable_testing()
-    find_package(GTest CONFIG REQUIRED)
-    add_subdirectory(core/tests)
-endif()
+#CUDA 链接（如果启用）
+                                                                                                                                                                                                                                                                                                                                                                                                                        if (AAM_CUDA_ENABLED) target_link_libraries(aam_core PUBLIC CUDA::cudart CUDA::cuda_driver) target_include_directories(
+                                                                                                                                                                                                                                                                                                                                                                                                                            aam_core PUBLIC
+                                                                                                                                                                                                                                                                                                                                                                                                                                ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) endif()
 
-# =============================================================================
-# 示例配置
-# =============================================================================
-if(AAM_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
+#编译特性
+                                                                                                                                                                                                                                                                                                                                                                                                                            target_compile_features(
+                                                                                                                                                                                                                                                                                                                                                                                                                                aam_core PUBLIC
+                                                                                                                                                                                                                                                                                                                                                                                                                                    cxx_std_23)
 
-# =============================================================================
-# Bridge 模块配置（v0.7.0-beta 预留）
-# =============================================================================
-# add_subdirectory(bridge/src)  # 将在 v0.7.0 启用
+#预处理器定义
+                                                                                                                                                                                                                                                                                                                                                                                                                                target_compile_definitions(
+                                                                                                                                                                                                                                                                                                                                                                                                                                    aam_core PUBLIC
+                                                                                                                                                                                                                                                                                                                                                                                                                                        AAM_VERSION_MAJOR = ${PROJECT_VERSION_MAJOR} AAM_VERSION_MINOR = ${PROJECT_VERSION_MINOR} AAM_VERSION_PATCH = ${PROJECT_VERSION_PATCH} AAM_VERSION_STRING = "${PROJECT_VERSION}" $
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  < $
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  < BOOL : ${AAM_CUDA_ENABLED} > : AAM_ENABLE_CUDA > $ < $ < BOOL : ${AAM_PLATFORM_WINDOWS}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > : AAM_PLATFORM_WINDOWS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > $
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  < $ < BOOL : ${AAM_PLATFORM_LINUX} > : AAM_PLATFORM_LINUX > $ < $ < BOOL : ${AAM_PLATFORM_MACOS} > : AAM_PLATFORM_MACOS > $ < $ < BOOL : ${AAM_MAAFW_ENABLED}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > : AAM_MAAFW_ENABLED
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > PRIVATE $ < $ < BOOL : ${AAM_PLATFORM_WINDOWS} > : NOMINMAX > $ < $ < BOOL : ${AAM_PLATFORM_WINDOWS}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > : WIN32_LEAN_AND_MEAN
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > $
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  < $
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  < BOOL : ${AAM_PLATFORM_WINDOWS}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  > : _CRT_SECURE_NO_WARNINGS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  >)
 
-# =============================================================================
-# GUI 模块配置（v0.9.0-beta 预留）
-# =============================================================================
-# add_subdirectory(gui/qt)  # 将在 v0.9.0 启用
+#编译器特定选项已由 aam_compiler_flags 提供，此处无需重复设置
 
-# =============================================================================
-# 工具模块配置
-# =============================================================================
-# 查找 cxxopts 用于 CLI 工具
-find_package(cxxopts CONFIG QUIET)
-if(cxxopts_FOUND)
-    add_subdirectory(tools/capture_test_cli)
-    message(STATUS "Capture test CLI enabled")
-else()
-    message(STATUS "cxxopts not found, capture test CLI disabled")
-endif()
+#静态链接配置
+                                                                                                                                                                                                                                                                                                                                                                                                                                    if (AAM_STATIC_LINK AND MSVC) set_property(TARGET aam_core
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>") endif()
 
-# =============================================================================
-# MaaFramework 头文件路径（已在上面的配置中添加）
-# =============================================================================
-if(AAM_MAAFW_ENABLED)
-    target_include_directories(aam_core PRIVATE ${MAAFW_DIR}/include)
-endif()
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#测试配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                                                                                                        if (AAM_BUILD_TESTS)
+                                                                                                                                                                                                                                                                                                                                                                                                                                            enable_testing() find_package(GTest CONFIG
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              REQUIRED) add_subdirectory(core
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         / tests) endif()
 
-# =============================================================================
-# 安装配置
-# =============================================================================
-include(GNUInstallDirs)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#示例配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                                                                                                                if (AAM_BUILD_EXAMPLES)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    add_subdirectory(examples) endif()
 
-# 安装主库目标（同时安装 aam_compiler_flags）
-install(TARGETS aam_core aam_compiler_flags
-    EXPORT aam-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#Bridge 模块配置（v0.7.0 - beta 预留）
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#add_subdirectory(bridge / src) #将在 v0.7.0 启用
 
-install(EXPORT aam-targets
-    FILE aam-targets.cmake
-    NAMESPACE aam::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/aam
-)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#GUI 模块配置（v0.9.0 - beta 预留）
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#add_subdirectory(gui / qt) #将在 v0.9.0 启用
 
-install(DIRECTORY core/include/aam
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#工具模块配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#查找 cxxopts 用于 CLI 工具
+                                                                                                                                                                                                                                                                                                                                                                                                                                                        find_package(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            cxxopts CONFIG QUIET) if (cxxopts_FOUND)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            add_subdirectory(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                tools
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                / capture_test_cli) message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "Capture test CLI enabled") else() message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       "cxxopts not found, capture test CLI disabled") endif()
 
-install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/aam-config.cmake.in"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/aam
-    RENAME aam-config.cmake
-)
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#MaaFramework 头文件路径（已在上面的配置中添加）
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                if (AAM_MAAFW_ENABLED)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    target_include_directories(aam_core
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   PRIVATE ${
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       MAAFW_DIR}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               / include)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        endif()
 
-# =============================================================================
-# 打包配置
-# =============================================================================
-set(CPACK_PACKAGE_NAME "ArknightsAutoMachine")
-set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${PROJECT_DESCRIPTION})
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#安装配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            include(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                GNUInstallDirs)
 
-if(WIN32)
-    set(CPACK_GENERATOR "ZIP;NSIS")
-elseif(APPLE)
-    set(CPACK_GENERATOR "TGZ;DragNDrop")
-else()
-    set(CPACK_GENERATOR "TGZ;DEB;RPM")
-endif()
+#安装主库目标（同时安装 aam_compiler_flags）
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                install(TARGETS aam_core aam_compiler_flags EXPORT aam - targets LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-include(CPack)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    install(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        EXPORT
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            aam
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        - targets
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            FILE aam
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        - targets.cmake
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  NAMESPACE aam::DESTINATION
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ${CMAKE_INSTALL_LIBDIR}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              / cmake
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              / aam)
 
-# =============================================================================
-# 构建信息输出
-# =============================================================================
-message(STATUS "")
-message(STATUS "=============================================================================")
-message(STATUS "Arknights Auto Machine (AAM) Build Configuration")
-message(STATUS "=============================================================================")
-message(STATUS "Version:        ${PROJECT_VERSION}")
-message(STATUS "Build Type:     ${CMAKE_BUILD_TYPE}")
-message(STATUS "C++ Standard:   ${CMAKE_CXX_STANDARD}")
-message(STATUS "CUDA Enabled:   ${AAM_CUDA_ENABLED}")
-message(STATUS "Tests:          ${AAM_BUILD_TESTS}")
-message(STATUS "Examples:       ${AAM_BUILD_EXAMPLES}")
-message(STATUS "Platform:       ${CMAKE_SYSTEM_NAME}")
-message(STATUS "Architecture:   ${CMAKE_SYSTEM_PROCESSOR}")
-message(STATUS "Compiler:       ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-message(STATUS "=============================================================================")
-message(STATUS "")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        install(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            DIRECTORY core / include / aam DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            install(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                FILES
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/aam-config.cmake.in" DESTINATION
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ${CMAKE_INSTALL_LIBDIR}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    / cmake
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    / aam RENAME
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        aam
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                - config
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      .cmake)
+
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#打包配置
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                set(CPACK_PACKAGE_NAME
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "ArknightsAutoMachine")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    set(CPACK_PACKAGE_VERSION_MAJOR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ${PROJECT_VERSION_MAJOR}) set(CPACK_PACKAGE_VERSION_MINOR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ${PROJECT_VERSION_MINOR}) set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${PROJECT_DESCRIPTION})
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if (WIN32)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                set(CPACK_GENERATOR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "ZIP;NSIS")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    elseif(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        APPLE)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        set(CPACK_GENERATOR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "TGZ;DragNDrop") else()
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            set(CPACK_GENERATOR
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                "TGZ;DEB;RPM")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                endif()
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    include(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        CPack)
+
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+#构建信息输出
+#== == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == == =
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        message(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            message(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                "=============================================================================") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         "Arknights Auto Machine (AAM) Build Configuration") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "=============================================================================")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                message(STATUS "Version:        ${PROJECT_VERSION}") message(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "Build Type:     ${CMAKE_BUILD_TYPE}") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "C++ Standard:   ${CMAKE_CXX_STANDARD}") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "CUDA Enabled:   ${AAM_CUDA_ENABLED}") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "Tests:          ${AAM_BUILD_TESTS}") message(STATUS "Examples:       ${AAM_BUILD_EXAMPLES}") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         "Platform:       ${CMAKE_SYSTEM_NAME}")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    message(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        "Architecture:   ${CMAKE_SYSTEM_PROCESSOR}") message(STATUS "Compiler:       ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      "=============================================================================") message(STATUS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "")

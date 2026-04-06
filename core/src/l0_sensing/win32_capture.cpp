@@ -169,9 +169,6 @@ public:
         width_  = width;
         height_ = height;
 
-        // 初始化 WinRT
-        winrt::init_apartment();
-
         // 创建 Direct3D 设备
         if (!CreateD3DDevice()) {
             SPDLOG_ERROR("Failed to create D3D11 device");
@@ -255,9 +252,6 @@ public:
         d3d_device_      = nullptr;
 
         is_initialized_ = false;
-
-        // 清理 WinRT apartment
-        winrt::uninit_apartment();
     }
 
     /**
@@ -1238,6 +1232,21 @@ void Win32CaptureBackend::CaptureThreadFunc()
 {
     SPDLOG_LOGGER_INFO(logger_.native(), "Capture thread started");
 
+    // 初始化 WinRT apartment（仅当使用 WGC 时）
+    bool winrt_initialized = false;
+    if (wgc_capture_) {
+        try {
+            winrt::init_apartment(winrt::apartment_type::single_threaded);
+            winrt_initialized = true;
+        }
+        catch (const winrt::hresult_error& e) {
+            SPDLOG_LOGGER_ERROR(logger_.native(),
+                                "Failed to init WinRT apartment: {}",
+                                winrt::to_string(e.message()));
+            return;
+        }
+    }
+
     auto last_capture_time = std::chrono::steady_clock::now();
 
     while (!stop_requested_.load()) {
@@ -1285,6 +1294,11 @@ void Win32CaptureBackend::CaptureThreadFunc()
         if (frame) {
             PushFrame(std::move(*frame));
         }
+    }
+
+    // 清理 WinRT apartment
+    if (winrt_initialized) {
+        winrt::uninit_apartment();
     }
 
     SPDLOG_LOGGER_INFO(logger_.native(), "Capture thread stopped");
