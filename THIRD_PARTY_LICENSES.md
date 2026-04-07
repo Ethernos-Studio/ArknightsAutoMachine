@@ -4,7 +4,7 @@ This project uses the following third-party libraries and components:
 
 ## MaaFramework
 
-- **Repository**: https://github.com/Ethernos-Studio/MaaFramework
+- **Repository**: https://github.com/MaaXYZ/MaaFramework
 - **Path**: `third_party/maafw/`
 - **License**: GNU Lesser General Public License v3 (LGPL-3.0)
 - **License File**: `third_party/maafw/LICENSE.md`
@@ -106,7 +106,7 @@ This project links against MaaFramework as a shared library (DLL on Windows).
 According to the LGPL-3.0 license:
 
 1. The source code of MaaFramework is available at:
-   https://github.com/Ethernos-Studio/MaaFramework
+   https://github.com/MaaXYZ/MaaFramework
 
 2. Users can replace the MaaFramework DLL with a modified version
    that is compatible with the LGPL-3.0 license.
@@ -158,7 +158,7 @@ In compliance with GNU licenses (AGPL-3.0, LGPL-3.0, LGPL-2.1+), source code
 for the project and its LGPL dependencies can be obtained from:
 
 - **AAM**: https://github.com/Ethernos-Studio/ArknightsAutoMachine
-- **MaaFramework**: https://github.com/Ethernos-Studio/MaaFramework
+- **MaaFramework**: https://github.com/MaaXYZ/MaaFramework
 - **FFmpeg**: https://github.com/FFmpeg/FFmpeg
 
 See `docs/licenses/SOURCE_CODE_ACCESS.md` in the distribution for details.

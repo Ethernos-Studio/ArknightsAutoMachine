@@ -495,19 +495,20 @@ public:
 
 /**
  * @brief 共享内存传输统计信息
+ * @note 使用原子类型保证线程安全，避免锁竞争
  */
 struct ShmTransportStats
 {
-    // 帧统计
+    // 帧统计（受 stats_mutex_ 保护）
     std::uint64_t frames_written{0};     ///< 已写入帧数
     std::uint64_t frames_read{0};        ///< 已读取帧数
     std::uint64_t frames_dropped{0};     ///< 丢弃帧数
 
-    // 字节统计
+    // 字节统计（受 stats_mutex_ 保护）
     std::uint64_t bytes_written{0};      ///< 已写入字节数
     std::uint64_t bytes_read{0};         ///< 已读取字节数
 
-    // 延迟统计（纳秒）
+    // 延迟统计（纳秒，受 stats_mutex_ 保护）
     core::Duration min_write_latency{core::Duration::max()};   ///< 最小写入延迟
     core::Duration max_write_latency{core::Duration::zero()};  ///< 最大写入延迟
     core::Duration avg_write_latency{core::Duration::zero()};  ///< 平均写入延迟
@@ -516,15 +517,62 @@ struct ShmTransportStats
     core::Duration max_read_latency{core::Duration::zero()};   ///< 最大读取延迟
     core::Duration avg_read_latency{core::Duration::zero()};   ///< 平均读取延迟
 
-    // 传输统计
-    std::uint64_t write_timeouts{0};     ///< 写入超时次数
-    std::uint64_t read_timeouts{0};      ///< 读取超时次数
-    std::uint64_t checksum_errors{0};    ///< 校验和错误次数
+    // 传输统计（原子类型，无锁更新）
+    std::atomic<std::uint64_t> write_timeouts{0};     ///< 写入超时次数
+    std::atomic<std::uint64_t> read_timeouts{0};      ///< 读取超时次数
+    std::atomic<std::uint64_t> checksum_errors{0};    ///< 校验和错误次数
 
-    // 时间戳
+    // 时间戳（受 stats_mutex_ 保护）
     core::Timestamp session_start;       ///< 会话开始时间
     core::Timestamp last_write_time;     ///< 最后写入时间
     core::Timestamp last_read_time;      ///< 最后读取时间
+
+    // 显式定义拷贝构造函数（处理原子成员）
+    ShmTransportStats() = default;
+
+    ShmTransportStats(const ShmTransportStats& other)
+        : frames_written(other.frames_written)
+        , frames_read(other.frames_read)
+        , frames_dropped(other.frames_dropped)
+        , bytes_written(other.bytes_written)
+        , bytes_read(other.bytes_read)
+        , min_write_latency(other.min_write_latency)
+        , max_write_latency(other.max_write_latency)
+        , avg_write_latency(other.avg_write_latency)
+        , min_read_latency(other.min_read_latency)
+        , max_read_latency(other.max_read_latency)
+        , avg_read_latency(other.avg_read_latency)
+        , write_timeouts(other.write_timeouts.load(std::memory_order_relaxed))
+        , read_timeouts(other.read_timeouts.load(std::memory_order_relaxed))
+        , checksum_errors(other.checksum_errors.load(std::memory_order_relaxed))
+        , session_start(other.session_start)
+        , last_write_time(other.last_write_time)
+        , last_read_time(other.last_read_time)
+    {}
+
+    ShmTransportStats& operator=(const ShmTransportStats& other)
+    {
+        if (this != &other) {
+            frames_written = other.frames_written;
+            frames_read = other.frames_read;
+            frames_dropped = other.frames_dropped;
+            bytes_written = other.bytes_written;
+            bytes_read = other.bytes_read;
+            min_write_latency = other.min_write_latency;
+            max_write_latency = other.max_write_latency;
+            avg_write_latency = other.avg_write_latency;
+            min_read_latency = other.min_read_latency;
+            max_read_latency = other.max_read_latency;
+            avg_read_latency = other.avg_read_latency;
+            write_timeouts.store(other.write_timeouts.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            read_timeouts.store(other.read_timeouts.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            checksum_errors.store(other.checksum_errors.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            session_start = other.session_start;
+            last_write_time = other.last_write_time;
+            last_read_time = other.last_read_time;
+        }
+        return *this;
+    }
 
     /**
      * @brief 计算丢帧率

@@ -273,12 +273,13 @@ public:
         );
 
         if (segment->handle_ == nullptr) {
-            const DWORD error = GetLastError();
-            if (error == ERROR_ALREADY_EXISTS) {
-                return std::unexpected(ShmTransportError::AlreadyExists);
-            }
             return std::unexpected(ShmTransportError::ShmCreateFailed);
         }
+
+        // 检查是否创建了新的共享内存还是打开了已存在的
+        // CreateFileMappingA 在打开已存在的映射时也会返回有效句柄
+        const DWORD create_error = GetLastError();
+        const bool already_exists = (create_error == ERROR_ALREADY_EXISTS);
 
         segment->data_ = static_cast<std::byte*>(MapViewOfFile(
             segment->handle_,
@@ -289,7 +290,20 @@ public:
         ));
 
         if (segment->data_ == nullptr) {
+            // 映射失败时关闭句柄避免泄漏
+            CloseHandle(segment->handle_);
+            segment->handle_ = nullptr;
             return std::unexpected(ShmTransportError::ShmMapFailed);
+        }
+
+        // 如果是已存在的映射，在映射成功后返回错误
+        // 注意：必须先关闭句柄和解除映射
+        if (already_exists) {
+            UnmapViewOfFile(segment->data_);
+            CloseHandle(segment->handle_);
+            segment->data_ = nullptr;
+            segment->handle_ = nullptr;
+            return std::unexpected(ShmTransportError::AlreadyExists);
         }
 
         std::memset(segment->data_, 0, size);
@@ -738,6 +752,33 @@ bool ShmTransport::IsConsumer() const noexcept
 ShmTransport::Result ShmTransport::WriteFrame(const FrameMetadata& metadata,
                                                std::span<const std::byte> data)
 {
+    // 前置校验：检查空数据
+    if (data.empty()) {
+        return std::unexpected(ShmTransportError::InvalidFrame);
+    }
+
+    // 如果启用零拷贝模式，使用零拷贝 API
+    if (config_.enable_zero_copy) {
+        auto buffer_result = AcquireWriteBuffer(config_.write_timeout);
+        if (!buffer_result) {
+            return std::unexpected(buffer_result.error());
+        }
+        if (!buffer_result->has_value()) {
+            return std::unexpected(ShmTransportError::Timeout);
+        }
+
+        auto& buffer = buffer_result->value();
+        if (data.size() > buffer.capacity) {
+            return std::unexpected(ShmTransportError::FrameTooLarge);
+        }
+
+        // 直接复制到共享内存缓冲区
+        std::memcpy(buffer.data, data.data(), data.size());
+
+        return CommitWriteBuffer(buffer.buffer_index, metadata, data.size());
+    }
+
+    // 非零拷贝模式：使用传统路径
     auto result = WriteFrameWithTimeout(metadata, data, config_.write_timeout);
     if (!result) {
         return std::unexpected(result.error());
@@ -787,7 +828,13 @@ std::expected<bool, ShmTransportError> ShmTransport::TryWriteFrame(
     header->pixel_format = static_cast<std::uint32_t>(metadata.pixel_format);
 
     std::memcpy(frame_data, data.data(), data.size());
-    header->checksum = header->calculate_checksum(frame_data);
+
+    // 仅在启用校验和时计算CRC
+    if (config_.enable_checksum) {
+        header->checksum = header->calculate_checksum(frame_data);
+    } else {
+        header->checksum = 0;
+    }
 
     control_block_->write_sequence.fetch_add(1, std::memory_order_release);
     control_block_->total_frames_written.fetch_add(1, std::memory_order_relaxed);
@@ -831,6 +878,35 @@ ShmTransport::ReadFrame(core::Duration timeout)
         return std::unexpected(ShmTransportError::NotInitialized);
     }
 
+    // 如果启用零拷贝模式，使用零拷贝 API 读取
+    if (config_.enable_zero_copy) {
+        auto buffer_result = AcquireReadBuffer(timeout);
+        if (!buffer_result) {
+            return std::unexpected(buffer_result.error());
+        }
+        if (!buffer_result->has_value()) {
+            stats_.read_timeouts++;
+            return std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>{};
+        }
+
+        const auto& buffer = buffer_result->value();
+
+        // 复制数据到本地缓冲区
+        std::vector<std::byte> data(buffer.data.size());
+        std::memcpy(data.data(), buffer.data.data(), buffer.data.size());
+
+        FrameMetadata metadata = buffer.metadata;
+
+        // 释放读取缓冲区
+        auto release_result = ReleaseReadBuffer(buffer.buffer_index);
+        if (!release_result.has_value()) {
+            return std::unexpected(release_result.error());
+        }
+
+        return std::make_optional(std::make_pair(std::move(metadata), std::move(data)));
+    }
+
+    // 非零拷贝模式：使用传统路径
     const auto deadline = core::Clock::now() + timeout;
 
     while (core::Clock::now() < deadline) {
@@ -869,7 +945,8 @@ ShmTransport::TryReadFrame()
         return std::unexpected(ShmTransportError::ShmCorrupted);
     }
 
-    if (!header->verify_data(frame_data)) {
+    // 仅在启用校验和时验证数据完整性
+    if (config_.enable_checksum && !header->verify_data(frame_data)) {
         stats_.checksum_errors++;
         control_block_->read_sequence.fetch_add(1, std::memory_order_release);
         return std::unexpected(ShmTransportError::ShmCorrupted);
@@ -921,7 +998,8 @@ ShmTransport::Result ShmTransport::ReadFrameWithCallback(core::Duration timeout,
 ShmTransportStats ShmTransport::GetStats() const noexcept
 {
     std::lock_guard<std::mutex> lock(stats_mutex_);
-    ShmTransportStats result = stats_;
+    ShmTransportStats result = stats_;  // 使用显式拷贝构造函数
+
     if (control_block_ != nullptr) {
         result.frames_dropped = control_block_->dropped_frames.load(std::memory_order_relaxed);
     }
