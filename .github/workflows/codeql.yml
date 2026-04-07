@@ -19,7 +19,7 @@
 # @author dhjs0000
 # @brief CodeQL Security Analysis Workflow for AAM
 # =============================================================================
-# 版本: v0.1.0-alpha.3
+# 版本: v0.2.0-alpha.2
 # 功能: 安全漏洞扫描（Critical/High 级别）
 # 触发: 每周定时 + PR 到 main 分支
 # =============================================================================
@@ -53,6 +53,7 @@ env:
   CODEQL_EXTRACTOR_CPP_BUILD_TRACING: true
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
   VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
+  MAA_DEPS_VERSION: 'v2.12.1'
 
 jobs:
   # ============================================================================
@@ -118,7 +119,31 @@ jobs:
             libfmt-dev \
             libyaml-cpp-dev \
             nlohmann-json3-dev \
-            libzmq3-dev
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5

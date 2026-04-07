@@ -19,7 +19,7 @@
 # @author dhjs0000
 # @brief Continuous Integration Workflow for AAM
 # =============================================================================
-# 版本: v0.1.0-alpha.3
+# 版本: v0.2.0-alpha.2
 # 功能: 三平台构建矩阵（Windows/Linux/macOS）
 # 触发: PR 到 main 分支 或 推送到 main 分支
 # =============================================================================
@@ -46,6 +46,8 @@ env:
   # vcpkg 2026.03.18 Release - 包含 protobuf 3.20+ 兼容性修复和 MSVC constinit 支持
   # 更新策略: 每季度检查 vcpkg 发布说明，验证关键依赖（protobuf, grpc, spdlog）兼容性后升级
   VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
+  # MaaDeps 版本 - 需要与 GitHub Releases 保持一致
+  MAA_DEPS_VERSION: 'v2.12.1'
 
 jobs:
   # ============================================================================
@@ -132,13 +134,21 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Ensure vcpkg submodule
+      - name: Ensure all submodules
         run: |
           git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
           if (-not (Test-Path "${{ github.workspace }}/vcpkg")) {
             Write-Error "vcpkg directory not found after submodule update"
             exit 1
           }
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          triplet: x64-windows
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
@@ -229,7 +239,31 @@ jobs:
             libfmt-dev \
             libyaml-cpp-dev \
             nlohmann-json3-dev \
-            libzmq3-dev
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
@@ -300,6 +334,17 @@ jobs:
             yaml-cpp \
             nlohmann-json \
             zeromq
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
