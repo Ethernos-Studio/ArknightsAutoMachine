@@ -1139,6 +1139,138 @@ function Initialize-PublishStructure {
 
 <#
 .SYNOPSIS
+    复制许可证文件到 staging 目录
+
+.DESCRIPTION
+    复制项目许可证和第三方许可证文件到 docs/licenses/ 目录
+    确保符合 AGPL-3.0、LGPL-3.0、MIT 等许可证的分发要求
+
+.PARAMETER StagingDirectory
+    临时 staging 目录路径
+
+.OUTPUTS
+    System.Boolean
+    复制成功返回 $true，否则返回 $false
+
+.NOTES
+    许可证合规要求：
+    - AGPL-3.0: 必须包含完整许可证文本
+    - LGPL-3.0 (MaaFramework): 必须包含许可证文本和源代码获取方式
+    - LGPL-2.1+ (FFmpeg): 必须包含许可证文本和源代码获取方式
+    - MIT/Apache/BSD: 必须包含原始许可证文本
+#>
+function Copy-LicenseFiles {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$StagingDirectory
+    )
+
+    Write-PublishLog '复制许可证文件...' -Level Debug
+
+    try {
+        $repoRoot = Split-Path $PSScriptRoot -Parent
+        $licensesDir = Join-Path $StagingDirectory 'docs' 'licenses'
+        New-Item -ItemType Directory -Path $licensesDir -Force | Out-Null
+
+        $copiedLicenses = @()
+
+        # 1. 复制主项目 LICENSE (AGPL-3.0)
+        $mainLicense = Join-Path $repoRoot 'LICENSE'
+        if (Test-Path $mainLicense) {
+            $targetPath = Join-Path $licensesDir 'LICENSE'
+            [System.IO.File]::Copy($mainLicense, $targetPath, $true)
+            $copiedLicenses += 'LICENSE (AGPL-3.0)'
+            Write-PublishLog '  复制: LICENSE (AGPL-3.0)' -Level Debug
+        }
+        else {
+            Write-PublishLog '  警告: 未找到主 LICENSE 文件' -Level Warning
+        }
+
+        # 2. 复制第三方许可证清单
+        $thirdPartyLicenses = Join-Path $repoRoot 'THIRD_PARTY_LICENSES.md'
+        if (Test-Path $thirdPartyLicenses) {
+            $targetPath = Join-Path $licensesDir 'THIRD_PARTY_LICENSES.md'
+            [System.IO.File]::Copy($thirdPartyLicenses, $targetPath, $true)
+            $copiedLicenses += 'THIRD_PARTY_LICENSES.md'
+            Write-PublishLog '  复制: THIRD_PARTY_LICENSES.md' -Level Debug
+        }
+
+        # 3. 复制 MaaFramework 许可证 (LGPL-3.0)
+        $maafwLicense = Join-Path $repoRoot 'third_party' 'maafw' 'LICENSE.md'
+        if (Test-Path $maafwLicense) {
+            $targetPath = Join-Path $licensesDir 'MaaFramework-LICENSE.md'
+            [System.IO.File]::Copy($maafwLicense, $targetPath, $true)
+            $copiedLicenses += 'MaaFramework-LICENSE.md (LGPL-3.0)'
+            Write-PublishLog '  复制: MaaFramework-LICENSE.md (LGPL-3.0)' -Level Debug
+        }
+
+        # 4. 复制 FFmpeg 许可证 (LGPL-2.1+)
+        $ffmpegCopyright = Join-Path $repoRoot 'vcpkg_installed' 'x64-windows' 'share' 'ffmpeg' 'copyright'
+        if (Test-Path $ffmpegCopyright) {
+            $targetPath = Join-Path $licensesDir 'FFmpeg-LICENSE.txt'
+            [System.IO.File]::Copy($ffmpegCopyright, $targetPath, $true)
+            $copiedLicenses += 'FFmpeg-LICENSE.txt (LGPL-2.1+)'
+            Write-PublishLog '  复制: FFmpeg-LICENSE.txt (LGPL-2.1+)' -Level Debug
+        }
+
+        # 5. 创建源代码获取方式说明文件
+        $sourceInfoContent = @'
+# 源代码获取方式
+
+根据 GNU 许可证（AGPL-3.0、LGPL-3.0、LGPL-2.1+）的要求，我们提供以下源代码获取方式：
+
+## AAM (Arknights Auto Machine)
+
+- **许可证**: GNU Affero General Public License v3 (AGPL-3.0)
+- **源代码仓库**: https://github.com/Ethernos-Studio/Arknights-Auto-Machine
+- **获取方式**: `git clone https://github.com/Ethernos-Studio/Arknights-Auto-Machine.git`
+
+## MaaFramework
+
+- **许可证**: GNU Lesser General Public License v3 (LGPL-3.0)
+- **源代码仓库**: https://github.com/Ethernos-Studio/MaaFramework
+- **获取方式**: `git clone https://github.com/Ethernos-Studio/MaaFramework.git`
+- **本地副本**: 本软件包包含 MaaFramework 的预编译二进制文件（DLL）
+- **替换权利**: 根据 LGPL-3.0，您有权替换这些 DLL 文件为您自己编译的版本
+
+## FFmpeg
+
+- **许可证**: GNU Lesser General Public License v2.1 or later (LGPL-2.1+)
+- **源代码仓库**: https://github.com/FFmpeg/FFmpeg
+- **获取方式**: `git clone https://github.com/FFmpeg/FFmpeg.git`
+- **官方网站**: https://ffmpeg.org/
+
+## 其他第三方库
+
+其他第三方库的源代码可以从各自的官方仓库获取，详见 THIRD_PARTY_LICENSES.md。
+
+## 获取帮助
+
+如需获取源代码或有任何许可证相关的问题，请联系：
+- 项目主页: https://github.com/Ethernos-Studio/Arknights-Auto-Machine
+- 许可证问题: 请在项目仓库提交 Issue
+
+---
+本文件随软件分发，符合 GNU 许可证要求。
+'@
+        $sourceInfoPath = Join-Path $licensesDir 'SOURCE_CODE_ACCESS.md'
+        $sourceInfoContent | Set-Content -Path $sourceInfoPath -Encoding UTF8
+        $copiedLicenses += 'SOURCE_CODE_ACCESS.md'
+        Write-PublishLog '  创建: SOURCE_CODE_ACCESS.md' -Level Debug
+
+        Write-PublishLog "许可证文件复制完成 ($($copiedLicenses.Count) 个文件)" -Level Success
+        return $true
+    }
+    catch {
+        Write-PublishLog "复制许可证文件失败: $_" -Level Error
+        return $false
+    }
+}
+
+<#
+.SYNOPSIS
     复制构建产物到 staging 目录
 
 .DESCRIPTION
@@ -1717,6 +1849,11 @@ function Invoke-Publish {
         # 复制构建产物
         if (-not (Copy-BuildArtifacts -StagingDirectory $stagingDir -Artifacts $script:PublishState.Artifacts)) {
             return $script:ExitCode.PackagingFailed
+        }
+
+        # 复制许可证文件（许可证合规要求）
+        if (-not (Copy-LicenseFiles -StagingDirectory $stagingDir)) {
+            Write-PublishLog '许可证文件复制失败，继续执行...' -Level Warning
         }
 
         # 生成版本清单

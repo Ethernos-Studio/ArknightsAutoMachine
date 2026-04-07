@@ -125,6 +125,9 @@ if(WIN32)
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/jpeg62.dll
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/tiff.dll
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/libwebp.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/libwebpmux.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/libwebpdemux.dll
+        ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/libwebpdecoder.dll
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/libsharpyuv.dll
         # Abseil (protobuf dependency)
         ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/abseil_dll.dll
