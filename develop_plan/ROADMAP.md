@@ -92,7 +92,7 @@
 
 ### v0.2.0-alpha.3：传输层
 
-- [ ] `src/l0_sensing/shm_transport.cpp`：共享内存传输
+- [x] `src/l0_sensing/shm_transport.cpp`：共享内存传输
 
 ### v0.2.0-alpha.4：基础设施
 

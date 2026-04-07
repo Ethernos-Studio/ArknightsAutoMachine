@@ -29,6 +29,7 @@ set(CORE_TEST_SOURCES
     test_memory_pool.cpp
     test_timer.cpp
     test_frame_buffer.cpp
+    test_shm_transport.cpp
 )
 
 # 创建测试可执行文件
