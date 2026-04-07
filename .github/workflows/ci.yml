@@ -19,7 +19,7 @@
 # @author dhjs0000
 # @brief Continuous Integration Workflow for AAM
 # =============================================================================
-# 版本: v0.1.0-alpha.3
+# 版本: v0.2.0-alpha.2
 # 功能: 三平台构建矩阵（Windows/Linux/macOS）
 # 触发: PR 到 main 分支 或 推送到 main 分支
 # =============================================================================
@@ -132,13 +132,66 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Ensure vcpkg submodule
+      - name: Ensure all submodules
         run: |
           git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive || true'
           if (-not (Test-Path "${{ github.workspace }}/vcpkg")) {
             Write-Error "vcpkg directory not found after submodule update"
             exit 1
           }
+
+      - name: Setup MaaDeps
+        shell: pwsh
+        run: |
+          $MaaUtilsDir = "${{ github.workspace }}/third_party/maafw/source/MaaUtils"
+          $MaaDepsDir = "$MaaUtilsDir/MaaDeps"
+          $TarballDir = "$MaaDepsDir/tarball"
+          
+          if (Test-Path "$MaaDepsDir/vcpkg/installed") {
+            Write-Host "MaaDeps already exists" -ForegroundColor Green
+            exit 0
+          }
+          
+          Write-Host "MaaDeps not found, downloading..." -ForegroundColor Yellow
+          
+          # Detect triplet
+          $Triplet = "x64-windows"
+          $RuntimeFile = "MaaDeps-$Triplet-runtime.tar.xz"
+          $DevelFile = "MaaDeps-$Triplet-devel.tar.xz"
+          
+          # MaaDeps version
+          $MaaDepsVersion = "v2.12.1"
+          $BaseUrl = "https://github.com/MaaXYZ/MaaDeps/releases/download/$MaaDepsVersion"
+          
+          # Create directories
+          New-Item -ItemType Directory -Force -Path $TarballDir | Out-Null
+          
+          # Download files
+          $runtimeUrl = "$BaseUrl/$RuntimeFile"
+          $develUrl = "$BaseUrl/$DevelFile"
+          $runtimeLocal = "$TarballDir/$RuntimeFile"
+          $develLocal = "$TarballDir/$DevelFile"
+          
+          Write-Host "Downloading $RuntimeFile..."
+          curl -L -o $runtimeLocal $runtimeUrl
+          if ($LASTEXITCODE -ne 0) { throw "Failed to download $RuntimeFile" }
+          
+          Write-Host "Downloading $DevelFile..."
+          curl -L -o $develLocal $develUrl
+          if ($LASTEXITCODE -ne 0) { throw "Failed to download $DevelFile" }
+          
+          # Extract using Python script
+          Write-Host "Extracting MaaDeps..."
+          Push-Location $MaaUtilsDir
+          try {
+            python tools/maadeps-extract.py
+            if ($LASTEXITCODE -ne 0) { throw "maadeps-extract.py failed" }
+          } finally {
+            Pop-Location
+          }
+          
+          Write-Host "MaaDeps setup completed" -ForegroundColor Green
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
@@ -229,7 +282,64 @@ jobs:
             libfmt-dev \
             libyaml-cpp-dev \
             nlohmann-json3-dev \
-            libzmq3-dev
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive || true'
+
+      - name: Setup MaaDeps
+        run: |
+          MAA_UTILS_DIR="${{ github.workspace }}/third_party/maafw/source/MaaUtils"
+          MAA_DEPS_DIR="$MAA_UTILS_DIR/MaaDeps"
+          TARBALL_DIR="$MAA_DEPS_DIR/tarball"
+          
+          if [ -d "$MAA_DEPS_DIR/vcpkg/installed" ]; then
+            echo "MaaDeps already exists"
+            exit 0
+          fi
+          
+          echo "MaaDeps not found, downloading..."
+          
+          # Detect triplet
+          TRIPLET="x64-linux"
+          RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
+          DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
+          
+          # MaaDeps version
+          MAA_DEPS_VERSION="v2.12.1"
+          BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
+          
+          # Create directories
+          mkdir -p "$TARBALL_DIR"
+          
+          # Download files
+          echo "Downloading $RUNTIME_FILE..."
+          curl -L -o "$TARBALL_DIR/$RUNTIME_FILE" "$BASE_URL/$RUNTIME_FILE" || exit 1
+          
+          echo "Downloading $DEVEL_FILE..."
+          curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
+          
+          # Extract using Python script
+          echo "Extracting MaaDeps..."
+          cd "$MAA_UTILS_DIR"
+          python3 tools/maadeps-extract.py || exit 1
+          
+          echo "MaaDeps setup completed"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
@@ -300,6 +410,50 @@ jobs:
             yaml-cpp \
             nlohmann-json \
             zeromq
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive || true'
+
+      - name: Setup MaaDeps
+        run: |
+          MAA_UTILS_DIR="${{ github.workspace }}/third_party/maafw/source/MaaUtils"
+          MAA_DEPS_DIR="$MAA_UTILS_DIR/MaaDeps"
+          TARBALL_DIR="$MAA_DEPS_DIR/tarball"
+          
+          if [ -d "$MAA_DEPS_DIR/vcpkg/installed" ]; then
+            echo "MaaDeps already exists"
+            exit 0
+          fi
+          
+          echo "MaaDeps not found, downloading..."
+          
+          # Detect triplet (macOS uses osx)
+          TRIPLET="arm64-osx"
+          RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
+          DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
+          
+          # MaaDeps version
+          MAA_DEPS_VERSION="v2.12.1"
+          BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
+          
+          # Create directories
+          mkdir -p "$TARBALL_DIR"
+          
+          # Download files
+          echo "Downloading $RUNTIME_FILE..."
+          curl -L -o "$TARBALL_DIR/$RUNTIME_FILE" "$BASE_URL/$RUNTIME_FILE" || exit 1
+          
+          echo "Downloading $DEVEL_FILE..."
+          curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
+          
+          # Extract using Python script
+          echo "Extracting MaaDeps..."
+          cd "$MAA_UTILS_DIR"
+          python3 tools/maadeps-extract.py || exit 1
+          
+          echo "MaaDeps setup completed"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5

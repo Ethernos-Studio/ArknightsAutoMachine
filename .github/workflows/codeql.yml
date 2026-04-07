@@ -19,7 +19,7 @@
 # @author dhjs0000
 # @brief CodeQL Security Analysis Workflow for AAM
 # =============================================================================
-# 版本: v0.1.0-alpha.3
+# 版本: v0.2.0-alpha.2
 # 功能: 安全漏洞扫描（Critical/High 级别）
 # 触发: 每周定时 + PR 到 main 分支
 # =============================================================================
@@ -118,7 +118,64 @@ jobs:
             libfmt-dev \
             libyaml-cpp-dev \
             nlohmann-json3-dev \
-            libzmq3-dev
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive || true'
+
+      - name: Setup MaaDeps
+        run: |
+          MAA_UTILS_DIR="${{ github.workspace }}/third_party/maafw/source/MaaUtils"
+          MAA_DEPS_DIR="$MAA_UTILS_DIR/MaaDeps"
+          TARBALL_DIR="$MAA_DEPS_DIR/tarball"
+          
+          if [ -d "$MAA_DEPS_DIR/vcpkg/installed" ]; then
+            echo "MaaDeps already exists"
+            exit 0
+          fi
+          
+          echo "MaaDeps not found, downloading..."
+          
+          # Detect triplet
+          TRIPLET="x64-linux"
+          RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
+          DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
+          
+          # MaaDeps version
+          MAA_DEPS_VERSION="v2.12.1"
+          BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
+          
+          # Create directories
+          mkdir -p "$TARBALL_DIR"
+          
+          # Download files
+          echo "Downloading $RUNTIME_FILE..."
+          curl -L -o "$TARBALL_DIR/$RUNTIME_FILE" "$BASE_URL/$RUNTIME_FILE" || exit 1
+          
+          echo "Downloading $DEVEL_FILE..."
+          curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
+          
+          # Extract using Python script
+          echo "Extracting MaaDeps..."
+          cd "$MAA_UTILS_DIR"
+          python3 tools/maadeps-extract.py || exit 1
+          
+          echo "MaaDeps setup completed"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
