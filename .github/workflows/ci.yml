@@ -46,6 +46,8 @@ env:
   # vcpkg 2026.03.18 Release - 包含 protobuf 3.20+ 兼容性修复和 MSVC constinit 支持
   # 更新策略: 每季度检查 vcpkg 发布说明，验证关键依赖（protobuf, grpc, spdlog）兼容性后升级
   VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
+  # MaaDeps 版本 - 需要与 GitHub Releases 保持一致
+  MAA_DEPS_VERSION: 'v2.12.1'
 
 jobs:
   # ============================================================================
@@ -135,7 +137,7 @@ jobs:
       - name: Ensure all submodules
         run: |
           git submodule update --init --recursive
-          git submodule foreach --recursive 'git submodule update --init --recursive || true'
+          git submodule foreach --recursive 'git submodule update --init --recursive'
           if (-not (Test-Path "${{ github.workspace }}/vcpkg")) {
             Write-Error "vcpkg directory not found after submodule update"
             exit 1
@@ -160,8 +162,8 @@ jobs:
           $RuntimeFile = "MaaDeps-$Triplet-runtime.tar.xz"
           $DevelFile = "MaaDeps-$Triplet-devel.tar.xz"
           
-          # MaaDeps version
-          $MaaDepsVersion = "v2.12.1"
+          # MaaDeps version from environment
+          $MaaDepsVersion = "${{ env.MAA_DEPS_VERSION }}"
           $BaseUrl = "https://github.com/MaaXYZ/MaaDeps/releases/download/$MaaDepsVersion"
           
           # Create directories
@@ -181,11 +183,38 @@ jobs:
           curl -L -o $develLocal $develUrl
           if ($LASTEXITCODE -ne 0) { throw "Failed to download $DevelFile" }
           
+          # Verify SHA256 checksums if available
+          Write-Host "Verifying checksums..."
+          $checksumUrl = "$BaseUrl/sha256sums.txt"
+          $checksumLocal = "$TarballDir/sha256sums.txt"
+          try {
+            curl -L -o $checksumLocal $checksumUrl 2>$null
+            if (Test-Path $checksumLocal) {
+              $checksumContent = Get-Content $checksumLocal
+              foreach ($line in $checksumContent) {
+                if ($line -match "^([a-f0-9]{64})\s+(.+)$") {
+                  $expectedHash = $matches[1]
+                  $fileName = $matches[2]
+                  $filePath = "$TarballDir/$fileName"
+                  if (Test-Path $filePath) {
+                    $actualHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash.ToLower()
+                    if ($expectedHash -ne $actualHash) {
+                      throw "SHA256 mismatch for $fileName`: expected $expectedHash, got $actualHash"
+                    }
+                    Write-Host "SHA256 verified for $fileName" -ForegroundColor Green
+                  }
+                }
+              }
+            }
+          } catch {
+            Write-Host "Warning: Could not verify SHA256 checksums: $_" -ForegroundColor Yellow
+          }
+          
           # Extract using Python script
           Write-Host "Extracting MaaDeps..."
           Push-Location $MaaUtilsDir
           try {
-            python tools/maadeps-extract.py
+            python3 tools/maadeps-extract.py
             if ($LASTEXITCODE -ne 0) { throw "maadeps-extract.py failed" }
           } finally {
             Pop-Location
@@ -300,7 +329,7 @@ jobs:
       - name: Ensure all submodules
         run: |
           git submodule update --init --recursive
-          git submodule foreach --recursive 'git submodule update --init --recursive || true'
+          git submodule foreach --recursive 'git submodule update --init --recursive'
 
       - name: Setup MaaDeps
         run: |
@@ -320,8 +349,8 @@ jobs:
           RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
           DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
           
-          # MaaDeps version
-          MAA_DEPS_VERSION="v2.12.1"
+          # MaaDeps version from environment
+          MAA_DEPS_VERSION="${{ env.MAA_DEPS_VERSION }}"
           BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
           
           # Create directories
@@ -333,6 +362,25 @@ jobs:
           
           echo "Downloading $DEVEL_FILE..."
           curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
+          
+          # Verify SHA256 checksums if available
+          echo "Verifying checksums..."
+          CHECKSUM_URL="$BASE_URL/sha256sums.txt"
+          CHECKSUM_LOCAL="$TARBALL_DIR/sha256sums.txt"
+          if curl -L -o "$CHECKSUM_LOCAL" "$CHECKSUM_URL" 2>/dev/null; then
+            while read -r expected_hash filename; do
+              if [ -f "$TARBALL_DIR/$filename" ]; then
+                actual_hash=$(sha256sum "$TARBALL_DIR/$filename" | awk '{print $1}')
+                if [ "$expected_hash" != "$actual_hash" ]; then
+                  echo "SHA256 mismatch for $filename: expected $expected_hash, got $actual_hash"
+                  exit 1
+                fi
+                echo "SHA256 verified for $filename"
+              fi
+            done < "$CHECKSUM_LOCAL"
+          else
+            echo "Warning: Could not download SHA256 checksums"
+          fi
           
           # Extract using Python script
           echo "Extracting MaaDeps..."
@@ -414,7 +462,7 @@ jobs:
       - name: Ensure all submodules
         run: |
           git submodule update --init --recursive
-          git submodule foreach --recursive 'git submodule update --init --recursive || true'
+          git submodule foreach --recursive 'git submodule update --init --recursive'
 
       - name: Setup MaaDeps
         run: |
@@ -429,13 +477,27 @@ jobs:
           
           echo "MaaDeps not found, downloading..."
           
-          # Detect triplet (macOS uses osx)
-          TRIPLET="arm64-osx"
+          # Detect architecture and triplet dynamically
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64)
+              TRIPLET="x64-osx"
+              ;;
+            arm64)
+              TRIPLET="arm64-osx"
+              ;;
+            *)
+              echo "Unsupported architecture: $ARCH"
+              exit 1
+              ;;
+          esac
+          echo "Detected architecture: $ARCH, using triplet: $TRIPLET"
+          
           RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
           DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
           
-          # MaaDeps version
-          MAA_DEPS_VERSION="v2.12.1"
+          # MaaDeps version from environment
+          MAA_DEPS_VERSION="${{ env.MAA_DEPS_VERSION }}"
           BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
           
           # Create directories
@@ -447,6 +509,25 @@ jobs:
           
           echo "Downloading $DEVEL_FILE..."
           curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
+          
+          # Verify SHA256 checksums if available
+          echo "Verifying checksums..."
+          CHECKSUM_URL="$BASE_URL/sha256sums.txt"
+          CHECKSUM_LOCAL="$TARBALL_DIR/sha256sums.txt"
+          if curl -L -o "$CHECKSUM_LOCAL" "$CHECKSUM_URL" 2>/dev/null; then
+            while read -r expected_hash filename; do
+              if [ -f "$TARBALL_DIR/$filename" ]; then
+                actual_hash=$(shasum -a 256 "$TARBALL_DIR/$filename" | awk '{print $1}')
+                if [ "$expected_hash" != "$actual_hash" ]; then
+                  echo "SHA256 mismatch for $filename: expected $expected_hash, got $actual_hash"
+                  exit 1
+                fi
+                echo "SHA256 verified for $filename"
+              fi
+            done < "$CHECKSUM_LOCAL"
+          else
+            echo "Warning: Could not download SHA256 checksums"
+          fi
           
           # Extract using Python script
           echo "Extracting MaaDeps..."
