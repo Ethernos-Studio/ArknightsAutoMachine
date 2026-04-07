@@ -1171,7 +1171,7 @@ function Copy-LicenseFiles {
 
     try {
         $repoRoot = Split-Path $PSScriptRoot -Parent
-        $licensesDir = Join-Path $StagingDirectory 'docs' 'licenses'
+        $licensesDir = Join-Path (Join-Path $StagingDirectory 'docs') 'licenses'
         New-Item -ItemType Directory -Path $licensesDir -Force | Out-Null
 
         $copiedLicenses = @()
@@ -1196,6 +1196,9 @@ function Copy-LicenseFiles {
             $copiedLicenses += 'THIRD_PARTY_LICENSES.md'
             Write-PublishLog '  复制: THIRD_PARTY_LICENSES.md' -Level Debug
         }
+        else {
+            Write-PublishLog '  警告: 未找到第三方许可证清单文件 (THIRD_PARTY_LICENSES.md)' -Level Warning
+        }
 
         # 3. 复制 MaaFramework 许可证 (LGPL-3.0)
         $maafwLicense = Join-Path $repoRoot 'third_party' 'maafw' 'LICENSE.md'
@@ -1207,12 +1210,27 @@ function Copy-LicenseFiles {
         }
 
         # 4. 复制 FFmpeg 许可证 (LGPL-2.1+)
-        $ffmpegCopyright = Join-Path $repoRoot 'vcpkg_installed' 'x64-windows' 'share' 'ffmpeg' 'copyright'
+        # 根据平台确定 vcpkg triplet 路径
+        $vcpkgTriplet = switch ($script:PublishState.Platform) {
+            'windows-x64' { 'x64-windows' }
+            'windows-x86' { 'x86-windows' }
+            'windows-arm64' { 'arm64-windows' }
+            'linux-x64' { 'x64-linux' }
+            'linux-arm64' { 'arm64-linux' }
+            'macos-x64' { 'x64-osx' }
+            'macos-arm64' { 'arm64-osx' }
+            default { 'x64-windows' }  # 默认回退
+        }
+
+        $ffmpegCopyright = Join-Path $repoRoot 'vcpkg_installed' $vcpkgTriplet 'share' 'ffmpeg' 'copyright'
         if (Test-Path $ffmpegCopyright) {
             $targetPath = Join-Path $licensesDir 'FFmpeg-LICENSE.txt'
             [System.IO.File]::Copy($ffmpegCopyright, $targetPath, $true)
             $copiedLicenses += 'FFmpeg-LICENSE.txt (LGPL-2.1+)'
-            Write-PublishLog '  复制: FFmpeg-LICENSE.txt (LGPL-2.1+)' -Level Debug
+            Write-PublishLog "  复制: FFmpeg-LICENSE.txt (LGPL-2.1+) [$vcpkgTriplet]" -Level Debug
+        }
+        else {
+            Write-PublishLog "  信息: 未找到 FFmpeg 许可证文件 (triplet: $vcpkgTriplet)" -Level Debug
         }
 
         # 5. 创建源代码获取方式说明文件
@@ -1224,8 +1242,8 @@ function Copy-LicenseFiles {
 ## AAM (Arknights Auto Machine)
 
 - **许可证**: GNU Affero General Public License v3 (AGPL-3.0)
-- **源代码仓库**: https://github.com/Ethernos-Studio/Arknights-Auto-Machine
-- **获取方式**: `git clone https://github.com/Ethernos-Studio/Arknights-Auto-Machine.git`
+- **源代码仓库**: https://github.com/Ethernos-Studio/ArknightsAutoMachine
+- **获取方式**: `git clone https://github.com/Ethernos-Studio/ArknightsAutoMachine.git`
 
 ## MaaFramework
 
@@ -1249,7 +1267,7 @@ function Copy-LicenseFiles {
 ## 获取帮助
 
 如需获取源代码或有任何许可证相关的问题，请联系：
-- 项目主页: https://github.com/Ethernos-Studio/Arknights-Auto-Machine
+- 项目主页: https://github.com/Ethernos-Studio/ArknightsAutoMachine
 - 许可证问题: 请在项目仓库提交 Issue
 
 ---

@@ -157,7 +157,7 @@ with license requirements:
 In compliance with GNU licenses (AGPL-3.0, LGPL-3.0, LGPL-2.1+), source code
 for the project and its LGPL dependencies can be obtained from:
 
-- **AAM**: https://github.com/Ethernos-Studio/Arknights-Auto-Machine
+- **AAM**: https://github.com/Ethernos-Studio/ArknightsAutoMachine
 - **MaaFramework**: https://github.com/Ethernos-Studio/MaaFramework
 - **FFmpeg**: https://github.com/FFmpeg/FFmpeg
 
