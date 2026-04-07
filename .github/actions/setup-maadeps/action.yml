@@ -1,0 +1,288 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file action.yml
+# @brief Composite Action for setting up MaaDeps dependencies
+# =============================================================================
+# 功能: 跨平台 MaaDeps 依赖安装
+# 支持: Windows (PowerShell), Linux/macOS (Bash)
+# =============================================================================
+
+name: 'Setup MaaDeps'
+description: 'Download, verify and extract MaaDeps dependencies for MaaFramework'
+
+inputs:
+  maadeps-version:
+    description: 'MaaDeps release version (e.g., v2.12.1)'
+    required: true
+  triplet:
+    description: 'Explicit vcpkg triplet (optional, auto-detected if not provided)'
+    required: false
+    default: ''
+  github-workspace:
+    description: 'GitHub workspace path'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup MaaDeps (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        ${function:global:Write-ActionInfo} = { param([string]$Message) Write-Host "[Setup-MaaDeps] $Message" -ForegroundColor Cyan }
+        ${function:global:Write-ActionError} = { param([string]$Message) Write-Host "[Setup-MaaDeps] $Message" -ForegroundColor Red }
+        ${function:global:Write-ActionSuccess} = { param([string]$Message) Write-Host "[Setup-MaaDeps] $Message" -ForegroundColor Green }
+        ${function:global:Write-ActionWarning} = { param([string]$Message) Write-Host "[Setup-MaaDeps] $Message" -ForegroundColor Yellow }
+
+        $MaaUtilsDir = "${{ inputs.github-workspace }}/third_party/maafw/source/MaaUtils"
+        $MaaDepsDir = "$MaaUtilsDir/MaaDeps"
+        $TarballDir = "$MaaDepsDir/tarball"
+        $ExtractScript = "$MaaUtilsDir/tools/maadeps-extract.py"
+
+        Write-ActionInfo "MaaUtilsDir: $MaaUtilsDir"
+        Write-ActionInfo "MaaDepsDir: $MaaDepsDir"
+        Write-ActionInfo "ExtractScript: $ExtractScript"
+
+        # Validate paths exist
+        if (-not (Test-Path $MaaUtilsDir)) {
+          Write-ActionError "MaaUtils directory not found: $MaaUtilsDir. Ensure submodules are initialized."
+          exit 1
+        }
+        if (-not (Test-Path $ExtractScript)) {
+          Write-ActionError "maadeps-extract.py not found: $ExtractScript. Ensure submodules are initialized."
+          exit 1
+        }
+        Write-ActionInfo "Path validation passed"
+
+        # Check if already exists
+        if (Test-Path "$MaaDepsDir/vcpkg/installed") {
+          Write-ActionSuccess "MaaDeps already exists at $MaaDepsDir/vcpkg/installed"
+          exit 0
+        }
+
+        Write-ActionInfo "MaaDeps not found, downloading..."
+
+        # Determine triplet
+        $Triplet = "${{ inputs.triplet }}"
+        if ([string]::IsNullOrWhiteSpace($Triplet)) {
+          $Triplet = "x64-windows"
+          Write-ActionInfo "Auto-detected triplet: $Triplet"
+        } else {
+          Write-ActionInfo "Using provided triplet: $Triplet"
+        }
+
+        $RuntimeFile = "MaaDeps-$Triplet-runtime.tar.xz"
+        $DevelFile = "MaaDeps-$Triplet-devel.tar.xz"
+        $MaaDepsVersion = "${{ inputs.maadeps-version }}"
+        $BaseUrl = "https://github.com/MaaXYZ/MaaDeps/releases/download/$MaaDepsVersion"
+
+        Write-ActionInfo "Version: $MaaDepsVersion"
+        Write-ActionInfo "Runtime: $RuntimeFile"
+        Write-ActionInfo "Devel: $DevelFile"
+
+        # Create directories
+        New-Item -ItemType Directory -Force -Path $TarballDir | Out-Null
+
+        # Download files
+        $runtimeUrl = "$BaseUrl/$RuntimeFile"
+        $develUrl = "$BaseUrl/$DevelFile"
+        $runtimeLocal = "$TarballDir/$RuntimeFile"
+        $develLocal = "$TarballDir/$DevelFile"
+
+        Write-ActionInfo "Downloading $RuntimeFile..."
+        curl -fL -o $runtimeLocal $runtimeUrl
+        if ($LASTEXITCODE -ne 0) { Write-ActionError "Failed to download $RuntimeFile"; exit 1 }
+        Write-ActionSuccess "Downloaded $RuntimeFile"
+
+        Write-ActionInfo "Downloading $DevelFile..."
+        curl -fL -o $develLocal $develUrl
+        if ($LASTEXITCODE -ne 0) { Write-ActionError "Failed to download $DevelFile"; exit 1 }
+        Write-ActionSuccess "Downloaded $DevelFile"
+
+        # Verify SHA256 checksums
+        Write-ActionInfo "Verifying checksums..."
+        $checksumUrl = "$BaseUrl/sha256sums.txt"
+        $checksumLocal = "$TarballDir/sha256sums.txt"
+        try {
+          curl -fL -o $checksumLocal $checksumUrl 2>$null
+          if (Test-Path $checksumLocal) {
+            $checksumContent = Get-Content $checksumLocal
+            $verifiedCount = 0
+            foreach ($line in $checksumContent) {
+              if ($line -match "^([a-f0-9]{64})\s+(.+)$") {
+                $expectedHash = $matches[1]
+                $fileName = $matches[2]
+                $filePath = "$TarballDir/$fileName"
+                if (Test-Path $filePath) {
+                  $actualHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash.ToLower()
+                  if ($expectedHash -ne $actualHash) {
+                    Write-ActionError "SHA256 mismatch for $fileName`: expected $expectedHash, got $actualHash"
+                    exit 1
+                  }
+                  Write-ActionSuccess "SHA256 verified for $fileName"
+                  $verifiedCount++
+                }
+              }
+            }
+            if ($verifiedCount -eq 0) {
+              Write-ActionWarning "No matching files found for checksum verification"
+            }
+          }
+        } catch {
+          Write-ActionWarning "Could not verify SHA256 checksums: $_"
+        }
+
+        # Extract using Python script
+        Write-ActionInfo "Extracting MaaDeps..."
+        Push-Location $MaaUtilsDir
+        try {
+          python3 tools/maadeps-extract.py
+          if ($LASTEXITCODE -ne 0) { Write-ActionError "maadeps-extract.py failed"; exit 1 }
+        } finally {
+          Pop-Location
+        }
+
+        Write-ActionSuccess "MaaDeps setup completed successfully"
+
+    - name: Setup MaaDeps (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        log_info() { echo "[Setup-MaaDeps] $1"; }
+        log_error() { echo "[Setup-MaaDeps] ERROR: $1" >&2; }
+        log_success() { echo "[Setup-MaaDeps] ✓ $1"; }
+        log_warn() { echo "[Setup-MaaDeps] WARNING: $1"; }
+
+        MAA_UTILS_DIR="${{ inputs.github-workspace }}/third_party/maafw/source/MaaUtils"
+        MAA_DEPS_DIR="$MAA_UTILS_DIR/MaaDeps"
+        TARBALL_DIR="$MAA_DEPS_DIR/tarball"
+        EXTRACT_SCRIPT="$MAA_UTILS_DIR/tools/maadeps-extract.py"
+
+        log_info "MaaUtilsDir: $MAA_UTILS_DIR"
+        log_info "MaaDepsDir: $MAA_DEPS_DIR"
+        log_info "ExtractScript: $EXTRACT_SCRIPT"
+
+        # Validate paths exist
+        if [ ! -d "$MAA_UTILS_DIR" ]; then
+          log_error "MaaUtils directory not found: $MAA_UTILS_DIR. Ensure submodules are initialized."
+          exit 1
+        fi
+        if [ ! -f "$EXTRACT_SCRIPT" ]; then
+          log_error "maadeps-extract.py not found: $EXTRACT_SCRIPT. Ensure submodules are initialized."
+          exit 1
+        fi
+        log_info "Path validation passed"
+
+        # Check if already exists
+        if [ -d "$MAA_DEPS_DIR/vcpkg/installed" ]; then
+          log_success "MaaDeps already exists at $MAA_DEPS_DIR/vcpkg/installed"
+          exit 0
+        fi
+
+        log_info "MaaDeps not found, downloading..."
+
+        # Determine triplet
+        TRIPLET="${{ inputs.triplet }}"
+        if [ -z "$TRIPLET" ]; then
+          # Auto-detect based on OS and architecture
+          ARCH=$(uname -m)
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          case "$OS" in
+            linux)
+              case "$ARCH" in
+                x86_64) TRIPLET="x64-linux" ;;
+                aarch64) TRIPLET="arm64-linux" ;;
+                *) log_warn "Unknown architecture '$ARCH', defaulting to x64-linux"; TRIPLET="x64-linux" ;;
+              esac
+              ;;
+            darwin)
+              case "$ARCH" in
+                x86_64) TRIPLET="x64-osx" ;;
+                arm64) TRIPLET="arm64-osx" ;;
+                *) log_error "Unsupported architecture: $ARCH"; exit 1 ;;
+              esac
+              ;;
+            *)
+              log_error "Unsupported OS: $OS"
+              exit 1
+              ;;
+          esac
+          log_info "Auto-detected triplet: $TRIPLET (OS: $OS, Arch: $ARCH)"
+        else
+          log_info "Using provided triplet: $TRIPLET"
+        fi
+
+        RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
+        DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
+        MAA_DEPS_VERSION="${{ inputs.maadeps-version }}"
+        BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
+
+        log_info "Version: $MAA_DEPS_VERSION"
+        log_info "Runtime: $RUNTIME_FILE"
+        log_info "Devel: $DEVEL_FILE"
+
+        # Create directories
+        mkdir -p "$TARBALL_DIR"
+
+        # Download files with --fail flag
+        log_info "Downloading $RUNTIME_FILE..."
+        curl -fL -o "$TARBALL_DIR/$RUNTIME_FILE" "$BASE_URL/$RUNTIME_FILE"
+        log_success "Downloaded $RUNTIME_FILE"
+
+        log_info "Downloading $DEVEL_FILE..."
+        curl -fL -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE"
+        log_success "Downloaded $DEVEL_FILE"
+
+        # Verify SHA256 checksums
+        log_info "Verifying checksums..."
+        CHECKSUM_URL="$BASE_URL/sha256sums.txt"
+        CHECKSUM_LOCAL="$TARBALL_DIR/sha256sums.txt"
+        if curl -fL -o "$CHECKSUM_LOCAL" "$CHECKSUM_URL" 2>/dev/null; then
+          VERIFIED=0
+          while read -r expected_hash filename; do
+            if [ -f "$TARBALL_DIR/$filename" ]; then
+              if command -v sha256sum >/dev/null 2>&1; then
+                actual_hash=$(sha256sum "$TARBALL_DIR/$filename" | awk '{print $1}')
+              elif command -v shasum >/dev/null 2>&1; then
+                actual_hash=$(shasum -a 256 "$TARBALL_DIR/$filename" | awk '{print $1}')
+              else
+                log_warn "No SHA256 tool available, skipping verification"
+                break
+              fi
+              if [ "$expected_hash" != "$actual_hash" ]; then
+                log_error "SHA256 mismatch for $filename: expected $expected_hash, got $actual_hash"
+                exit 1
+              fi
+              log_success "SHA256 verified for $filename"
+              VERIFIED=$((VERIFIED + 1))
+            fi
+          done < "$CHECKSUM_LOCAL"
+          if [ $VERIFIED -eq 0 ]; then
+            log_warn "No matching files found for checksum verification"
+          fi
+        else
+          log_warn "Could not download SHA256 checksums"
+        fi
+
+        # Extract using Python script
+        log_info "Extracting MaaDeps..."
+        cd "$MAA_UTILS_DIR"
+        python3 tools/maadeps-extract.py
+        log_success "MaaDeps setup completed successfully"

@@ -144,83 +144,11 @@ jobs:
           }
 
       - name: Setup MaaDeps
-        shell: pwsh
-        run: |
-          $MaaUtilsDir = "${{ github.workspace }}/third_party/maafw/source/MaaUtils"
-          $MaaDepsDir = "$MaaUtilsDir/MaaDeps"
-          $TarballDir = "$MaaDepsDir/tarball"
-          
-          if (Test-Path "$MaaDepsDir/vcpkg/installed") {
-            Write-Host "MaaDeps already exists" -ForegroundColor Green
-            exit 0
-          }
-          
-          Write-Host "MaaDeps not found, downloading..." -ForegroundColor Yellow
-          
-          # Detect triplet
-          $Triplet = "x64-windows"
-          $RuntimeFile = "MaaDeps-$Triplet-runtime.tar.xz"
-          $DevelFile = "MaaDeps-$Triplet-devel.tar.xz"
-          
-          # MaaDeps version from environment
-          $MaaDepsVersion = "${{ env.MAA_DEPS_VERSION }}"
-          $BaseUrl = "https://github.com/MaaXYZ/MaaDeps/releases/download/$MaaDepsVersion"
-          
-          # Create directories
-          New-Item -ItemType Directory -Force -Path $TarballDir | Out-Null
-          
-          # Download files
-          $runtimeUrl = "$BaseUrl/$RuntimeFile"
-          $develUrl = "$BaseUrl/$DevelFile"
-          $runtimeLocal = "$TarballDir/$RuntimeFile"
-          $develLocal = "$TarballDir/$DevelFile"
-          
-          Write-Host "Downloading $RuntimeFile..."
-          curl -L -o $runtimeLocal $runtimeUrl
-          if ($LASTEXITCODE -ne 0) { throw "Failed to download $RuntimeFile" }
-          
-          Write-Host "Downloading $DevelFile..."
-          curl -L -o $develLocal $develUrl
-          if ($LASTEXITCODE -ne 0) { throw "Failed to download $DevelFile" }
-          
-          # Verify SHA256 checksums if available
-          Write-Host "Verifying checksums..."
-          $checksumUrl = "$BaseUrl/sha256sums.txt"
-          $checksumLocal = "$TarballDir/sha256sums.txt"
-          try {
-            curl -L -o $checksumLocal $checksumUrl 2>$null
-            if (Test-Path $checksumLocal) {
-              $checksumContent = Get-Content $checksumLocal
-              foreach ($line in $checksumContent) {
-                if ($line -match "^([a-f0-9]{64})\s+(.+)$") {
-                  $expectedHash = $matches[1]
-                  $fileName = $matches[2]
-                  $filePath = "$TarballDir/$fileName"
-                  if (Test-Path $filePath) {
-                    $actualHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash.ToLower()
-                    if ($expectedHash -ne $actualHash) {
-                      throw "SHA256 mismatch for $fileName`: expected $expectedHash, got $actualHash"
-                    }
-                    Write-Host "SHA256 verified for $fileName" -ForegroundColor Green
-                  }
-                }
-              }
-            }
-          } catch {
-            Write-Host "Warning: Could not verify SHA256 checksums: $_" -ForegroundColor Yellow
-          }
-          
-          # Extract using Python script
-          Write-Host "Extracting MaaDeps..."
-          Push-Location $MaaUtilsDir
-          try {
-            python3 tools/maadeps-extract.py
-            if ($LASTEXITCODE -ne 0) { throw "maadeps-extract.py failed" }
-          } finally {
-            Pop-Location
-          }
-          
-          Write-Host "MaaDeps setup completed" -ForegroundColor Green
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          triplet: x64-windows
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
@@ -332,62 +260,10 @@ jobs:
           git submodule foreach --recursive 'git submodule update --init --recursive'
 
       - name: Setup MaaDeps
-        run: |
-          MAA_UTILS_DIR="${{ github.workspace }}/third_party/maafw/source/MaaUtils"
-          MAA_DEPS_DIR="$MAA_UTILS_DIR/MaaDeps"
-          TARBALL_DIR="$MAA_DEPS_DIR/tarball"
-          
-          if [ -d "$MAA_DEPS_DIR/vcpkg/installed" ]; then
-            echo "MaaDeps already exists"
-            exit 0
-          fi
-          
-          echo "MaaDeps not found, downloading..."
-          
-          # Detect triplet
-          TRIPLET="x64-linux"
-          RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
-          DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
-          
-          # MaaDeps version from environment
-          MAA_DEPS_VERSION="${{ env.MAA_DEPS_VERSION }}"
-          BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
-          
-          # Create directories
-          mkdir -p "$TARBALL_DIR"
-          
-          # Download files
-          echo "Downloading $RUNTIME_FILE..."
-          curl -L -o "$TARBALL_DIR/$RUNTIME_FILE" "$BASE_URL/$RUNTIME_FILE" || exit 1
-          
-          echo "Downloading $DEVEL_FILE..."
-          curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
-          
-          # Verify SHA256 checksums if available
-          echo "Verifying checksums..."
-          CHECKSUM_URL="$BASE_URL/sha256sums.txt"
-          CHECKSUM_LOCAL="$TARBALL_DIR/sha256sums.txt"
-          if curl -L -o "$CHECKSUM_LOCAL" "$CHECKSUM_URL" 2>/dev/null; then
-            while read -r expected_hash filename; do
-              if [ -f "$TARBALL_DIR/$filename" ]; then
-                actual_hash=$(sha256sum "$TARBALL_DIR/$filename" | awk '{print $1}')
-                if [ "$expected_hash" != "$actual_hash" ]; then
-                  echo "SHA256 mismatch for $filename: expected $expected_hash, got $actual_hash"
-                  exit 1
-                fi
-                echo "SHA256 verified for $filename"
-              fi
-            done < "$CHECKSUM_LOCAL"
-          else
-            echo "Warning: Could not download SHA256 checksums"
-          fi
-          
-          # Extract using Python script
-          echo "Extracting MaaDeps..."
-          cd "$MAA_UTILS_DIR"
-          python3 tools/maadeps-extract.py || exit 1
-          
-          echo "MaaDeps setup completed"
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
@@ -465,76 +341,10 @@ jobs:
           git submodule foreach --recursive 'git submodule update --init --recursive'
 
       - name: Setup MaaDeps
-        run: |
-          MAA_UTILS_DIR="${{ github.workspace }}/third_party/maafw/source/MaaUtils"
-          MAA_DEPS_DIR="$MAA_UTILS_DIR/MaaDeps"
-          TARBALL_DIR="$MAA_DEPS_DIR/tarball"
-          
-          if [ -d "$MAA_DEPS_DIR/vcpkg/installed" ]; then
-            echo "MaaDeps already exists"
-            exit 0
-          fi
-          
-          echo "MaaDeps not found, downloading..."
-          
-          # Detect architecture and triplet dynamically
-          ARCH=$(uname -m)
-          case "$ARCH" in
-            x86_64)
-              TRIPLET="x64-osx"
-              ;;
-            arm64)
-              TRIPLET="arm64-osx"
-              ;;
-            *)
-              echo "Unsupported architecture: $ARCH"
-              exit 1
-              ;;
-          esac
-          echo "Detected architecture: $ARCH, using triplet: $TRIPLET"
-          
-          RUNTIME_FILE="MaaDeps-${TRIPLET}-runtime.tar.xz"
-          DEVEL_FILE="MaaDeps-${TRIPLET}-devel.tar.xz"
-          
-          # MaaDeps version from environment
-          MAA_DEPS_VERSION="${{ env.MAA_DEPS_VERSION }}"
-          BASE_URL="https://github.com/MaaXYZ/MaaDeps/releases/download/$MAA_DEPS_VERSION"
-          
-          # Create directories
-          mkdir -p "$TARBALL_DIR"
-          
-          # Download files
-          echo "Downloading $RUNTIME_FILE..."
-          curl -L -o "$TARBALL_DIR/$RUNTIME_FILE" "$BASE_URL/$RUNTIME_FILE" || exit 1
-          
-          echo "Downloading $DEVEL_FILE..."
-          curl -L -o "$TARBALL_DIR/$DEVEL_FILE" "$BASE_URL/$DEVEL_FILE" || exit 1
-          
-          # Verify SHA256 checksums if available
-          echo "Verifying checksums..."
-          CHECKSUM_URL="$BASE_URL/sha256sums.txt"
-          CHECKSUM_LOCAL="$TARBALL_DIR/sha256sums.txt"
-          if curl -L -o "$CHECKSUM_LOCAL" "$CHECKSUM_URL" 2>/dev/null; then
-            while read -r expected_hash filename; do
-              if [ -f "$TARBALL_DIR/$filename" ]; then
-                actual_hash=$(shasum -a 256 "$TARBALL_DIR/$filename" | awk '{print $1}')
-                if [ "$expected_hash" != "$actual_hash" ]; then
-                  echo "SHA256 mismatch for $filename: expected $expected_hash, got $actual_hash"
-                  exit 1
-                fi
-                echo "SHA256 verified for $filename"
-              fi
-            done < "$CHECKSUM_LOCAL"
-          else
-            echo "Warning: Could not download SHA256 checksums"
-          fi
-          
-          # Extract using Python script
-          echo "Extracting MaaDeps..."
-          cd "$MAA_UTILS_DIR"
-          python3 tools/maadeps-extract.py || exit 1
-          
-          echo "MaaDeps setup completed"
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.5
