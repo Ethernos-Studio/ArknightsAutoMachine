@@ -113,6 +113,20 @@ According to the LGPL-3.0 license:
 
 3. Modifications to MaaFramework itself must be released under LGPL-3.0.
 
+4. The MaaFramework license text is included in the distribution as
+   `docs/licenses/MaaFramework-LICENSE.md`.
+
+### FFmpeg (LGPL-2.1+)
+
+FFmpeg is used for video encoding/decoding functionality. According to LGPL-2.1+:
+
+1. The FFmpeg source code is available at: https://github.com/FFmpeg/FFmpeg
+
+2. Users have the right to replace the FFmpeg DLLs with modified versions.
+
+3. The FFmpeg license text is included in the distribution as
+   `docs/licenses/FFmpeg-LICENSE.txt`.
+
 ### AAM Project License
 
 The Arknights Auto Machine (AAM) project itself is licensed under:
@@ -123,9 +137,38 @@ See the main `LICENSE` file for the full license text.
 
 ---
 
+## Distribution Compliance
+
+When distributing AAM binaries, the following files must be included to comply
+with license requirements:
+
+### Required License Files
+
+| File | License | Location in Distribution |
+|------|---------|-------------------------|
+| LICENSE | AGPL-3.0 | `docs/licenses/LICENSE` |
+| THIRD_PARTY_LICENSES.md | - | `docs/licenses/THIRD_PARTY_LICENSES.md` |
+| MaaFramework-LICENSE.md | LGPL-3.0 | `docs/licenses/MaaFramework-LICENSE.md` |
+| FFmpeg-LICENSE.txt | LGPL-2.1+ | `docs/licenses/FFmpeg-LICENSE.txt` |
+| SOURCE_CODE_ACCESS.md | - | `docs/licenses/SOURCE_CODE_ACCESS.md` |
+
+### Source Code Access
+
+In compliance with GNU licenses (AGPL-3.0, LGPL-3.0, LGPL-2.1+), source code
+for the project and its LGPL dependencies can be obtained from:
+
+- **AAM**: https://github.com/Ethernos-Studio/ArknightsAutoMachine
+- **MaaFramework**: https://github.com/Ethernos-Studio/MaaFramework
+- **FFmpeg**: https://github.com/FFmpeg/FFmpeg
+
+See `docs/licenses/SOURCE_CODE_ACCESS.md` in the distribution for details.
+
+---
+
 ## Full License Texts
 
 For the complete license texts of all third-party components, please refer to
-their respective license files in the directories mentioned above.
+their respective license files in the directories mentioned above or in the
+`docs/licenses/` directory of the distribution.
 
-Last updated: 2026-04-06
+Last updated: 2026-04-07
