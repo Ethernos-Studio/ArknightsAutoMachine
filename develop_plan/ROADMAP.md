@@ -14,8 +14,8 @@
 
 | 版本 | 代号 | 目标 | 状态 |
 |------|------|------|------|
-| v0.1.0-alpha | 契约冻结版 | 接口契约与构建系统 | ❌ |
-| v0.2.0-alpha | 感知硬化版 | L0 帧捕获 | 🔶 后端实现完成 |
+| v0.1.0-alpha | 契约冻结版 | 接口契约与构建系统 | ✅ |
+| v0.2.0-alpha | 感知硬化版 | L0 帧捕获 | 🔶 传输层与基础设施完成 |
 | v0.3.0-alpha | 空间映射版 | L2 坐标映射 | ❌ |
 | v0.4.0-alpha | 记忆架构版 | L4 状态机与存储 | 🔶 Python部分完成 |
 | v0.5.0-alpha | 视觉皮层版 | L1 视觉处理 | 🔶 Python部分完成 |
@@ -96,15 +96,15 @@
 
 ### v0.2.0-alpha.4：基础设施
 
-- [ ] `include/aam/core/timer.hpp`：高精度计时器
-- [ ] `include/aam/core/memory_pool.hpp`：定长内存池
-- [ ] `src/common/logger.cpp`：spdlog 封装
+- [x] `include/aam/core/timer.hpp`：高精度计时器（682行，纳秒级精度）
+- [x] `include/aam/core/memory_pool.hpp`：定长内存池（590行，O(1)分配/释放）
+- [x] `src/common/logger.cpp`：spdlog 封装（556行，支持异步/多线程）
 
 ### v0.2.0-alpha.5：测试与配置
 
-- [ ] `src/l0_sensing/tests/test_frame_sync.cpp`：帧同步测试
-- [ ] `src/l0_sensing/tests/test_shm_throughput.cpp`：吞吐量测试
-- [ ] `configs/ama/capture.yaml`：L0 配置模板
+- [x] `core/tests/test_shm_transport.cpp`：共享内存传输测试（31个测试用例，含吞吐量/延迟基准测试）
+- [ ] `src/l0_sensing/tests/test_frame_sync.cpp`：帧同步测试（待实现）
+- [ ] `configs/ama/capture.yaml`：L0 配置模板（待实现）
 
 **验收标准**
 - 1000 帧连续捕获，0 丢帧，P99 < 20ms
