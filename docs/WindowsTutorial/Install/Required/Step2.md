@@ -1,3 +1,49 @@
+# Step2:安装依赖
+### 嘿！你真该试试安装脚本
+##### 这就是安装脚本，如果你找得到的话，为什么不试试呢？
+```powershell
+./install_deps_windows.ps1
+```
+##### 嘿！找到了没？我猜猜，你肯定是没找到，对吧？
+###### emmmmm，其实我好像也忘记了
+怎么办呢？很着急对吧？
+首先，你应该先安装git然后打开powershell执行如下指令
+```git
+git clone https://github.com/Ethernos-Studio/ArknightsAutoMachine.git
+```
+没下载git？
+[点一下我](https://gitforwindows.org/)
+你应该再次确认你真的想安装的，这玩意（指：安装本项目依赖）真的很占空间。
+##### 记得同意UAC，需要管理员权限哦
+```powershell
+cd ./ArknightsAutoMachine
+cd ./scripts/setup
+./install_deps_windows.ps1
+```
+看到这里，此时，项目依赖应该安装完成了或者正在安装
+让我来解释一下脚本具体干了什么，当然，[点一下我](./Step3.md)可以跳转下一章哦
+```mermaid
+flowchart TD
+    Start([开始执行脚本]) --> CheckAdmin{是否以管理员<br>权限运行?}
+
+    CheckAdmin -->|否| Elevate[请求管理员权限<br>并重新启动脚本]
+    Elevate --> Start
+
+    CheckAdmin -->|是| CheckWinget{系统是否已安装<br>Winget?}
+    
+    CheckWinget -->|否| ExitWinget[提示用户安装Winget<br>并退出脚本]
+    ExitWinget --> End([结束])
+
+    CheckWinget -->|是| InstallWingetDeps[通过Winget安装/检查<br>核心开发工具]
+    InstallWingetDeps --> GetVcpkg[克隆vcpkg仓库<br>（如不存在）]
+    GetVcpkg --> InstallVcpkg[安装/引导vcpkg<br>（如未安装）]
+    InstallVcpkg --> IntegrateVcpkg[执行 vcpkg integrate install<br>（系统集成）]
+    IntegrateVcpkg --> InstallVcpkgDeps[通过vcpkg安装<br>项目C++依赖]
+    InstallVcpkgDeps --> InstallPoetry[安装Python包管理工具<br>Poetry]
+    InstallPoetry --> End([所有依赖安装完成])
+```
+如果你脚本正常运行了，就请跳过这里，[这是快速进入下一章的入口](./Step3.md)，否则请往下看
+```powershell
 $script:vcpkgPath = "C:\Dev\vcpkg"
 function Install-WingetDepsSoftware {
     $softwareList = @(
@@ -100,3 +146,12 @@ Install-VCPKG
 & "$script:vcpkgPath\vcpkg.exe" integrate install
 Install-VCPKG-Dependency
 Install-Poetry
+```
+这就是具体的脚本内容
+你应该做的是创建一个文件
+重命名一个你想要的名字，然后把后缀（就是那个.xxx的，你可以在文件管理器里开启显示文件后缀的功能）改成".ps1"
+我知道你想说什么“为啥系统弹窗显示可能导致文件损坏”
+那是防呆设计，不用管
+
+
+[快速下一章](./Step3.md)
