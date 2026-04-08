@@ -209,7 +209,15 @@ jobs:
       - name: Run clang-tidy (limited scope)
         run: |
           # 仅检查 core/ 目录，避免检查 third_party
-          cmake --build build --target aam_core 2>&1 | head -n 500 || true
+          cmake --build build --target aam_core 2>&1 | tee clang-tidy.log || true
+
+      - name: Upload clang-tidy logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-tidy-logs
+          path: clang-tidy.log
+          retention-days: 7
 
   # ============================================================================
   # Windows 构建
@@ -257,6 +265,12 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
 
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ github.job }}-${{ matrix.arch }}-${{ matrix.build_type }}
+          max-size: 2G
+
       - name: Configure CMake
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
@@ -269,6 +283,8 @@ jobs:
             -DAAM_BUILD_EXAMPLES=${{ matrix.build_type == 'Release' && 'ON' || 'OFF' }} `
             -DAAM_ENABLE_CUDA=OFF `
             -DAAM_ENABLE_STATIC_ANALYSIS=OFF `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache `
             -DCMAKE_CXX_FLAGS="/W4 /WX"
 
       - name: Build
@@ -364,7 +380,7 @@ jobs:
             libatspi2.0-dev
 
       - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1
         with:
           key: ${{ github.job }}-${{ matrix.compiler }}-${{ matrix.build_type }}
           max-size: 2G
@@ -425,6 +441,7 @@ jobs:
 
   # ============================================================================
   # macOS 构建
+  # 注意: 每个任务有独立的6小时计时，Debug和Release分别构建以确保完整性
   # ============================================================================
   build-macos:
     name: Build (macOS)
@@ -433,7 +450,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        build_type: [Release]
+        build_type: [Release, Debug]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -459,7 +476,7 @@ jobs:
             zeromq
 
       - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1
         with:
           key: ${{ github.job }}-${{ matrix.build_type }}
           max-size: 2G
