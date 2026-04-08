@@ -19,9 +19,10 @@
 # @author dhjs0000
 # @brief AAM Clang-Tidy Configuration
 # =============================================================================
-# 版本: v0.1.1-alpha.2
+# 版本: v0.2.1-alpha.2
 # 功能: 静态代码分析与质量门禁
 # 修复: 移除 ExcludeHeaderFilterRegex 以兼容 clang-tidy < 17
+# 注意: 此版本号应与项目版本 (CI workflow) 保持一致
 # 参考: https://clang.llvm.org/extra/clang-tidy/
 # =============================================================================
 

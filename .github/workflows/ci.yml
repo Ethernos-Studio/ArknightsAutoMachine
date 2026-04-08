@@ -190,7 +190,7 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 
-      - name: Configure CMake with clang-tidy
+      - name: Configure CMake (compile commands only)
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
@@ -203,16 +203,21 @@ jobs:
             -DAAM_BUILD_TESTS=OFF \
             -DAAM_BUILD_EXAMPLES=OFF \
             -DAAM_ENABLE_CUDA=OFF \
-            -DAAM_ENABLE_STATIC_ANALYSIS=ON \
+            -DAAM_ENABLE_STATIC_ANALYSIS=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCMAKE_CXX_FLAGS="-stdlib=libc++"
 
-      - name: Run clang-tidy (limited scope)
+      - name: Run clang-tidy on core/ only
         run: |
-          # 仅检查 core/ 目录，避免检查 third_party
-          cmake --build build --target aam_core 2>&1 | tee clang-tidy.log || true
+          # 仅检查 core/ 目录的源文件，完全排除 third_party
+          find core -name "*.cpp" -type f | xargs clang-tidy-18 \
+            -p build \
+            --header-filter='^core/.*' \
+            --quiet \
+            2>&1 | tee clang-tidy.log
 
       - name: Upload clang-tidy logs
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: clang-tidy-logs
