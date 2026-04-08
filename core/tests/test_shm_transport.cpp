@@ -20,13 +20,12 @@
 // @brief 共享内存传输层单元测试
 // ==========================================================================
 
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <numeric>
 #include <thread>
@@ -67,8 +66,8 @@ protected:
         return "aam_test_" + std::to_string(now) + "_" + std::to_string(counter.fetch_add(1));
     }
 
-    const std::string test_shm_name_ = GenerateUniqueName();
-    static constexpr std::size_t kTestBufferCount = 16;  // 增加缓冲区大小以支持多帧测试
+    const std::string            test_shm_name_   = GenerateUniqueName();
+    static constexpr std::size_t kTestBufferCount = 16;           // 增加缓冲区大小以支持多帧测试
     static constexpr std::size_t kTestFrameSize   = 1024 * 1024;  // 1MB
 };
 
@@ -81,8 +80,8 @@ TEST_F(ShmTransportTest, ConfigValidation)
     ShmTransportConfig config;
 
     // 有效配置
-    config.shm_name      = "test";
-    config.buffer_count  = 4;
+    config.shm_name       = "test";
+    config.buffer_count   = 4;
     config.max_frame_size = 1024;
     EXPECT_TRUE(config.validate().has_value());
 
@@ -122,8 +121,8 @@ TEST_F(ShmTransportTest, ConfigSizeCalculation)
 
     // 验证大小大于等于头部 + 缓冲区（考虑对齐后可能相等）
     EXPECT_GE(total_size, sizeof(ShmControlBlock) + config.metadata_size);
-    EXPECT_GE(total_size, sizeof(ShmControlBlock) + config.metadata_size +
-                              4 * (sizeof(ShmFrameHeader) + 1024));
+    EXPECT_GE(total_size,
+              sizeof(ShmControlBlock) + config.metadata_size + 4 * (sizeof(ShmFrameHeader) + 1024));
 }
 
 TEST_F(ShmTransportTest, ProducerInitialization)
@@ -158,7 +157,7 @@ TEST_F(ShmTransportTest, ProducerInitialization)
 TEST_F(ShmTransportTest, ConsumerInitialization)
 {
     // 先创建生产者
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -168,7 +167,7 @@ TEST_F(ShmTransportTest, ConsumerInitialization)
 
     // 再创建消费者
     ShmTransport consumer;
-    auto result = consumer.InitializeConsumer(config);
+    auto         result = consumer.InitializeConsumer(config);
     EXPECT_TRUE(result.has_value()) << "Consumer initialization failed";
     EXPECT_TRUE(consumer.IsInitialized());
     EXPECT_FALSE(consumer.IsProducer());
@@ -182,7 +181,7 @@ TEST_F(ShmTransportTest, ConsumerInitialization)
 
 TEST_F(ShmTransportTest, ConsumerBeforeProducer)
 {
-    ShmTransport consumer;
+    ShmTransport       consumer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -195,7 +194,7 @@ TEST_F(ShmTransportTest, ConsumerBeforeProducer)
 
 TEST_F(ShmTransportTest, DoubleInitialization)
 {
-    ShmTransport transport;
+    ShmTransport       transport;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -215,7 +214,7 @@ TEST_F(ShmTransportTest, DoubleInitialization)
 TEST_F(ShmTransportTest, BasicFrameWriteRead)
 {
     // 创建生产者
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -231,15 +230,15 @@ TEST_F(ShmTransportTest, BasicFrameWriteRead)
 
     // 准备测试数据
     FrameMetadata write_metadata;
-    write_metadata.width           = 1920;
-    write_metadata.height          = 1080;
-    write_metadata.stride          = 1920 * 3;
-    write_metadata.pixel_format    = PixelFormat::RGB24;
+    write_metadata.width             = 1920;
+    write_metadata.height            = 1080;
+    write_metadata.stride            = 1920 * 3;
+    write_metadata.pixel_format      = PixelFormat::RGB24;
     write_metadata.capture_timestamp = Clock::now();
     write_metadata.process_timestamp = Clock::now();
-    write_metadata.frame_number    = 1;
-    write_metadata.sequence_id     = 1;
-    write_metadata.data_size       = 100;
+    write_metadata.frame_number      = 1;
+    write_metadata.sequence_id       = 1;
+    write_metadata.data_size         = 100;
 
     std::vector<std::byte> write_data(100);
     for (size_t i = 0; i < write_data.size(); ++i) {
@@ -272,7 +271,7 @@ TEST_F(ShmTransportTest, BasicFrameWriteRead)
 
 TEST_F(ShmTransportTest, MultipleFrames)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -288,15 +287,15 @@ TEST_F(ShmTransportTest, MultipleFrames)
     // 写入多帧
     for (int i = 0; i < num_frames; ++i) {
         FrameMetadata metadata;
-        metadata.width        = 1920;
-        metadata.height       = 1080;
-        metadata.stride       = 1920 * 3;
-        metadata.pixel_format = PixelFormat::RGB24;
+        metadata.width             = 1920;
+        metadata.height            = 1080;
+        metadata.stride            = 1920 * 3;
+        metadata.pixel_format      = PixelFormat::RGB24;
         metadata.capture_timestamp = Clock::now();
         metadata.process_timestamp = Clock::now();
-        metadata.frame_number = i;
-        metadata.sequence_id  = i;
-        metadata.data_size    = 100;
+        metadata.frame_number      = i;
+        metadata.sequence_id       = i;
+        metadata.data_size         = 100;
 
         std::vector<std::byte> data(100);
         data[0] = static_cast<std::byte>(i);
@@ -319,7 +318,7 @@ TEST_F(ShmTransportTest, MultipleFrames)
 
 TEST_F(ShmTransportTest, TryWriteFrameNonBlocking)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = 2;  // 小缓冲区
@@ -328,14 +327,14 @@ TEST_F(ShmTransportTest, TryWriteFrameNonBlocking)
     ASSERT_TRUE(producer.InitializeProducer(config).has_value());
 
     FrameMetadata metadata;
-    metadata.width        = 100;
-    metadata.height       = 100;
-    metadata.stride       = 300;
-    metadata.pixel_format = PixelFormat::RGB24;
+    metadata.width             = 100;
+    metadata.height            = 100;
+    metadata.stride            = 300;
+    metadata.pixel_format      = PixelFormat::RGB24;
     metadata.capture_timestamp = Clock::now();
     metadata.process_timestamp = Clock::now();
-    metadata.frame_number = 0;
-    metadata.data_size    = 100;
+    metadata.frame_number      = 0;
+    metadata.data_size         = 100;
 
     std::vector<std::byte> data(100);
 
@@ -360,9 +359,9 @@ TEST_F(ShmTransportTest, WriteFrameWithTimeout_BufferFullTimesOut)
     ShmTransport producer;
 
     ShmTransportConfig config;
-    config.shm_name       = test_shm_name_;
-    config.buffer_count   = kTestBufferCount;
-    config.max_frame_size = kTestFrameSize;
+    config.shm_name         = test_shm_name_;
+    config.buffer_count     = kTestBufferCount;
+    config.max_frame_size   = kTestFrameSize;
     config.enable_zero_copy = false;  // 禁用零拷贝以使用传统路径
 
     auto init_result = producer.InitializeProducer(config);
@@ -373,43 +372,45 @@ TEST_F(ShmTransportTest, WriteFrameWithTimeout_BufferFullTimesOut)
     const auto initial_stats = producer.GetStats();
 
     // 填满缓冲区
-    for (uint32_t i = 0; i < kTestBufferCount; ++i)
-    {
+    for (uint32_t i = 0; i < kTestBufferCount; ++i) {
         FrameMetadata metadata{};
-        metadata.frame_number = i;
-        metadata.width = 100;
-        metadata.height = 100;
-        metadata.stride = 300;
-        metadata.pixel_format = PixelFormat::RGB24;
+        metadata.frame_number      = i;
+        metadata.width             = 100;
+        metadata.height            = 100;
+        metadata.stride            = 300;
+        metadata.pixel_format      = PixelFormat::RGB24;
         metadata.capture_timestamp = Clock::now();
         metadata.process_timestamp = Clock::now();
-        metadata.data_size = static_cast<std::uint32_t>(kTestFrameSize);
+        metadata.data_size         = static_cast<std::uint32_t>(kTestFrameSize);
 
         std::vector<std::byte> frame_data(kTestFrameSize, static_cast<std::byte>(i));
 
         auto write_result = producer.TryWriteFrame(metadata, frame_data);
         ASSERT_TRUE(write_result.has_value()) << "TryWriteFrame error at frame " << i;
-        ASSERT_TRUE(write_result.value()) << "Failed to write frame " << i << " while filling buffer";
+        ASSERT_TRUE(write_result.value())
+            << "Failed to write frame " << i << " while filling buffer";
     }
 
     // 此时环形缓冲区已满，带超时的写入应该失败并更新统计
     FrameMetadata timeout_metadata{};
-    timeout_metadata.frame_number = kTestBufferCount;
-    timeout_metadata.width = 100;
-    timeout_metadata.height = 100;
-    timeout_metadata.stride = 300;
-    timeout_metadata.pixel_format = PixelFormat::RGB24;
+    timeout_metadata.frame_number      = kTestBufferCount;
+    timeout_metadata.width             = 100;
+    timeout_metadata.height            = 100;
+    timeout_metadata.stride            = 300;
+    timeout_metadata.pixel_format      = PixelFormat::RGB24;
     timeout_metadata.capture_timestamp = Clock::now();
     timeout_metadata.process_timestamp = Clock::now();
-    timeout_metadata.data_size = static_cast<std::uint32_t>(kTestFrameSize);
+    timeout_metadata.data_size         = static_cast<std::uint32_t>(kTestFrameSize);
 
     std::vector<std::byte> timeout_frame(kTestFrameSize, static_cast<std::byte>(0xFF));
 
     const auto timeout = std::chrono::milliseconds(1);
-    auto write_result = producer.WriteFrameWithTimeout(timeout_metadata, timeout_frame, timeout);
-    
-    ASSERT_TRUE(write_result.has_value()) << "WriteFrameWithTimeout returned error: " << static_cast<int>(write_result.error());
-    EXPECT_FALSE(write_result.value()) << "WriteFrameWithTimeout should return false when buffer is full";
+    auto write_result  = producer.WriteFrameWithTimeout(timeout_metadata, timeout_frame, timeout);
+
+    ASSERT_TRUE(write_result.has_value())
+        << "WriteFrameWithTimeout returned error: " << static_cast<int>(write_result.error());
+    EXPECT_FALSE(write_result.value())
+        << "WriteFrameWithTimeout should return false when buffer is full";
 
     const auto stats = producer.GetStats();
     EXPECT_EQ(stats.write_timeouts.load() - initial_stats.write_timeouts.load(), 1u);
@@ -417,7 +418,7 @@ TEST_F(ShmTransportTest, WriteFrameWithTimeout_BufferFullTimesOut)
 
 TEST_F(ShmTransportTest, TryReadFrameNonBlocking)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -435,14 +436,14 @@ TEST_F(ShmTransportTest, TryReadFrameNonBlocking)
 
     // 写入一帧
     FrameMetadata metadata;
-    metadata.width        = 100;
-    metadata.height       = 100;
-    metadata.stride       = 300;
-    metadata.pixel_format = PixelFormat::RGB24;
+    metadata.width             = 100;
+    metadata.height            = 100;
+    metadata.stride            = 300;
+    metadata.pixel_format      = PixelFormat::RGB24;
     metadata.capture_timestamp = Clock::now();
     metadata.process_timestamp = Clock::now();
-    metadata.frame_number = 0;
-    metadata.data_size    = 100;
+    metadata.frame_number      = 0;
+    metadata.data_size         = 100;
 
     std::vector<std::byte> data(100);
 
@@ -456,7 +457,7 @@ TEST_F(ShmTransportTest, TryReadFrameNonBlocking)
 
 TEST_F(ShmTransportTest, ReadFrameWithCallback)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -469,14 +470,14 @@ TEST_F(ShmTransportTest, ReadFrameWithCallback)
 
     // 准备测试数据
     FrameMetadata write_metadata;
-    write_metadata.width        = 1920;
-    write_metadata.height       = 1080;
-    write_metadata.stride       = 1920 * 3;
-    write_metadata.pixel_format = PixelFormat::RGB24;
+    write_metadata.width             = 1920;
+    write_metadata.height            = 1080;
+    write_metadata.stride            = 1920 * 3;
+    write_metadata.pixel_format      = PixelFormat::RGB24;
     write_metadata.capture_timestamp = Clock::now();
     write_metadata.process_timestamp = Clock::now();
-    write_metadata.frame_number = 42;
-    write_metadata.data_size    = 100;
+    write_metadata.frame_number      = 42;
+    write_metadata.data_size         = 100;
 
     std::vector<std::byte> write_data(100);
     for (size_t i = 0; i < write_data.size(); ++i) {
@@ -486,8 +487,8 @@ TEST_F(ShmTransportTest, ReadFrameWithCallback)
     ASSERT_TRUE(producer.WriteFrame(write_metadata, write_data).has_value());
 
     // 使用回调读取
-    bool callback_called = false;
-    FrameMetadata received_metadata;
+    bool                   callback_called = false;
+    FrameMetadata          received_metadata;
     std::vector<std::byte> received_data;
 
     auto callback = [&](const FrameMetadata& metadata, std::span<const std::byte> data) {
@@ -512,7 +513,7 @@ TEST_F(ShmTransportTest, ReadFrameWithCallback)
 
 TEST_F(ShmTransportTest, TransportStats)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -530,13 +531,13 @@ TEST_F(ShmTransportTest, TransportStats)
 
     // 写入几帧
     FrameMetadata metadata;
-    metadata.width        = 100;
-    metadata.height       = 100;
-    metadata.stride       = 300;
-    metadata.pixel_format = PixelFormat::RGB24;
+    metadata.width             = 100;
+    metadata.height            = 100;
+    metadata.stride            = 300;
+    metadata.pixel_format      = PixelFormat::RGB24;
     metadata.capture_timestamp = Clock::now();
     metadata.process_timestamp = Clock::now();
-    metadata.data_size    = 100;
+    metadata.data_size         = 100;
 
     std::vector<std::byte> data(100);
 
@@ -560,8 +561,8 @@ TEST_F(ShmTransportTest, TransportStats)
     // 检查缓冲区状态（允许一定误差，因为并发可能导致顺序变化）
     auto [used, total] = consumer.GetBufferStatus();
     EXPECT_EQ(total, kTestBufferCount);
-    EXPECT_GE(used, 1);   // 至少还有1帧未读
-    EXPECT_LE(used, 2);   // 最多2帧未读
+    EXPECT_GE(used, 1);  // 至少还有1帧未读
+    EXPECT_LE(used, 2);  // 最多2帧未读
 }
 
 TEST_F(ShmTransportTest, StatsDropRate)
@@ -590,7 +591,7 @@ TEST_F(ShmTransportTest, StatsThroughput)
 
     // 吞吐量应该约为 1MB/s
     double throughput = stats.get_throughput_bytes_per_sec();
-    EXPECT_GT(throughput, 900000.0);   // 允许 10% 误差
+    EXPECT_GT(throughput, 900000.0);  // 允许 10% 误差
     EXPECT_LT(throughput, 1100000.0);
 }
 
@@ -600,7 +601,7 @@ TEST_F(ShmTransportTest, StatsThroughput)
 
 TEST_F(ShmTransportTest, EmptyDataWrite)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -609,13 +610,13 @@ TEST_F(ShmTransportTest, EmptyDataWrite)
     ASSERT_TRUE(producer.InitializeProducer(config).has_value());
 
     FrameMetadata metadata;
-    metadata.width        = 100;
-    metadata.height       = 100;
-    metadata.stride       = 300;
-    metadata.pixel_format = PixelFormat::RGB24;
+    metadata.width             = 100;
+    metadata.height            = 100;
+    metadata.stride            = 300;
+    metadata.pixel_format      = PixelFormat::RGB24;
     metadata.capture_timestamp = Clock::now();
     metadata.process_timestamp = Clock::now();
-    metadata.data_size    = 0;  // 空数据
+    metadata.data_size         = 0;  // 空数据
 
     std::vector<std::byte> empty_data;
 
@@ -626,7 +627,7 @@ TEST_F(ShmTransportTest, EmptyDataWrite)
 
 TEST_F(ShmTransportTest, OversizedFrame)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -635,13 +636,13 @@ TEST_F(ShmTransportTest, OversizedFrame)
     ASSERT_TRUE(producer.InitializeProducer(config).has_value());
 
     FrameMetadata metadata;
-    metadata.width        = 100;
-    metadata.height       = 100;
-    metadata.stride       = 300;
-    metadata.pixel_format = PixelFormat::RGB24;
+    metadata.width             = 100;
+    metadata.height            = 100;
+    metadata.stride            = 300;
+    metadata.pixel_format      = PixelFormat::RGB24;
     metadata.capture_timestamp = Clock::now();
     metadata.process_timestamp = Clock::now();
-    metadata.data_size    = 2048;  // 超过限制
+    metadata.data_size         = 2048;  // 超过限制
 
     std::vector<std::byte> large_data(2048);
 
@@ -652,7 +653,7 @@ TEST_F(ShmTransportTest, OversizedFrame)
 
 TEST_F(ShmTransportTest, TimeoutTest)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = 2;
@@ -664,8 +665,8 @@ TEST_F(ShmTransportTest, TimeoutTest)
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
     // 尝试读取不存在的帧（应该超时）
-    auto start = std::chrono::steady_clock::now();
-    auto result = consumer.ReadFrame(50ms);
+    auto start   = std::chrono::steady_clock::now();
+    auto result  = consumer.ReadFrame(50ms);
     auto elapsed = std::chrono::steady_clock::now() - start;
 
     EXPECT_TRUE(result.has_value());
@@ -679,7 +680,7 @@ TEST_F(ShmTransportTest, TimeoutTest)
 
 TEST_F(ShmTransportTest, ConcurrentWriteRead)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = 16;
@@ -690,26 +691,26 @@ TEST_F(ShmTransportTest, ConcurrentWriteRead)
     ShmTransport consumer;
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
-    constexpr int num_frames = 1000;
-    std::atomic<int> frames_read{0};
+    constexpr int     num_frames = 1000;
+    std::atomic<int>  frames_read{0};
     std::atomic<bool> producer_done{false};
 
     // 生产者线程
     std::thread producer_thread([&]() {
         FrameMetadata metadata;
-        metadata.width        = 100;
-        metadata.height       = 100;
-        metadata.stride       = 300;
-        metadata.pixel_format = PixelFormat::RGB24;
+        metadata.width             = 100;
+        metadata.height            = 100;
+        metadata.stride            = 300;
+        metadata.pixel_format      = PixelFormat::RGB24;
         metadata.capture_timestamp = Clock::now();
         metadata.process_timestamp = Clock::now();
-        metadata.data_size    = 100;
+        metadata.data_size         = 100;
 
         std::vector<std::byte> data(100);
 
         for (int i = 0; i < num_frames; ++i) {
             metadata.frame_number = i;
-            data[0] = static_cast<std::byte>(i & 0xFF);
+            data[0]               = static_cast<std::byte>(i & 0xFF);
 
             auto result = producer.WriteFrameWithTimeout(metadata, data, 1s);
             ASSERT_TRUE(result.has_value());
@@ -785,34 +786,33 @@ TEST_F(ShmTransportTest, DroppedFramesOnRingOverflow)
     const size_t kFramesToWrite      = 10;  // 明显大于 capacity，确保发生溢出
 
     ShmTransportConfig config;
-    config.shm_name       = test_shm_name_;
-    config.buffer_count   = static_cast<std::uint32_t>(kRingCapacityFrames);
-    config.max_frame_size = kTestFrameSize;
+    config.shm_name         = test_shm_name_;
+    config.buffer_count     = static_cast<std::uint32_t>(kRingCapacityFrames);
+    config.max_frame_size   = kTestFrameSize;
     config.enable_zero_copy = false;  // 使用传统路径以测试超时丢帧
 
     // 初始化生产者（不启动消费者，这样不会有消费，ring 会被写满后溢出）
     ShmTransport producer;
-    auto init_result = producer.InitializeProducer(config);
+    auto         init_result = producer.InitializeProducer(config);
     ASSERT_TRUE(init_result.has_value()) << "Producer initialization failed";
 
     // 获取初始统计值
     const auto initial_stats = producer.GetStats();
 
     FrameMetadata metadata{};
-    metadata.width = 100;
-    metadata.height = 100;
-    metadata.stride = 100;
+    metadata.width        = 100;
+    metadata.height       = 100;
+    metadata.stride       = 100;
     metadata.pixel_format = PixelFormat::RGB24;
-    metadata.data_size = static_cast<std::uint32_t>(kTestFrameSize);
+    metadata.data_size    = static_cast<std::uint32_t>(kTestFrameSize);
 
     std::vector<std::byte> frame_data(kTestFrameSize, static_cast<std::byte>(0xAB));
 
     // 首先填满缓冲区
     size_t successful_writes = 0;
-    for (size_t i = 0; i < kRingCapacityFrames; ++i)
-    {
+    for (size_t i = 0; i < kRingCapacityFrames; ++i) {
         metadata.frame_number = static_cast<std::uint32_t>(i);
-        auto result = producer.TryWriteFrame(metadata, frame_data);
+        auto result           = producer.TryWriteFrame(metadata, frame_data);
         ASSERT_TRUE(result.has_value()) << "WriteFrame failed at frame " << i;
         if (result.value()) {
             successful_writes++;
@@ -822,10 +822,10 @@ TEST_F(ShmTransportTest, DroppedFramesOnRingOverflow)
 
     // 使用带超时的写入，触发丢帧计数
     size_t timeout_count = 0;
-    for (size_t i = kRingCapacityFrames; i < kFramesToWrite; ++i)
-    {
+    for (size_t i = kRingCapacityFrames; i < kFramesToWrite; ++i) {
         metadata.frame_number = static_cast<std::uint32_t>(i);
-        auto result = producer.WriteFrameWithTimeout(metadata, frame_data, std::chrono::milliseconds(1));
+        auto result =
+            producer.WriteFrameWithTimeout(metadata, frame_data, std::chrono::milliseconds(1));
         ASSERT_TRUE(result.has_value()) << "WriteFrameWithTimeout error at frame " << i;
         if (!result.value()) {
             timeout_count++;
@@ -837,7 +837,8 @@ TEST_F(ShmTransportTest, DroppedFramesOnRingOverflow)
 
     // 获取最终统计值并验证丢帧统计
     const auto final_stats = producer.GetStats();
-    EXPECT_EQ(final_stats.write_timeouts.load() - initial_stats.write_timeouts.load(), timeout_count);
+    EXPECT_EQ(final_stats.write_timeouts.load() - initial_stats.write_timeouts.load(),
+              timeout_count);
 }
 
 // ==========================================================================
@@ -865,7 +866,7 @@ TEST_F(ShmTransportTest, ShmExistsAndRemove)
     EXPECT_FALSE(ShmExists("nonexistent_shm_12345"));
 
     // 创建共享内存
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = kTestBufferCount;
@@ -892,8 +893,8 @@ TEST_F(ShmTransportTest, FrameHeaderValidation)
     ShmFrameHeader header;
     EXPECT_FALSE(header.is_valid());  // 默认构造无效
 
-    header.magic = ShmFrameHeader::MAGIC;
-    header.version = 1;
+    header.magic     = ShmFrameHeader::MAGIC;
+    header.version   = 1;
     header.data_size = 100;
     EXPECT_TRUE(header.is_valid());
 
@@ -906,10 +907,16 @@ TEST_F(ShmTransportTest, FrameHeaderChecksum)
     ShmFrameHeader header;
     header.data_size = 10;
 
-    std::array<std::byte, 10> data{
-        std::byte{0}, std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4},
-        std::byte{5}, std::byte{6}, std::byte{7}, std::byte{8}, std::byte{9}
-    };
+    std::array<std::byte, 10> data{std::byte{0},
+                                   std::byte{1},
+                                   std::byte{2},
+                                   std::byte{3},
+                                   std::byte{4},
+                                   std::byte{5},
+                                   std::byte{6},
+                                   std::byte{7},
+                                   std::byte{8},
+                                   std::byte{9}};
 
     header.checksum = header.calculate_checksum(data.data());
     EXPECT_TRUE(header.verify_data(data.data()));
@@ -928,9 +935,9 @@ TEST_F(ShmTransportTest, ChecksumEnabledDetectsCorruption)
 {
     // 安排：创建启用校验和的传输
     ShmTransportConfig config;
-    config.shm_name       = test_shm_name_;
-    config.buffer_count   = kTestBufferCount;
-    config.max_frame_size = kTestFrameSize;
+    config.shm_name        = test_shm_name_;
+    config.buffer_count    = kTestBufferCount;
+    config.max_frame_size  = kTestFrameSize;
     config.enable_checksum = true;  // 启用校验和
 
     ShmTransport producer;
@@ -940,13 +947,13 @@ TEST_F(ShmTransportTest, ChecksumEnabledDetectsCorruption)
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
     const std::string payload = "0123456789ABCDEFGHIJ";  // 20 bytes
-    FrameMetadata metadata{};
-    metadata.width = 100;
-    metadata.height = 100;
-    metadata.stride = 100;
+    FrameMetadata     metadata{};
+    metadata.width        = 100;
+    metadata.height       = 100;
+    metadata.stride       = 100;
     metadata.pixel_format = PixelFormat::RGB24;
     metadata.frame_number = 1;
-    metadata.data_size = static_cast<std::uint32_t>(payload.size());
+    metadata.data_size    = static_cast<std::uint32_t>(payload.size());
 
     // 写入一帧
     auto write_result = producer.WriteFrame(metadata, std::as_bytes(std::span(payload)));
@@ -985,9 +992,9 @@ TEST_F(ShmTransportTest, ChecksumDisabledDoesNotDetectCorruption)
 {
     // 安排：创建禁用校验和的传输
     ShmTransportConfig config;
-    config.shm_name       = test_shm_name_;
-    config.buffer_count   = kTestBufferCount;
-    config.max_frame_size = kTestFrameSize;
+    config.shm_name        = test_shm_name_;
+    config.buffer_count    = kTestBufferCount;
+    config.max_frame_size  = kTestFrameSize;
     config.enable_checksum = false;  // 禁用校验和
 
     ShmTransport producer;
@@ -997,13 +1004,13 @@ TEST_F(ShmTransportTest, ChecksumDisabledDoesNotDetectCorruption)
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
     const std::string payload = "0123456789ABCDEFGHIJ";  // 20 bytes
-    FrameMetadata metadata{};
-    metadata.width = 100;
-    metadata.height = 100;
-    metadata.stride = 100;
+    FrameMetadata     metadata{};
+    metadata.width        = 100;
+    metadata.height       = 100;
+    metadata.stride       = 100;
     metadata.pixel_format = PixelFormat::RGB24;
     metadata.frame_number = 1;
-    metadata.data_size = static_cast<std::uint32_t>(payload.size());
+    metadata.data_size    = static_cast<std::uint32_t>(payload.size());
 
     // 写入一帧
     auto write_result = producer.WriteFrame(metadata, std::as_bytes(std::span(payload)));
@@ -1037,7 +1044,7 @@ TEST_F(ShmTransportTest, ChecksumDisabledDoesNotDetectCorruption)
 
 TEST_F(ShmTransportTest, ThroughputBenchmark)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
     config.shm_name       = test_shm_name_;
     config.buffer_count   = 16;
@@ -1048,23 +1055,23 @@ TEST_F(ShmTransportTest, ThroughputBenchmark)
     ShmTransport consumer;
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
-    constexpr int num_frames = 100;
+    constexpr int         num_frames = 100;
     constexpr std::size_t frame_size = 1920 * 1080 * 3;  // 1080p RGB24
 
     FrameMetadata metadata;
-    metadata.width        = 1920;
-    metadata.height       = 1080;
-    metadata.stride       = 1920 * 3;
-    metadata.pixel_format = PixelFormat::RGB24;
+    metadata.width             = 1920;
+    metadata.height            = 1080;
+    metadata.stride            = 1920 * 3;
+    metadata.pixel_format      = PixelFormat::RGB24;
     metadata.capture_timestamp = Clock::now();
     metadata.process_timestamp = Clock::now();
-    metadata.data_size    = static_cast<std::uint32_t>(frame_size);
+    metadata.data_size         = static_cast<std::uint32_t>(frame_size);
 
     std::vector<std::byte> data(frame_size);
 
     // 预热
     for (int i = 0; i < 10; ++i) {
-        [[maybe_unused]] auto _ = producer.WriteFrame(metadata, data);
+        [[maybe_unused]] auto _  = producer.WriteFrame(metadata, data);
         [[maybe_unused]] auto _2 = consumer.ReadFrame(100ms);
     }
 
@@ -1073,7 +1080,7 @@ TEST_F(ShmTransportTest, ThroughputBenchmark)
 
     for (int i = 0; i < num_frames; ++i) {
         metadata.frame_number = i;
-        auto write_result = producer.WriteFrame(metadata, data);
+        auto write_result     = producer.WriteFrame(metadata, data);
         ASSERT_TRUE(write_result.has_value());
 
         // 每写入一帧立即读取，保持缓冲区不溢出
@@ -1082,12 +1089,12 @@ TEST_F(ShmTransportTest, ThroughputBenchmark)
         ASSERT_TRUE(read_result->has_value());
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
+    auto end      = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
     // 计算吞吐量
-    double total_bytes = static_cast<double>(num_frames * frame_size);
-    double seconds = duration.count() / 1'000'000.0;
+    double total_bytes     = static_cast<double>(num_frames * frame_size);
+    double seconds         = duration.count() / 1'000'000.0;
     double throughput_mbps = (total_bytes / seconds) / (1024.0 * 1024.0);
 
     // 仅校验吞吐量为正，避免在不同机器/构建配置下因绝对阈值导致用例不稳定
@@ -1100,11 +1107,11 @@ TEST_F(ShmTransportTest, ThroughputBenchmark)
 // ==========================================================================
 TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
 {
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
-    config.shm_name       = test_shm_name_;
-    config.buffer_count   = 8;
-    config.max_frame_size = 1024 * 1024;  // 1MB 帧
+    config.shm_name        = test_shm_name_;
+    config.buffer_count    = 8;
+    config.max_frame_size  = 1024 * 1024;  // 1MB 帧
     config.enable_checksum = false;        // 禁用CRC校验以提高性能
 
     ASSERT_TRUE(producer.InitializeProducer(config).has_value());
@@ -1112,7 +1119,7 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
     ShmTransport consumer;
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
-    constexpr int num_frames = 1000;
+    constexpr int         num_frames = 1000;
     constexpr std::size_t frame_size = 1024 * 1024;  // 1MB
 
     FrameMetadata metadata;
@@ -1125,17 +1132,20 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
     // 测试1: 零拷贝写入吞吐量（生产者端测量）
     // 使用消费者线程边读边写，避免缓冲区溢出
     {
-        std::atomic<int> write_count{0};
+        std::atomic<int>  write_count{0};
         std::atomic<bool> writer_done{false};
 
         // 启动消费者线程清空缓冲区
         std::thread consumer_thread([&]() {
-            while (!writer_done.load(std::memory_order_acquire) || write_count.load(std::memory_order_acquire) > 0) {
+            while (!writer_done.load(std::memory_order_acquire)
+                   || write_count.load(std::memory_order_acquire) > 0) {
                 auto read_result = consumer.TryAcquireReadBuffer();
                 if (read_result && read_result->has_value()) {
-                    [[maybe_unused]] auto _ = consumer.ReleaseReadBuffer(read_result->value().buffer_index);
+                    [[maybe_unused]] auto _ =
+                        consumer.ReleaseReadBuffer(read_result->value().buffer_index);
                     write_count.fetch_sub(1, std::memory_order_relaxed);
-                } else {
+                }
+                else {
                     std::this_thread::yield();
                 }
             }
@@ -1153,20 +1163,22 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
             std::memset(buffer.data, static_cast<int>(i & 0xFF), frame_size);
 
             metadata.frame_number = i;
-            auto commit_result = producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size);
+            auto commit_result =
+                producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size);
             ASSERT_TRUE(commit_result.has_value());
 
             write_count.fetch_add(1, std::memory_order_relaxed);
         }
         auto end = std::chrono::high_resolution_clock::now();
-        auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        auto duration_ns =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
         writer_done.store(true, std::memory_order_release);
         consumer_thread.join();
 
-        double total_mb = static_cast<double>(num_frames * frame_size) / (1024.0 * 1024.0);
-        double seconds = duration_ns / 1'000'000'000.0;
-        double write_mbps = total_mb / seconds;
+        double total_mb         = static_cast<double>(num_frames * frame_size) / (1024.0 * 1024.0);
+        double seconds          = duration_ns / 1'000'000'000.0;
+        double write_mbps       = total_mb / seconds;
         double write_latency_ns = static_cast<double>(duration_ns) / num_frames;
 
         std::cout << "[ZeroCopy] Write Throughput: " << write_mbps << " MB/s" << std::endl;
@@ -1176,16 +1188,19 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
     // 测试2: 零拷贝读取吞吐量（消费者端测量）
     {
         // 先填充缓冲区（使用生产者线程边写边读避免阻塞）
-        std::atomic<int> written{0};
+        std::atomic<int>  written{0};
         std::atomic<bool> fill_done{false};
 
         std::thread fill_consumer([&]() {
-            while (!fill_done.load(std::memory_order_acquire) || written.load(std::memory_order_acquire) > 0) {
+            while (!fill_done.load(std::memory_order_acquire)
+                   || written.load(std::memory_order_acquire) > 0) {
                 auto read_result = consumer.TryAcquireReadBuffer();
                 if (read_result && read_result->has_value()) {
-                    [[maybe_unused]] auto _ = consumer.ReleaseReadBuffer(read_result->value().buffer_index);
+                    [[maybe_unused]] auto _ =
+                        consumer.ReleaseReadBuffer(read_result->value().buffer_index);
                     written.fetch_sub(1, std::memory_order_relaxed);
-                } else {
+                }
+                else {
                     std::this_thread::yield();
                 }
             }
@@ -1199,7 +1214,8 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
             auto& buffer = buffer_result->value();
             std::memset(buffer.data, static_cast<int>(i & 0xFF), frame_size);
             metadata.frame_number = i;
-            [[maybe_unused]] auto _ = producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size);
+            [[maybe_unused]] auto _ =
+                producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size);
             written.fetch_add(1, std::memory_order_relaxed);
         }
 
@@ -1213,12 +1229,13 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
                 auto& buffer = buffer_result->value();
                 std::memset(buffer.data, static_cast<int>(i & 0xFF), frame_size);
                 metadata.frame_number = i;
-                [[maybe_unused]] auto _ = producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size);
+                [[maybe_unused]] auto _ =
+                    producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size);
             }
         }
 
-        auto start = std::chrono::high_resolution_clock::now();
-        int read_count = 0;
+        auto start      = std::chrono::high_resolution_clock::now();
+        int  read_count = 0;
         while (read_count < num_frames) {
             auto result = consumer.TryAcquireReadBuffer();
             if (result && result->has_value()) {
@@ -1235,16 +1252,18 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
                 if (wb && wb->has_value()) {
                     std::memset(wb->value().data, static_cast<int>(read_count & 0xFF), frame_size);
                     metadata.frame_number = read_count;
-                    [[maybe_unused]] auto _c = producer.CommitWriteBuffer(wb->value().buffer_index, metadata, frame_size);
+                    [[maybe_unused]] auto _c =
+                        producer.CommitWriteBuffer(wb->value().buffer_index, metadata, frame_size);
                 }
             }
         }
         auto end = std::chrono::high_resolution_clock::now();
-        auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        auto duration_ns =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-        double total_mb = static_cast<double>(num_frames * frame_size) / (1024.0 * 1024.0);
-        double seconds = duration_ns / 1'000'000'000.0;
-        double read_mbps = total_mb / seconds;
+        double total_mb        = static_cast<double>(num_frames * frame_size) / (1024.0 * 1024.0);
+        double seconds         = duration_ns / 1'000'000'000.0;
+        double read_mbps       = total_mb / seconds;
         double read_latency_ns = static_cast<double>(duration_ns) / num_frames;
 
         std::cout << "[ZeroCopy] Read Throughput: " << read_mbps << " MB/s" << std::endl;
@@ -1257,8 +1276,8 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
 
     // 测试3: 并发零拷贝读写吞吐量（双工模式）
     {
-        std::atomic<int> write_count{0};
-        std::atomic<int> read_count{0};
+        std::atomic<int>  write_count{0};
+        std::atomic<int>  read_count{0};
         std::atomic<bool> start_flag{false};
         std::atomic<bool> writer_done{false};
 
@@ -1272,7 +1291,8 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
                     auto& buffer = buffer_result->value();
                     std::memset(buffer.data, static_cast<int>(i & 0xFF), frame_size);
                     metadata.frame_number = i;
-                    if (producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size).has_value()) {
+                    if (producer.CommitWriteBuffer(buffer.buffer_index, metadata, frame_size)
+                            .has_value()) {
                         write_count.fetch_add(1, std::memory_order_relaxed);
                     }
                 }
@@ -1292,11 +1312,14 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
                         read_count.fetch_add(1, std::memory_order_relaxed);
                         local_read++;
                     }
-                } else if (writer_done.load(std::memory_order_acquire) && 
-                          read_count.load(std::memory_order_acquire) >= write_count.load(std::memory_order_acquire)) {
+                }
+                else if (writer_done.load(std::memory_order_acquire)
+                         && read_count.load(std::memory_order_acquire)
+                                >= write_count.load(std::memory_order_acquire)) {
                     // 写入完成且已读完所有数据
                     break;
-                } else {
+                }
+                else {
                     std::this_thread::yield();
                 }
             }
@@ -1309,14 +1332,17 @@ TEST_F(ShmTransportTest, ZeroCopyLatencyBenchmark)
         reader.join();
 
         auto end = std::chrono::high_resolution_clock::now();
-        auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        auto duration_ns =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-        double total_mb = static_cast<double>((write_count + read_count) * frame_size) / (1024.0 * 1024.0);
-        double seconds = duration_ns / 1'000'000'000.0;
+        double total_mb =
+            static_cast<double>((write_count + read_count) * frame_size) / (1024.0 * 1024.0);
+        double seconds     = duration_ns / 1'000'000'000.0;
         double duplex_mbps = total_mb / seconds;
 
         std::cout << "[ZeroCopy] Duplex Throughput: " << duplex_mbps << " MB/s" << std::endl;
-        std::cout << "[ZeroCopy] Frames written: " << write_count << ", read: " << read_count << std::endl;
+        std::cout << "[ZeroCopy] Frames written: " << write_count << ", read: " << read_count
+                  << std::endl;
 
         EXPECT_EQ(write_count, num_frames);
         EXPECT_EQ(read_count, num_frames);
@@ -1333,18 +1359,17 @@ TEST_F(ShmTransportTest, MicrosecondLatencyTest)
     // virtualization. To avoid CI flakiness, it is gated by an environment
     // variable and will be skipped unless explicitly enabled.
     const char* perf_env = std::getenv("SHM_TRANSPORT_PERF_TEST");
-    if (!perf_env || std::strcmp(perf_env, "1") != 0)
-    {
+    if (!perf_env || std::strcmp(perf_env, "1") != 0) {
         GTEST_SKIP() << "Skipping MicrosecondLatencyTest; "
                      << "enable with SHM_TRANSPORT_PERF_TEST=1 in a dedicated "
                      << "performance environment.";
     }
 
-    ShmTransport producer;
+    ShmTransport       producer;
     ShmTransportConfig config;
-    config.shm_name       = test_shm_name_;
-    config.buffer_count   = 4;
-    config.max_frame_size = 1024 * 1024;  // 1MB 小帧
+    config.shm_name        = test_shm_name_;
+    config.buffer_count    = 4;
+    config.max_frame_size  = 1024 * 1024;  // 1MB 小帧
     config.enable_checksum = false;        // 禁用CRC校验以提高性能
 
     ASSERT_TRUE(producer.InitializeProducer(config).has_value());
@@ -1352,8 +1377,8 @@ TEST_F(ShmTransportTest, MicrosecondLatencyTest)
     ShmTransport consumer;
     ASSERT_TRUE(consumer.InitializeConsumer(config).has_value());
 
-    constexpr int num_samples = 100;
-    constexpr std::size_t frame_size = 1024 * 1024;  // 1MB
+    constexpr int         num_samples = 100;
+    constexpr std::size_t frame_size  = 1024 * 1024;  // 1MB
 
     FrameMetadata metadata;
     metadata.width        = 1024;
@@ -1366,7 +1391,8 @@ TEST_F(ShmTransportTest, MicrosecondLatencyTest)
     for (int i = 0; i < 10; ++i) {
         auto wb = producer.TryAcquireWriteBuffer();
         if (wb && wb->has_value()) {
-            [[maybe_unused]] auto _ = producer.CommitWriteBuffer(wb->value().buffer_index, metadata, 1024);
+            [[maybe_unused]] auto _ =
+                producer.CommitWriteBuffer(wb->value().buffer_index, metadata, 1024);
         }
         auto rb = consumer.TryAcquireReadBuffer();
         if (rb && rb->has_value()) {
@@ -1383,14 +1409,15 @@ TEST_F(ShmTransportTest, MicrosecondLatencyTest)
 
         // 零拷贝写入
         metadata.frame_number = i;
-        auto write_buffer = producer.TryAcquireWriteBuffer();
+        auto write_buffer     = producer.TryAcquireWriteBuffer();
         ASSERT_TRUE(write_buffer.has_value());
         ASSERT_TRUE(write_buffer->has_value());
 
         // 直接写入共享内存
         std::memset(write_buffer->value().data, static_cast<int>(i & 0xFF), 1024);
 
-        auto write_result = producer.CommitWriteBuffer(write_buffer->value().buffer_index, metadata, 1024);
+        auto write_result =
+            producer.CommitWriteBuffer(write_buffer->value().buffer_index, metadata, 1024);
         ASSERT_TRUE(write_result.has_value());
 
         // 零拷贝读取
@@ -1403,19 +1430,21 @@ TEST_F(ShmTransportTest, MicrosecondLatencyTest)
 
         auto end = std::chrono::high_resolution_clock::now();
 
-        double latency_us = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1000.0;
+        double latency_us =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / 1000.0;
         latencies_us.push_back(latency_us);
     }
 
     // 计算统计信息
     std::sort(latencies_us.begin(), latencies_us.end());
-    double min_latency = latencies_us.front();
-    double max_latency = latencies_us.back();
+    double min_latency    = latencies_us.front();
+    double max_latency    = latencies_us.back();
     double median_latency = latencies_us[num_samples / 2];
-    double avg_latency = std::accumulate(latencies_us.begin(), latencies_us.end(), 0.0) / num_samples;
+    double avg_latency =
+        std::accumulate(latencies_us.begin(), latencies_us.end(), 0.0) / num_samples;
 
     // 计算P99
-    int p99_index = static_cast<int>(num_samples * 0.99);
+    int    p99_index   = static_cast<int>(num_samples * 0.99);
     double p99_latency = latencies_us[p99_index];
 
     std::cout << "[MicroLatency] Min: " << min_latency << " us" << std::endl;

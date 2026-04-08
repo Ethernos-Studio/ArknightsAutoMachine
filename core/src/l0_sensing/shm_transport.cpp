@@ -57,7 +57,8 @@ constexpr std::array<std::uint32_t, 256> generate_crc32_table() noexcept
     for (std::uint32_t i = 0; i < 256; ++i) {
         std::uint32_t crc = i;
         for (std::uint32_t j = 0; j < 8; ++j) {
-            crc = (crc >> 1) ^ (0xEDB88320 & static_cast<std::uint32_t>(-(static_cast<std::int32_t>(crc) & 1)));
+            crc = (crc >> 1)
+                ^ (0xEDB88320 & static_cast<std::uint32_t>(-(static_cast<std::int32_t>(crc) & 1)));
         }
         table[i] = crc;
     }
@@ -195,7 +196,7 @@ std::uint32_t ShmFrameHeader::calculate_checksum(const std::byte* data) const no
     std::uint32_t crc = 0xFFFFFFFF;
     for (std::uint32_t i = 0; i < data_size; ++i) {
         const std::uint8_t byte = static_cast<std::uint8_t>(data[i]);
-        crc = g_crc32_table[(crc ^ byte) & 0xFF] ^ (crc >> 8);
+        crc                     = g_crc32_table[(crc ^ byte) & 0xFF] ^ (crc >> 8);
     }
     return crc ^ 0xFFFFFFFF;
 }
@@ -241,10 +242,10 @@ public:
     {
         if (this != &other) {
             cleanup();
-            name_   = std::move(other.name_);
-            size_   = other.size_;
-            handle_ = other.handle_;
-            data_   = other.data_;
+            name_         = std::move(other.name_);
+            size_         = other.size_;
+            handle_       = other.handle_;
+            data_         = other.data_;
             other.handle_ = nullptr;
             other.data_   = nullptr;
             other.size_   = 0;
@@ -259,18 +260,16 @@ public:
             return std::unexpected(ShmTransportError::InvalidArgument);
         }
 
-        auto segment = std::make_unique<WindowsSharedMemorySegment>();
+        auto segment   = std::make_unique<WindowsSharedMemorySegment>();
         segment->name_ = std::string(name);
         segment->size_ = size;
 
-        segment->handle_ = CreateFileMappingA(
-            INVALID_HANDLE_VALUE,
-            nullptr,
-            PAGE_READWRITE,
-            static_cast<DWORD>((size >> 32) & 0xFFFFFFFF),
-            static_cast<DWORD>(size & 0xFFFFFFFF),
-            segment->name_.c_str()
-        );
+        segment->handle_ = CreateFileMappingA(INVALID_HANDLE_VALUE,
+                                              nullptr,
+                                              PAGE_READWRITE,
+                                              static_cast<DWORD>((size >> 32) & 0xFFFFFFFF),
+                                              static_cast<DWORD>(size & 0xFFFFFFFF),
+                                              segment->name_.c_str());
 
         if (segment->handle_ == nullptr) {
             return std::unexpected(ShmTransportError::ShmCreateFailed);
@@ -278,16 +277,11 @@ public:
 
         // 检查是否创建了新的共享内存还是打开了已存在的
         // CreateFileMappingA 在打开已存在的映射时也会返回有效句柄
-        const DWORD create_error = GetLastError();
-        const bool already_exists = (create_error == ERROR_ALREADY_EXISTS);
+        const DWORD create_error   = GetLastError();
+        const bool  already_exists = (create_error == ERROR_ALREADY_EXISTS);
 
-        segment->data_ = static_cast<std::byte*>(MapViewOfFile(
-            segment->handle_,
-            FILE_MAP_ALL_ACCESS,
-            0,
-            0,
-            size
-        ));
+        segment->data_ = static_cast<std::byte*>(
+            MapViewOfFile(segment->handle_, FILE_MAP_ALL_ACCESS, 0, 0, size));
 
         if (segment->data_ == nullptr) {
             // 映射失败时关闭句柄避免泄漏
@@ -301,7 +295,7 @@ public:
         if (already_exists) {
             UnmapViewOfFile(segment->data_);
             CloseHandle(segment->handle_);
-            segment->data_ = nullptr;
+            segment->data_   = nullptr;
             segment->handle_ = nullptr;
             return std::unexpected(ShmTransportError::AlreadyExists);
         }
@@ -317,15 +311,11 @@ public:
             return std::unexpected(ShmTransportError::InvalidArgument);
         }
 
-        auto segment = std::make_unique<WindowsSharedMemorySegment>();
+        auto segment   = std::make_unique<WindowsSharedMemorySegment>();
         segment->name_ = std::string(name);
         segment->size_ = size;
 
-        segment->handle_ = OpenFileMappingA(
-            FILE_MAP_ALL_ACCESS,
-            FALSE,
-            segment->name_.c_str()
-        );
+        segment->handle_ = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, segment->name_.c_str());
 
         if (segment->handle_ == nullptr) {
             const DWORD error = GetLastError();
@@ -335,13 +325,8 @@ public:
             return std::unexpected(ShmTransportError::ShmOpenFailed);
         }
 
-        segment->data_ = static_cast<std::byte*>(MapViewOfFile(
-            segment->handle_,
-            FILE_MAP_ALL_ACCESS,
-            0,
-            0,
-            size
-        ));
+        segment->data_ = static_cast<std::byte*>(
+            MapViewOfFile(segment->handle_, FILE_MAP_ALL_ACCESS, 0, 0, size));
 
         if (segment->data_ == nullptr) {
             return std::unexpected(ShmTransportError::ShmMapFailed);
@@ -350,10 +335,25 @@ public:
         return segment;
     }
 
-    [[nodiscard]] std::byte* data() const noexcept override { return data_; }
-    [[nodiscard]] std::size_t size() const noexcept override { return size_; }
-    [[nodiscard]] std::string_view name() const noexcept override { return name_; }
-    [[nodiscard]] bool is_valid() const noexcept override { return handle_ != nullptr && data_ != nullptr; }
+    [[nodiscard]] std::byte* data() const noexcept override
+    {
+        return data_;
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept override
+    {
+        return size_;
+    }
+
+    [[nodiscard]] std::string_view name() const noexcept override
+    {
+        return name_;
+    }
+
+    [[nodiscard]] bool is_valid() const noexcept override
+    {
+        return handle_ != nullptr && data_ != nullptr;
+    }
 
     [[nodiscard]] Result flush() noexcept override
     {
@@ -379,10 +379,10 @@ private:
         }
     }
 
-    std::string   name_;
-    std::size_t   size_{0};
-    HANDLE        handle_{nullptr};
-    std::byte*    data_{nullptr};
+    std::string name_;
+    std::size_t size_{0};
+    HANDLE      handle_{nullptr};
+    std::byte*  data_{nullptr};
 };
 
 using PlatformSharedMemorySegment = WindowsSharedMemorySegment;
@@ -422,11 +422,11 @@ public:
     {
         if (this != &other) {
             cleanup();
-            name_    = std::move(other.name_);
-            size_    = other.size_;
-            fd_      = other.fd_;
-            data_    = other.data_;
-            created_ = other.created_;
+            name_          = std::move(other.name_);
+            size_          = other.size_;
+            fd_            = other.fd_;
+            data_          = other.data_;
+            created_       = other.created_;
             other.fd_      = -1;
             other.data_    = nullptr;
             other.size_    = 0;
@@ -442,9 +442,9 @@ public:
             return std::unexpected(ShmTransportError::InvalidArgument);
         }
 
-        auto segment = std::make_unique<PosixSharedMemorySegment>();
-        segment->name_ = std::string(name);
-        segment->size_ = size;
+        auto segment      = std::make_unique<PosixSharedMemorySegment>();
+        segment->name_    = std::string(name);
+        segment->size_    = size;
         segment->created_ = true;
 
         segment->fd_ = shm_open(segment->name_.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
@@ -460,14 +460,8 @@ public:
             return std::unexpected(ShmTransportError::ShmCreateFailed);
         }
 
-        segment->data_ = static_cast<std::byte*>(mmap(
-            nullptr,
-            size,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            segment->fd_,
-            0
-        ));
+        segment->data_ = static_cast<std::byte*>(
+            mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, segment->fd_, 0));
 
         if (segment->data_ == MAP_FAILED) {
             shm_unlink(segment->name_.c_str());
@@ -486,9 +480,9 @@ public:
             return std::unexpected(ShmTransportError::InvalidArgument);
         }
 
-        auto segment = std::make_unique<PosixSharedMemorySegment>();
-        segment->name_ = std::string(name);
-        segment->size_ = size;
+        auto segment      = std::make_unique<PosixSharedMemorySegment>();
+        segment->name_    = std::string(name);
+        segment->size_    = size;
         segment->created_ = false;
 
         segment->fd_ = shm_open(segment->name_.c_str(), O_RDWR, 0666);
@@ -499,14 +493,8 @@ public:
             return std::unexpected(ShmTransportError::ShmOpenFailed);
         }
 
-        segment->data_ = static_cast<std::byte*>(mmap(
-            nullptr,
-            size,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            segment->fd_,
-            0
-        ));
+        segment->data_ = static_cast<std::byte*>(
+            mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, segment->fd_, 0));
 
         if (segment->data_ == MAP_FAILED) {
             segment->data_ = nullptr;
@@ -516,10 +504,25 @@ public:
         return segment;
     }
 
-    [[nodiscard]] std::byte* data() const noexcept override { return data_; }
-    [[nodiscard]] std::size_t size() const noexcept override { return size_; }
-    [[nodiscard]] std::string_view name() const noexcept override { return name_; }
-    [[nodiscard]] bool is_valid() const noexcept override { return fd_ != -1 && data_ != nullptr; }
+    [[nodiscard]] std::byte* data() const noexcept override
+    {
+        return data_;
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept override
+    {
+        return size_;
+    }
+
+    [[nodiscard]] std::string_view name() const noexcept override
+    {
+        return name_;
+    }
+
+    [[nodiscard]] bool is_valid() const noexcept override
+    {
+        return fd_ != -1 && data_ != nullptr;
+    }
 
     [[nodiscard]] Result flush() noexcept override
     {
@@ -548,11 +551,11 @@ private:
         }
     }
 
-    std::string   name_;
-    std::size_t   size_{0};
-    int           fd_{-1};
-    std::byte*    data_{nullptr};
-    bool          created_{false};
+    std::string name_;
+    std::size_t size_{0};
+    int         fd_{-1};
+    std::byte*  data_{nullptr};
+    bool        created_{false};
 };
 
 using PlatformSharedMemorySegment = PosixSharedMemorySegment;
@@ -593,27 +596,27 @@ ShmTransport::ShmTransport(ShmTransport&& other) noexcept
       is_producer_(other.is_producer_),
       stats_(std::move(other.stats_))
 {
-    other.control_block_ = nullptr;
+    other.control_block_   = nullptr;
     other.frame_data_base_ = nullptr;
-    other.initialized_ = false;
-    other.is_producer_ = false;
+    other.initialized_     = false;
+    other.is_producer_     = false;
 }
 
 ShmTransport& ShmTransport::operator=(ShmTransport&& other) noexcept
 {
     if (this != &other) {
         [[maybe_unused]] auto _ = Shutdown();
-        config_ = std::move(other.config_);
-        segment_ = std::move(other.segment_);
-        control_block_ = other.control_block_;
-        frame_data_base_ = other.frame_data_base_;
-        initialized_ = other.initialized_.load();
-        is_producer_ = other.is_producer_;
-        stats_ = std::move(other.stats_);
-        other.control_block_ = nullptr;
-        other.frame_data_base_ = nullptr;
-        other.initialized_ = false;
-        other.is_producer_ = false;
+        config_                 = std::move(other.config_);
+        segment_                = std::move(other.segment_);
+        control_block_          = other.control_block_;
+        frame_data_base_        = other.frame_data_base_;
+        initialized_            = other.initialized_.load();
+        is_producer_            = other.is_producer_;
+        stats_                  = std::move(other.stats_);
+        other.control_block_    = nullptr;
+        other.frame_data_base_  = nullptr;
+        other.initialized_      = false;
+        other.is_producer_      = false;
     }
     return *this;
 }
@@ -629,7 +632,7 @@ ShmTransport::Result ShmTransport::InitializeProducer(const ShmTransportConfig& 
         return validation;
     }
 
-    const std::string full_name = MakeShmName(config.shm_name);
+    const std::string full_name  = MakeShmName(config.shm_name);
     const std::size_t total_size = config.calculate_total_size();
 
     auto segment_result = SharedMemorySegment::Create(full_name, total_size);
@@ -637,25 +640,26 @@ ShmTransport::Result ShmTransport::InitializeProducer(const ShmTransportConfig& 
         return std::unexpected(segment_result.error());
     }
 
-    segment_ = std::move(*segment_result);
-    config_ = config;
+    segment_     = std::move(*segment_result);
+    config_      = config;
     is_producer_ = true;
 
-    control_block_ = reinterpret_cast<ShmControlBlock*>(segment_->data());
+    control_block_   = reinterpret_cast<ShmControlBlock*>(segment_->data());
     frame_data_base_ = segment_->data() + sizeof(ShmControlBlock) + config.metadata_size;
 
     const std::size_t frame_header_size = sizeof(ShmFrameHeader);
     const std::size_t aligned_frame_size =
         ((frame_header_size + config.max_frame_size + 63) / 64) * 64;
 
-    control_block_->magic = ShmControlBlock::MAGIC;
+    control_block_->magic   = ShmControlBlock::MAGIC;
     control_block_->version = ShmControlBlock::VERSION;
-    control_block_->header_size = static_cast<std::uint32_t>(sizeof(ShmControlBlock) + config.metadata_size);
-    control_block_->flags = 0;
-    control_block_->buffer_count = static_cast<std::uint32_t>(config.buffer_count);
+    control_block_->header_size =
+        static_cast<std::uint32_t>(sizeof(ShmControlBlock) + config.metadata_size);
+    control_block_->flags          = 0;
+    control_block_->buffer_count   = static_cast<std::uint32_t>(config.buffer_count);
     control_block_->max_frame_size = static_cast<std::uint32_t>(config.max_frame_size);
-    control_block_->metadata_size = static_cast<std::uint32_t>(config.metadata_size);
-    control_block_->frame_stride = static_cast<std::uint32_t>(aligned_frame_size & 0xFFFFFFFFULL);
+    control_block_->metadata_size  = static_cast<std::uint32_t>(config.metadata_size);
+    control_block_->frame_stride   = static_cast<std::uint32_t>(aligned_frame_size & 0xFFFFFFFFULL);
 
     control_block_->write_sequence.store(0, std::memory_order_relaxed);
     control_block_->read_sequence.store(0, std::memory_order_relaxed);
@@ -685,7 +689,7 @@ ShmTransport::Result ShmTransport::InitializeConsumer(const ShmTransportConfig& 
         return validation;
     }
 
-    const std::string full_name = MakeShmName(config.shm_name);
+    const std::string full_name  = MakeShmName(config.shm_name);
     const std::size_t total_size = config.calculate_total_size();
 
     auto segment_result = SharedMemorySegment::Open(full_name, total_size);
@@ -693,16 +697,16 @@ ShmTransport::Result ShmTransport::InitializeConsumer(const ShmTransportConfig& 
         return std::unexpected(segment_result.error());
     }
 
-    segment_ = std::move(*segment_result);
-    config_ = config;
+    segment_     = std::move(*segment_result);
+    config_      = config;
     is_producer_ = false;
 
-    control_block_ = reinterpret_cast<ShmControlBlock*>(segment_->data());
+    control_block_   = reinterpret_cast<ShmControlBlock*>(segment_->data());
     frame_data_base_ = segment_->data() + sizeof(ShmControlBlock) + config.metadata_size;
 
     if (!control_block_->is_valid()) {
         segment_.reset();
-        control_block_ = nullptr;
+        control_block_   = nullptr;
         frame_data_base_ = nullptr;
         return std::unexpected(ShmTransportError::ShmCorrupted);
     }
@@ -726,7 +730,7 @@ ShmTransport::Result ShmTransport::Shutdown() noexcept
     }
 
     segment_.reset();
-    control_block_ = nullptr;
+    control_block_   = nullptr;
     frame_data_base_ = nullptr;
     initialized_.store(false, std::memory_order_release);
     is_producer_ = false;
@@ -749,8 +753,8 @@ bool ShmTransport::IsConsumer() const noexcept
     return initialized_.load(std::memory_order_acquire) && !is_producer_;
 }
 
-ShmTransport::Result ShmTransport::WriteFrame(const FrameMetadata& metadata,
-                                               std::span<const std::byte> data)
+ShmTransport::Result ShmTransport::WriteFrame(const FrameMetadata&       metadata,
+                                              std::span<const std::byte> data)
 {
     // 前置校验：检查空数据
     if (data.empty()) {
@@ -786,8 +790,8 @@ ShmTransport::Result ShmTransport::WriteFrame(const FrameMetadata& metadata,
     return {};
 }
 
-std::expected<bool, ShmTransportError> ShmTransport::TryWriteFrame(
-    const FrameMetadata& metadata, std::span<const std::byte> data)
+std::expected<bool, ShmTransportError> ShmTransport::TryWriteFrame(const FrameMetadata& metadata,
+                                                                   std::span<const std::byte> data)
 {
     if (!initialized_.load(std::memory_order_acquire) || !is_producer_) {
         return std::unexpected(ShmTransportError::NotInitialized);
@@ -805,26 +809,26 @@ std::expected<bool, ShmTransportError> ShmTransport::TryWriteFrame(
         return false;
     }
 
-    const auto start_time = core::Clock::now();
+    const auto          start_time  = core::Clock::now();
     const std::uint32_t write_index = control_block_->get_write_index();
 
-    ShmFrameHeader* header = get_frame_header(write_index);
-    std::byte* frame_data = get_frame_buffer(write_index) + sizeof(ShmFrameHeader);
+    ShmFrameHeader* header     = get_frame_header(write_index);
+    std::byte*      frame_data = get_frame_buffer(write_index) + sizeof(ShmFrameHeader);
 
-    header->magic = ShmFrameHeader::MAGIC;
+    header->magic   = ShmFrameHeader::MAGIC;
     header->version = 1;
-    header->sequence_number = static_cast<std::uint32_t>(
-        control_block_->write_sequence.load(std::memory_order_relaxed));
+    header->sequence_number =
+        static_cast<std::uint32_t>(control_block_->write_sequence.load(std::memory_order_relaxed));
     header->frame_number = static_cast<std::uint32_t>(metadata.frame_number);
-    header->sequence_id = static_cast<std::uint32_t>(metadata.sequence_id);
-    header->data_size = static_cast<std::uint32_t>(data.size());
-    header->capture_timestamp_ns = static_cast<std::uint64_t>(
-        metadata.capture_timestamp.time_since_epoch().count());
-    header->write_timestamp_ns = static_cast<std::uint64_t>(
-        core::Clock::now().time_since_epoch().count());
-    header->width = metadata.width;
-    header->height = metadata.height;
-    header->stride = metadata.stride;
+    header->sequence_id  = static_cast<std::uint32_t>(metadata.sequence_id);
+    header->data_size    = static_cast<std::uint32_t>(data.size());
+    header->capture_timestamp_ns =
+        static_cast<std::uint64_t>(metadata.capture_timestamp.time_since_epoch().count());
+    header->write_timestamp_ns =
+        static_cast<std::uint64_t>(core::Clock::now().time_since_epoch().count());
+    header->width        = metadata.width;
+    header->height       = metadata.height;
+    header->stride       = metadata.stride;
     header->pixel_format = static_cast<std::uint32_t>(metadata.pixel_format);
 
     std::memcpy(frame_data, data.data(), data.size());
@@ -832,7 +836,8 @@ std::expected<bool, ShmTransportError> ShmTransport::TryWriteFrame(
     // 仅在启用校验和时计算CRC
     if (config_.enable_checksum) {
         header->checksum = header->calculate_checksum(frame_data);
-    } else {
+    }
+    else {
         header->checksum = 0;
     }
 
@@ -935,11 +940,11 @@ ShmTransport::TryReadFrame()
         return std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>{};
     }
 
-    const auto start_time = core::Clock::now();
+    const auto          start_time = core::Clock::now();
     const std::uint32_t read_index = control_block_->get_read_index();
 
-    ShmFrameHeader* header = get_frame_header(read_index);
-    std::byte* frame_data = get_frame_buffer(read_index) + sizeof(ShmFrameHeader);
+    ShmFrameHeader* header     = get_frame_header(read_index);
+    std::byte*      frame_data = get_frame_buffer(read_index) + sizeof(ShmFrameHeader);
 
     if (!header->is_valid()) {
         return std::unexpected(ShmTransportError::ShmCorrupted);
@@ -953,15 +958,16 @@ ShmTransport::TryReadFrame()
     }
 
     FrameMetadata metadata;
-    metadata.width = header->width;
-    metadata.height = header->height;
-    metadata.stride = header->stride;
+    metadata.width        = header->width;
+    metadata.height       = header->height;
+    metadata.stride       = header->stride;
     metadata.pixel_format = static_cast<PixelFormat>(header->pixel_format);
-    metadata.capture_timestamp = core::Timestamp(std::chrono::nanoseconds(header->capture_timestamp_ns));
+    metadata.capture_timestamp =
+        core::Timestamp(std::chrono::nanoseconds(header->capture_timestamp_ns));
     metadata.process_timestamp = core::Clock::now();
-    metadata.frame_number = header->frame_number;
-    metadata.sequence_id = header->sequence_id;
-    metadata.data_size = header->data_size;
+    metadata.frame_number      = header->frame_number;
+    metadata.sequence_id       = header->sequence_id;
+    metadata.data_size         = header->data_size;
 
     std::vector<std::byte> data(header->data_size);
     std::memcpy(data.data(), frame_data, header->data_size);
@@ -976,7 +982,8 @@ ShmTransport::TryReadFrame()
     return std::make_optional(std::make_pair(std::move(metadata), std::move(data)));
 }
 
-ShmTransport::Result ShmTransport::ReadFrameWithCallback(core::Duration timeout, ReadCallback callback)
+ShmTransport::Result ShmTransport::ReadFrameWithCallback(core::Duration timeout,
+                                                         ReadCallback   callback)
 {
     if (!callback) {
         return std::unexpected(ShmTransportError::InvalidArgument);
@@ -998,7 +1005,7 @@ ShmTransport::Result ShmTransport::ReadFrameWithCallback(core::Duration timeout,
 ShmTransportStats ShmTransport::GetStats() const noexcept
 {
     std::lock_guard<std::mutex> lock(stats_mutex_);
-    ShmTransportStats result = stats_;  // 使用显式拷贝构造函数
+    ShmTransportStats           result = stats_;  // 使用显式拷贝构造函数
 
     if (control_block_ != nullptr) {
         result.frames_dropped = control_block_->dropped_frames.load(std::memory_order_relaxed);
@@ -1022,7 +1029,8 @@ void ShmTransport::update_stats(bool is_write, std::size_t bytes, core::Duration
         stats_.bytes_written += bytes;
         stats_.update_write_latency(latency);
         stats_.last_write_time = core::Clock::now();
-    } else {
+    }
+    else {
         stats_.frames_read++;
         stats_.bytes_read += bytes;
         stats_.update_read_latency(latency);
@@ -1041,7 +1049,7 @@ std::byte* ShmTransport::get_frame_buffer(std::uint32_t index) noexcept
         return nullptr;
     }
     const std::size_t header_size = sizeof(ShmControlBlock) + config_.metadata_size;
-    const std::size_t offset = header_size + (index * control_block_->frame_stride);
+    const std::size_t offset      = header_size + (index * control_block_->frame_stride);
     return segment_->data() + offset;
 }
 
@@ -1062,7 +1070,7 @@ bool ShmExists(std::string_view name)
 {
 #ifdef _WIN32
     const std::string full_name = MakeShmName(name);
-    HANDLE handle = OpenFileMappingA(FILE_MAP_READ, FALSE, full_name.c_str());
+    HANDLE            handle    = OpenFileMappingA(FILE_MAP_READ, FALSE, full_name.c_str());
     if (handle != nullptr) {
         CloseHandle(handle);
         return true;
@@ -1070,7 +1078,7 @@ bool ShmExists(std::string_view name)
     return false;
 #else
     const std::string full_name = MakeShmName(name);
-    int fd = shm_open(full_name.c_str(), O_RDONLY, 0666);
+    int               fd        = shm_open(full_name.c_str(), O_RDONLY, 0666);
     if (fd != -1) {
         close(fd);
         return true;
@@ -1090,7 +1098,6 @@ bool ShmRemove([[maybe_unused]] std::string_view name)
     return shm_unlink(full_name.c_str()) == 0 || errno == ENOENT;
 #endif
 }
-
 
 // ==========================================================================
 // 零拷贝API实现
@@ -1132,20 +1139,19 @@ ShmTransport::TryAcquireWriteBuffer()
     }
 
     const std::uint32_t write_index = control_block_->get_write_index();
-    std::byte* frame_data = get_frame_buffer(write_index) + sizeof(ShmFrameHeader);
+    std::byte*          frame_data  = get_frame_buffer(write_index) + sizeof(ShmFrameHeader);
 
     WriteBuffer buffer;
-    buffer.data = frame_data;
-    buffer.capacity = config_.max_frame_size;
+    buffer.data         = frame_data;
+    buffer.capacity     = config_.max_frame_size;
     buffer.buffer_index = write_index;
 
     return std::make_optional(buffer);
 }
 
-ShmTransport::Result ShmTransport::CommitWriteBuffer(
-    std::uint32_t buffer_index,
-    const FrameMetadata& metadata,
-    std::size_t actual_size)
+ShmTransport::Result ShmTransport::CommitWriteBuffer(std::uint32_t        buffer_index,
+                                                     const FrameMetadata& metadata,
+                                                     std::size_t          actual_size)
 {
     if (!initialized_.load(std::memory_order_acquire) || !is_producer_) {
         return std::unexpected(ShmTransportError::NotInitialized);
@@ -1155,31 +1161,32 @@ ShmTransport::Result ShmTransport::CommitWriteBuffer(
         return std::unexpected(ShmTransportError::FrameTooLarge);
     }
 
-    const auto start_time = core::Clock::now();
-    ShmFrameHeader* header = get_frame_header(buffer_index);
-    std::byte* frame_data = get_frame_buffer(buffer_index) + sizeof(ShmFrameHeader);
+    const auto      start_time = core::Clock::now();
+    ShmFrameHeader* header     = get_frame_header(buffer_index);
+    std::byte*      frame_data = get_frame_buffer(buffer_index) + sizeof(ShmFrameHeader);
 
     // 填充帧头部（零拷贝模式下跳过CRC计算）
-    header->magic = ShmFrameHeader::MAGIC;
+    header->magic   = ShmFrameHeader::MAGIC;
     header->version = 1;
-    header->sequence_number = static_cast<std::uint32_t>(
-        control_block_->write_sequence.load(std::memory_order_relaxed));
+    header->sequence_number =
+        static_cast<std::uint32_t>(control_block_->write_sequence.load(std::memory_order_relaxed));
     header->frame_number = static_cast<std::uint32_t>(metadata.frame_number);
-    header->sequence_id = static_cast<std::uint32_t>(metadata.sequence_id);
-    header->data_size = static_cast<std::uint32_t>(actual_size);
-    header->capture_timestamp_ns = static_cast<std::uint64_t>(
-        metadata.capture_timestamp.time_since_epoch().count());
-    header->write_timestamp_ns = static_cast<std::uint64_t>(
-        core::Clock::now().time_since_epoch().count());
-    header->width = metadata.width;
-    header->height = metadata.height;
-    header->stride = metadata.stride;
+    header->sequence_id  = static_cast<std::uint32_t>(metadata.sequence_id);
+    header->data_size    = static_cast<std::uint32_t>(actual_size);
+    header->capture_timestamp_ns =
+        static_cast<std::uint64_t>(metadata.capture_timestamp.time_since_epoch().count());
+    header->write_timestamp_ns =
+        static_cast<std::uint64_t>(core::Clock::now().time_since_epoch().count());
+    header->width        = metadata.width;
+    header->height       = metadata.height;
+    header->stride       = metadata.stride;
     header->pixel_format = static_cast<std::uint32_t>(metadata.pixel_format);
 
     // 仅在启用校验和时计算CRC
     if (config_.enable_checksum) {
         header->checksum = header->calculate_checksum(frame_data);
-    } else {
+    }
+    else {
         header->checksum = 0;
     }
 
@@ -1232,8 +1239,8 @@ ShmTransport::TryAcquireReadBuffer()
     }
 
     const std::uint32_t read_index = control_block_->get_read_index();
-    ShmFrameHeader* header = get_frame_header(read_index);
-    std::byte* frame_data = get_frame_buffer(read_index) + sizeof(ShmFrameHeader);
+    ShmFrameHeader*     header     = get_frame_header(read_index);
+    std::byte*          frame_data = get_frame_buffer(read_index) + sizeof(ShmFrameHeader);
 
     // 获取内存屏障，确保看到最新的数据
     std::atomic_thread_fence(std::memory_order_acquire);
@@ -1251,19 +1258,20 @@ ShmTransport::TryAcquireReadBuffer()
     }
 
     FrameMetadata metadata;
-    metadata.width = header->width;
-    metadata.height = header->height;
-    metadata.stride = header->stride;
+    metadata.width        = header->width;
+    metadata.height       = header->height;
+    metadata.stride       = header->stride;
     metadata.pixel_format = static_cast<PixelFormat>(header->pixel_format);
-    metadata.capture_timestamp = core::Timestamp(std::chrono::nanoseconds(header->capture_timestamp_ns));
+    metadata.capture_timestamp =
+        core::Timestamp(std::chrono::nanoseconds(header->capture_timestamp_ns));
     metadata.process_timestamp = core::Clock::now();
-    metadata.frame_number = header->frame_number;
-    metadata.sequence_id = header->sequence_id;
-    metadata.data_size = header->data_size;
+    metadata.frame_number      = header->frame_number;
+    metadata.sequence_id       = header->sequence_id;
+    metadata.data_size         = header->data_size;
 
     ReadBuffer buffer;
-    buffer.metadata = metadata;
-    buffer.data = std::span<const std::byte>(frame_data, header->data_size);
+    buffer.metadata     = metadata;
+    buffer.data         = std::span<const std::byte>(frame_data, header->data_size);
     buffer.buffer_index = read_index;
 
     return std::make_optional(buffer);
@@ -1276,7 +1284,7 @@ ShmTransport::Result ShmTransport::ReleaseReadBuffer(std::uint32_t buffer_index)
     }
 
     [[maybe_unused]] const auto start_time = core::Clock::now();
-    ShmFrameHeader* header = get_frame_header(buffer_index);
+    ShmFrameHeader*             header     = get_frame_header(buffer_index);
 
     control_block_->read_sequence.fetch_add(1, std::memory_order_release);
     control_block_->total_frames_read.fetch_add(1, std::memory_order_relaxed);
