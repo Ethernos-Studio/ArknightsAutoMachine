@@ -209,11 +209,14 @@ jobs:
 
       - name: Run clang-tidy on core/ only
         run: |
-          # 仅检查 core/ 目录的源文件，完全排除 third_party
+          # Ubuntu 24.04 提供完整 C++23 支持，确保 third_party 头文件可正常解析
+          # --header-filter 确保只报告 core/ 目录的警告
+          # --warnings-as-errors 将警告视为错误，严格质量控制
           find core -name "*.cpp" -type f | xargs clang-tidy-18 \
             -p build \
             --header-filter='^core/.*' \
-            --quiet \
+            --warnings-as-errors='*' \
+            --use-color \
             2>&1 | tee clang-tidy.log
 
       - name: Upload clang-tidy logs
