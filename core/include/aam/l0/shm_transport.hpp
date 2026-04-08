@@ -89,15 +89,15 @@ struct ShmTransportStats;
 enum class ShmTransportError : std::uint32_t
 {
     // 通用错误 (0x0000 - 0x00FF)
-    Success         = 0,       ///< 操作成功
-    Unknown         = 0x0001,  ///< 未知错误
-    InvalidArgument = 0x0002,  ///< 无效参数
-    OutOfMemory     = 0x0003,  ///< 内存不足
-    Timeout         = 0x0004,  ///< 操作超时
-    NotInitialized  = 0x0005,  ///< 未初始化
-    AlreadyExists   = 0x0006,  ///< 资源已存在
-    NotFound        = 0x0007,  ///< 资源未找到
-    PermissionDenied = 0x0008, ///< 权限不足
+    Success          = 0,       ///< 操作成功
+    Unknown          = 0x0001,  ///< 未知错误
+    InvalidArgument  = 0x0002,  ///< 无效参数
+    OutOfMemory      = 0x0003,  ///< 内存不足
+    Timeout          = 0x0004,  ///< 操作超时
+    NotInitialized   = 0x0005,  ///< 未初始化
+    AlreadyExists    = 0x0006,  ///< 资源已存在
+    NotFound         = 0x0007,  ///< 资源未找到
+    PermissionDenied = 0x0008,  ///< 权限不足
 
     // 共享内存错误 (0x0100 - 0x01FF)
     ShmCreateFailed    = 0x0100,  ///< 创建共享内存失败
@@ -109,19 +109,19 @@ enum class ShmTransportError : std::uint32_t
     ShmVersionMismatch = 0x0106,  ///< 版本不匹配
 
     // 同步错误 (0x0200 - 0x02FF)
-    SyncCreateFailed  = 0x0200,  ///< 创建同步对象失败
-    SyncWaitFailed    = 0x0201,  ///< 等待同步对象失败
-    SyncSignalFailed  = 0x0202,  ///< 信号通知失败
-    SyncTimeout       = 0x0203,  ///< 同步超时
-    SyncAbandoned     = 0x0204,  ///< 同步对象被放弃
+    SyncCreateFailed = 0x0200,  ///< 创建同步对象失败
+    SyncWaitFailed   = 0x0201,  ///< 等待同步对象失败
+    SyncSignalFailed = 0x0202,  ///< 信号通知失败
+    SyncTimeout      = 0x0203,  ///< 同步超时
+    SyncAbandoned    = 0x0204,  ///< 同步对象被放弃
 
     // 传输错误 (0x0300 - 0x03FF)
-    TransportClosed   = 0x0300,  ///< 传输已关闭
-    TransportBusy     = 0x0301,  ///< 传输忙
-    BufferOverflow    = 0x0302,  ///< 缓冲区溢出
-    BufferUnderflow   = 0x0303,  ///< 缓冲区下溢
-    FrameTooLarge     = 0x0304,  ///< 帧数据过大
-    InvalidFrame      = 0x0305,  ///< 无效帧数据
+    TransportClosed = 0x0300,  ///< 传输已关闭
+    TransportBusy   = 0x0301,  ///< 传输忙
+    BufferOverflow  = 0x0302,  ///< 缓冲区溢出
+    BufferUnderflow = 0x0303,  ///< 缓冲区下溢
+    FrameTooLarge   = 0x0304,  ///< 帧数据过大
+    InvalidFrame    = 0x0305,  ///< 无效帧数据
 };
 
 /**
@@ -158,8 +158,8 @@ namespace aam::l0
 // ==========================================================================
 
 // 帧头部大小常量
-constexpr std::size_t SHM_FRAME_HEADER_SIZE = 64;  // alignas(64)
-constexpr std::size_t SHM_CONTROL_BLOCK_SIZE = 512; // 估算值，实际使用 sizeof
+constexpr std::size_t SHM_FRAME_HEADER_SIZE  = 64;   // alignas(64)
+constexpr std::size_t SHM_CONTROL_BLOCK_SIZE = 512;  // 估算值，实际使用 sizeof
 
 /**
  * @brief 共享内存帧头部
@@ -169,26 +169,26 @@ struct alignas(64) ShmFrameHeader
 {
     static constexpr std::uint32_t MAGIC = 0x41414D46;  ///< "AAMF"
 
-    std::uint32_t magic{MAGIC};          ///< 魔数，用于验证
-    std::uint32_t version{1};            ///< 结构版本
-    std::uint32_t sequence_number{0};    ///< 帧序列号
-    std::uint32_t frame_number{0};       ///< 帧编号
-    std::uint32_t sequence_id{0};        ///< 序列ID
-    std::uint32_t data_size{0};          ///< 实际数据大小
+    std::uint32_t magic{MAGIC};        ///< 魔数，用于验证
+    std::uint32_t version{1};          ///< 结构版本
+    std::uint32_t sequence_number{0};  ///< 帧序列号
+    std::uint32_t frame_number{0};     ///< 帧编号
+    std::uint32_t sequence_id{0};      ///< 序列ID
+    std::uint32_t data_size{0};        ///< 实际数据大小
 
     // 时间戳
     std::uint64_t capture_timestamp_ns{0};  ///< 捕获时间戳（纳秒）
     std::uint64_t write_timestamp_ns{0};    ///< 写入时间戳（纳秒）
 
     // 帧元数据
-    std::uint32_t width{0};              ///< 图像宽度
-    std::uint32_t height{0};             ///< 图像高度
-    std::uint32_t stride{0};             ///< 行步长
-    std::uint32_t pixel_format{0};       ///< 像素格式（PixelFormat 枚举值）
+    std::uint32_t width{0};         ///< 图像宽度
+    std::uint32_t height{0};        ///< 图像高度
+    std::uint32_t stride{0};        ///< 行步长
+    std::uint32_t pixel_format{0};  ///< 像素格式（PixelFormat 枚举值）
 
     // 校验
-    std::uint32_t checksum{0};           ///< 数据校验和（CRC32）
-    std::uint32_t reserved{0};           ///< 保留字段（对齐）
+    std::uint32_t checksum{0};  ///< 数据校验和（CRC32）
+    std::uint32_t reserved{0};  ///< 保留字段（对齐）
 
     /**
      * @brief 验证头部有效性
@@ -221,30 +221,30 @@ struct alignas(64) ShmFrameHeader
  */
 struct alignas(64) ShmControlBlock
 {
-    static constexpr std::uint32_t MAGIC = 0x41414D53;  ///< "AAMS"
+    static constexpr std::uint32_t MAGIC   = 0x41414D53;  ///< "AAMS"
     static constexpr std::uint32_t VERSION = 1;
 
     // 魔数和版本（只读，创建时初始化）
-    std::uint32_t magic{MAGIC};          ///< 魔数
-    std::uint32_t version{VERSION};      ///< 协议版本
-    std::uint32_t header_size{0};        ///< 控制块大小
-    std::uint32_t flags{0};              ///< 标志位
+    std::uint32_t magic{MAGIC};      ///< 魔数
+    std::uint32_t version{VERSION};  ///< 协议版本
+    std::uint32_t header_size{0};    ///< 控制块大小
+    std::uint32_t flags{0};          ///< 标志位
 
     // 缓冲区配置（只读，创建时初始化）
-    std::uint32_t buffer_count{0};       ///< 缓冲区数量
-    std::uint32_t max_frame_size{0};     ///< 最大帧大小
-    std::uint32_t metadata_size{0};      ///< 元数据区域大小
-    std::uint32_t frame_stride{0};       ///< 每帧对齐后的大小
+    std::uint32_t buffer_count{0};    ///< 缓冲区数量
+    std::uint32_t max_frame_size{0};  ///< 最大帧大小
+    std::uint32_t metadata_size{0};   ///< 元数据区域大小
+    std::uint32_t frame_stride{0};    ///< 每帧对齐后的大小
 
     // 序列号（原子操作）
-    alignas(64) std::atomic<std::uint64_t> write_sequence{0};   ///< 写入序列号
-    alignas(64) std::atomic<std::uint64_t> read_sequence{0};    ///< 读取序列号
-    alignas(64) std::atomic<std::uint64_t> dropped_frames{0};   ///< 丢弃帧计数
+    alignas(64) std::atomic<std::uint64_t> write_sequence{0};  ///< 写入序列号
+    alignas(64) std::atomic<std::uint64_t> read_sequence{0};   ///< 读取序列号
+    alignas(64) std::atomic<std::uint64_t> dropped_frames{0};  ///< 丢弃帧计数
 
     // 状态标志（原子操作）
-    alignas(64) std::atomic<std::uint32_t> state{0};            ///< 传输状态
-    alignas(64) std::atomic<std::uint32_t> active_readers{0};   ///< 活跃读取者数
-    alignas(64) std::atomic<std::uint32_t> active_writers{0};   ///< 活跃写入者数
+    alignas(64) std::atomic<std::uint32_t> state{0};           ///< 传输状态
+    alignas(64) std::atomic<std::uint32_t> active_readers{0};  ///< 活跃读取者数
+    alignas(64) std::atomic<std::uint32_t> active_writers{0};  ///< 活跃写入者数
 
     // 统计信息（原子操作）
     alignas(64) std::atomic<std::uint64_t> total_frames_written{0};  ///< 总写入帧数
@@ -253,10 +253,10 @@ struct alignas(64) ShmControlBlock
     alignas(64) std::atomic<std::uint64_t> total_bytes_read{0};      ///< 总读取字节数
 
     // 状态常量
-    static constexpr std::uint32_t STATE_INITIALIZED = 0x01;   ///< 已初始化
-    static constexpr std::uint32_t STATE_ACTIVE      = 0x02;   ///< 活跃状态
-    static constexpr std::uint32_t STATE_SHUTDOWN    = 0x04;   ///< 已关闭
-    static constexpr std::uint32_t STATE_ERROR       = 0x08;   ///< 错误状态
+    static constexpr std::uint32_t STATE_INITIALIZED = 0x01;  ///< 已初始化
+    static constexpr std::uint32_t STATE_ACTIVE      = 0x02;  ///< 活跃状态
+    static constexpr std::uint32_t STATE_SHUTDOWN    = 0x04;  ///< 已关闭
+    static constexpr std::uint32_t STATE_ERROR       = 0x08;  ///< 错误状态
 
     /**
      * @brief 验证控制块有效性
@@ -273,7 +273,8 @@ struct alignas(64) ShmControlBlock
      */
     [[nodiscard]] std::uint32_t get_write_index() const noexcept
     {
-        return static_cast<std::uint32_t>(write_sequence.load(std::memory_order_relaxed) % buffer_count);
+        return static_cast<std::uint32_t>(write_sequence.load(std::memory_order_relaxed)
+                                          % buffer_count);
     }
 
     /**
@@ -282,7 +283,8 @@ struct alignas(64) ShmControlBlock
      */
     [[nodiscard]] std::uint32_t get_read_index() const noexcept
     {
-        return static_cast<std::uint32_t>(read_sequence.load(std::memory_order_relaxed) % buffer_count);
+        return static_cast<std::uint32_t>(read_sequence.load(std::memory_order_relaxed)
+                                          % buffer_count);
     }
 
     /**
@@ -291,8 +293,8 @@ struct alignas(64) ShmControlBlock
      */
     [[nodiscard]] bool has_readable_data() const noexcept
     {
-        return read_sequence.load(std::memory_order_acquire) <
-               write_sequence.load(std::memory_order_acquire);
+        return read_sequence.load(std::memory_order_acquire)
+             < write_sequence.load(std::memory_order_acquire);
     }
 
     /**
@@ -343,14 +345,14 @@ struct ShmTransportConfig
     std::string shm_name{"aam_frame_buffer"};  ///< 共享内存对象名称
 
     // 缓冲区配置
-    std::size_t buffer_count{4};               ///< 帧缓冲区数量（环形）
+    std::size_t buffer_count{4};                  ///< 帧缓冲区数量（环形）
     std::size_t max_frame_size{1920 * 1080 * 4};  ///< 最大帧大小（字节）
-    std::size_t metadata_size{4096};           ///< 元数据区域大小（字节）
+    std::size_t metadata_size{4096};              ///< 元数据区域大小（字节）
 
     // 同步配置
-    core::Duration write_timeout{std::chrono::milliseconds(100)};   ///< 写入超时
-    core::Duration read_timeout{std::chrono::milliseconds(100)};    ///< 读取超时
-    bool           non_blocking{false};  ///< 非阻塞模式
+    core::Duration write_timeout{std::chrono::milliseconds(100)};  ///< 写入超时
+    core::Duration read_timeout{std::chrono::milliseconds(100)};   ///< 读取超时
+    bool           non_blocking{false};                            ///< 非阻塞模式
 
     // 性能配置
     bool use_cache_line_alignment{true};  ///< 使用缓存行对齐（避免伪共享）
@@ -359,8 +361,8 @@ struct ShmTransportConfig
     bool enable_checksum{false};          ///< 启用CRC校验（默认关闭以提高性能）
 
     // 调试配置
-    bool enable_stats{true};        ///< 启用统计信息
-    bool enable_tracing{false};     ///< 启用详细跟踪日志
+    bool enable_stats{true};     ///< 启用统计信息
+    bool enable_tracing{false};  ///< 启用详细跟踪日志
 
     /**
      * @brief 计算所需共享内存总大小
@@ -373,9 +375,9 @@ struct ShmTransportConfig
         const std::size_t header_size = sizeof(ShmControlBlock) + metadata_size;
 
         // 帧缓冲区：每个帧需要头部 + 数据，对齐到缓存行
-        constexpr std::size_t cache_line = 64;
-        const std::size_t frame_header_size = sizeof(ShmFrameHeader);
-        const std::size_t aligned_frame_size =
+        constexpr std::size_t cache_line        = 64;
+        const std::size_t     frame_header_size = sizeof(ShmFrameHeader);
+        const std::size_t     aligned_frame_size =
             ((frame_header_size + max_frame_size + cache_line - 1) / cache_line) * cache_line;
 
         return header_size + (aligned_frame_size * buffer_count);
@@ -500,76 +502,80 @@ public:
 struct ShmTransportStats
 {
     // 帧统计（受 stats_mutex_ 保护）
-    std::uint64_t frames_written{0};     ///< 已写入帧数
-    std::uint64_t frames_read{0};        ///< 已读取帧数
-    std::uint64_t frames_dropped{0};     ///< 丢弃帧数
+    std::uint64_t frames_written{0};  ///< 已写入帧数
+    std::uint64_t frames_read{0};     ///< 已读取帧数
+    std::uint64_t frames_dropped{0};  ///< 丢弃帧数
 
     // 字节统计（受 stats_mutex_ 保护）
-    std::uint64_t bytes_written{0};      ///< 已写入字节数
-    std::uint64_t bytes_read{0};         ///< 已读取字节数
+    std::uint64_t bytes_written{0};  ///< 已写入字节数
+    std::uint64_t bytes_read{0};     ///< 已读取字节数
 
     // 延迟统计（纳秒，受 stats_mutex_ 保护）
     core::Duration min_write_latency{core::Duration::max()};   ///< 最小写入延迟
     core::Duration max_write_latency{core::Duration::zero()};  ///< 最大写入延迟
     core::Duration avg_write_latency{core::Duration::zero()};  ///< 平均写入延迟
 
-    core::Duration min_read_latency{core::Duration::max()};    ///< 最小读取延迟
-    core::Duration max_read_latency{core::Duration::zero()};   ///< 最大读取延迟
-    core::Duration avg_read_latency{core::Duration::zero()};   ///< 平均读取延迟
+    core::Duration min_read_latency{core::Duration::max()};   ///< 最小读取延迟
+    core::Duration max_read_latency{core::Duration::zero()};  ///< 最大读取延迟
+    core::Duration avg_read_latency{core::Duration::zero()};  ///< 平均读取延迟
 
     // 传输统计（原子类型，无锁更新）
-    std::atomic<std::uint64_t> write_timeouts{0};     ///< 写入超时次数
-    std::atomic<std::uint64_t> read_timeouts{0};      ///< 读取超时次数
-    std::atomic<std::uint64_t> checksum_errors{0};    ///< 校验和错误次数
+    std::atomic<std::uint64_t> write_timeouts{0};   ///< 写入超时次数
+    std::atomic<std::uint64_t> read_timeouts{0};    ///< 读取超时次数
+    std::atomic<std::uint64_t> checksum_errors{0};  ///< 校验和错误次数
 
     // 时间戳（受 stats_mutex_ 保护）
-    core::Timestamp session_start;       ///< 会话开始时间
-    core::Timestamp last_write_time;     ///< 最后写入时间
-    core::Timestamp last_read_time;      ///< 最后读取时间
+    core::Timestamp session_start;    ///< 会话开始时间
+    core::Timestamp last_write_time;  ///< 最后写入时间
+    core::Timestamp last_read_time;   ///< 最后读取时间
 
     // 显式定义拷贝构造函数（处理原子成员）
     ShmTransportStats() = default;
 
     ShmTransportStats(const ShmTransportStats& other)
-        : frames_written(other.frames_written)
-        , frames_read(other.frames_read)
-        , frames_dropped(other.frames_dropped)
-        , bytes_written(other.bytes_written)
-        , bytes_read(other.bytes_read)
-        , min_write_latency(other.min_write_latency)
-        , max_write_latency(other.max_write_latency)
-        , avg_write_latency(other.avg_write_latency)
-        , min_read_latency(other.min_read_latency)
-        , max_read_latency(other.max_read_latency)
-        , avg_read_latency(other.avg_read_latency)
-        , write_timeouts(other.write_timeouts.load(std::memory_order_relaxed))
-        , read_timeouts(other.read_timeouts.load(std::memory_order_relaxed))
-        , checksum_errors(other.checksum_errors.load(std::memory_order_relaxed))
-        , session_start(other.session_start)
-        , last_write_time(other.last_write_time)
-        , last_read_time(other.last_read_time)
-    {}
+        : frames_written(other.frames_written),
+          frames_read(other.frames_read),
+          frames_dropped(other.frames_dropped),
+          bytes_written(other.bytes_written),
+          bytes_read(other.bytes_read),
+          min_write_latency(other.min_write_latency),
+          max_write_latency(other.max_write_latency),
+          avg_write_latency(other.avg_write_latency),
+          min_read_latency(other.min_read_latency),
+          max_read_latency(other.max_read_latency),
+          avg_read_latency(other.avg_read_latency),
+          write_timeouts(other.write_timeouts.load(std::memory_order_relaxed)),
+          read_timeouts(other.read_timeouts.load(std::memory_order_relaxed)),
+          checksum_errors(other.checksum_errors.load(std::memory_order_relaxed)),
+          session_start(other.session_start),
+          last_write_time(other.last_write_time),
+          last_read_time(other.last_read_time)
+    {
+    }
 
     ShmTransportStats& operator=(const ShmTransportStats& other)
     {
         if (this != &other) {
-            frames_written = other.frames_written;
-            frames_read = other.frames_read;
-            frames_dropped = other.frames_dropped;
-            bytes_written = other.bytes_written;
-            bytes_read = other.bytes_read;
+            frames_written    = other.frames_written;
+            frames_read       = other.frames_read;
+            frames_dropped    = other.frames_dropped;
+            bytes_written     = other.bytes_written;
+            bytes_read        = other.bytes_read;
             min_write_latency = other.min_write_latency;
             max_write_latency = other.max_write_latency;
             avg_write_latency = other.avg_write_latency;
-            min_read_latency = other.min_read_latency;
-            max_read_latency = other.max_read_latency;
-            avg_read_latency = other.avg_read_latency;
-            write_timeouts.store(other.write_timeouts.load(std::memory_order_relaxed), std::memory_order_relaxed);
-            read_timeouts.store(other.read_timeouts.load(std::memory_order_relaxed), std::memory_order_relaxed);
-            checksum_errors.store(other.checksum_errors.load(std::memory_order_relaxed), std::memory_order_relaxed);
-            session_start = other.session_start;
+            min_read_latency  = other.min_read_latency;
+            max_read_latency  = other.max_read_latency;
+            avg_read_latency  = other.avg_read_latency;
+            write_timeouts.store(other.write_timeouts.load(std::memory_order_relaxed),
+                                 std::memory_order_relaxed);
+            read_timeouts.store(other.read_timeouts.load(std::memory_order_relaxed),
+                                std::memory_order_relaxed);
+            checksum_errors.store(other.checksum_errors.load(std::memory_order_relaxed),
+                                  std::memory_order_relaxed);
+            session_start   = other.session_start;
             last_write_time = other.last_write_time;
-            last_read_time = other.last_read_time;
+            last_read_time  = other.last_read_time;
         }
         return *this;
     }
@@ -599,7 +605,7 @@ struct ShmTransportStats
      */
     [[nodiscard]] double get_throughput_bytes_per_sec() const noexcept
     {
-        const auto duration = core::Clock::now() - session_start;
+        const auto duration     = core::Clock::now() - session_start;
         const auto duration_sec = std::chrono::duration<double>(duration).count();
         return duration_sec > 0 ? static_cast<double>(bytes_written) / duration_sec : 0.0;
     }
@@ -613,11 +619,11 @@ struct ShmTransportStats
         min_write_latency = std::min(min_write_latency, latency);
         max_write_latency = std::max(max_write_latency, latency);
         // 指数移动平均
-        const double alpha = 0.1;
+        const double alpha  = 0.1;
         const double new_ns = static_cast<double>(latency.count());
         const double old_ns = static_cast<double>(avg_write_latency.count());
-        avg_write_latency = core::Duration(static_cast<core::Duration::rep>(
-            alpha * new_ns + (1.0 - alpha) * old_ns));
+        avg_write_latency   = core::Duration(
+            static_cast<core::Duration::rep>(alpha * new_ns + (1.0 - alpha) * old_ns));
     }
 
     /**
@@ -629,11 +635,11 @@ struct ShmTransportStats
         min_read_latency = std::min(min_read_latency, latency);
         max_read_latency = std::max(max_read_latency, latency);
         // 指数移动平均
-        const double alpha = 0.1;
+        const double alpha  = 0.1;
         const double new_ns = static_cast<double>(latency.count());
         const double old_ns = static_cast<double>(avg_read_latency.count());
-        avg_read_latency = core::Duration(static_cast<core::Duration::rep>(
-            alpha * new_ns + (1.0 - alpha) * old_ns));
+        avg_read_latency    = core::Duration(
+            static_cast<core::Duration::rep>(alpha * new_ns + (1.0 - alpha) * old_ns));
     }
 
     /**
@@ -759,8 +765,8 @@ public:
      * @complexity O(n)
      * @thread_safety 单生产者安全
      */
-    [[nodiscard]] std::expected<bool, ShmTransportError> TryWriteFrame(
-        const FrameMetadata& metadata, std::span<const std::byte> data);
+    [[nodiscard]] std::expected<bool, ShmTransportError>
+    TryWriteFrame(const FrameMetadata& metadata, std::span<const std::byte> data);
 
     /**
      * @brief 写入帧数据（带超时）
@@ -785,7 +791,8 @@ public:
      * @complexity O(n)，n为数据大小（内存拷贝）
      * @thread_safety 多消费者安全
      */
-    [[nodiscard]] std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>, ShmTransportError>
+    [[nodiscard]] std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>,
+                                ShmTransportError>
     ReadFrame(core::Duration timeout);
 
     /**
@@ -794,7 +801,8 @@ public:
      * @complexity O(n)
      * @thread_safety 多消费者安全
      */
-    [[nodiscard]] std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>, ShmTransportError>
+    [[nodiscard]] std::expected<std::optional<std::pair<FrameMetadata, std::vector<std::byte>>>,
+                                ShmTransportError>
     TryReadFrame();
 
     /**
@@ -821,11 +829,13 @@ public:
      * @thread_safety 单生产者安全
      * @note 调用者直接写入返回的缓冲区，然后通过 CommitWriteBuffer 提交
      */
-    struct WriteBuffer {
-        std::byte* data{nullptr};           ///< 数据缓冲区指针
-        std::size_t capacity{0};            ///< 缓冲区容量
-        std::uint32_t buffer_index{0};      ///< 缓冲区索引（用于提交）
+    struct WriteBuffer
+    {
+        std::byte*    data{nullptr};    ///< 数据缓冲区指针
+        std::size_t   capacity{0};      ///< 缓冲区容量
+        std::uint32_t buffer_index{0};  ///< 缓冲区索引（用于提交）
     };
+
     [[nodiscard]] std::expected<std::optional<WriteBuffer>, ShmTransportError>
     AcquireWriteBuffer(core::Duration timeout);
 
@@ -838,10 +848,9 @@ public:
      * @complexity O(1)
      * @thread_safety 单生产者安全
      */
-    [[nodiscard]] Result CommitWriteBuffer(
-        std::uint32_t buffer_index,
-        const FrameMetadata& metadata,
-        std::size_t actual_size);
+    [[nodiscard]] Result CommitWriteBuffer(std::uint32_t        buffer_index,
+                                           const FrameMetadata& metadata,
+                                           std::size_t          actual_size);
 
     /**
      * @brief 获取读取缓冲区（零拷贝）
@@ -851,11 +860,13 @@ public:
      * @thread_safety 多消费者安全
      * @note 调用者直接读取返回的指针，然后通过 ReleaseReadBuffer 释放
      */
-    struct ReadBuffer {
-        FrameMetadata metadata;             ///< 帧元数据
-        std::span<const std::byte> data;    ///< 数据视图（不拥有内存）
-        std::uint32_t buffer_index{0};      ///< 缓冲区索引（用于释放）
+    struct ReadBuffer
+    {
+        FrameMetadata              metadata;         ///< 帧元数据
+        std::span<const std::byte> data;             ///< 数据视图（不拥有内存）
+        std::uint32_t              buffer_index{0};  ///< 缓冲区索引（用于释放）
     };
+
     [[nodiscard]] std::expected<std::optional<ReadBuffer>, ShmTransportError>
     AcquireReadBuffer(core::Duration timeout);
 
@@ -902,13 +913,19 @@ public:
      * @brief 获取配置
      * @return 配置副本
      */
-    [[nodiscard]] const ShmTransportConfig& GetConfig() const noexcept { return config_; }
+    [[nodiscard]] const ShmTransportConfig& GetConfig() const noexcept
+    {
+        return config_;
+    }
 
     /**
      * @brief 获取控制块指针（调试用途）
      * @return 控制块指针，未初始化返回 nullptr
      */
-    [[nodiscard]] const ShmControlBlock* GetControlBlock() const noexcept { return control_block_; }
+    [[nodiscard]] const ShmControlBlock* GetControlBlock() const noexcept
+    {
+        return control_block_;
+    }
 
 private:
     // ==================================================================
@@ -941,18 +958,18 @@ private:
     // 成员变量
     // ==================================================================
 
-    ShmTransportConfig config_;                    ///< 传输配置
-    std::unique_ptr<SharedMemorySegment> segment_; ///< 共享内存段
-    ShmControlBlock* control_block_{nullptr};      ///< 控制块指针
-    std::byte* frame_data_base_{nullptr};          ///< 帧数据基地址
+    ShmTransportConfig                   config_;                    ///< 传输配置
+    std::unique_ptr<SharedMemorySegment> segment_;                   ///< 共享内存段
+    ShmControlBlock*                     control_block_{nullptr};    ///< 控制块指针
+    std::byte*                           frame_data_base_{nullptr};  ///< 帧数据基地址
 
     // 状态
-    std::atomic<bool> initialized_{false};         ///< 初始化标志
-    bool is_producer_{false};                      ///< 是否为生产者
+    std::atomic<bool> initialized_{false};  ///< 初始化标志
+    bool              is_producer_{false};  ///< 是否为生产者
 
     // 统计
-    mutable std::mutex stats_mutex_;               ///< 统计信息互斥锁
-    ShmTransportStats stats_;                      ///< 本地统计信息
+    mutable std::mutex stats_mutex_;  ///< 统计信息互斥锁
+    ShmTransportStats  stats_;        ///< 本地统计信息
 };
 
 // ==========================================================================
