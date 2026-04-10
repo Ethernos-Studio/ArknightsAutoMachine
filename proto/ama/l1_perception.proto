@@ -1,0 +1,269 @@
+syntax = "proto3";
+
+package aam.l1;
+
+import "common/types.proto";
+
+option csharp_namespace = "Aam.L1";
+option go_package = "github.com/aam/proto/ama;l1";
+option java_multiple_files = true;
+option java_package = "com.aam.l1";
+
+message OperatorInstance {
+    string operator_id = 1;
+    string operator_name = 2;
+    aam.common.OperatorProfession profession = 3;
+    aam.common.OperatorRarity rarity = 4;
+    int32 elite_level = 5;
+    int32 level = 6;
+    int32 current_hp = 7;
+    int32 max_hp = 8;
+    int32 current_sp = 9;
+    int32 max_sp = 10;
+    int32 skill_index = 11;
+    bool skill_ready = 12;
+    bool skill_active = 13;
+    aam.common.Position grid_position = 14;
+    aam.common.PositionF pixel_position = 15;
+    aam.common.PositionType position_type = 16;
+    int32 deploy_cost = 17;
+    double facing_direction = 18;
+    bool is_alive = 19;
+    bool is_retreatable = 20;
+    double last_skill_use_time = 21;
+    repeated string active_buffs = 22;
+    repeated string active_debuffs = 23;
+    aam.common.BoundingBox detection_box = 24;
+    double detection_confidence = 25;
+}
+
+message EnemyInstance {
+    string enemy_id = 1;
+    string enemy_name = 2;
+    aam.common.EnemyLevel enemy_level = 3;
+    int32 current_hp = 4;
+    int32 max_hp = 5;
+    double current_speed = 6;
+    double base_speed = 7;
+    aam.common.PositionF pixel_position = 8;
+    aam.common.Position grid_position = 9;
+    int32 route_index = 10;
+    double path_progress = 11;
+    bool is_stunned = 12;
+    bool is_silenced = 13;
+    bool is_asleep = 14;
+    bool is_frozen = 15;
+    bool is_invisible = 16;
+    repeated string active_buffs = 17;
+    repeated string active_debuffs = 18;
+    aam.common.BoundingBox detection_box = 19;
+    double detection_confidence = 20;
+    double distance_to_end = 21;
+    int32 estimated_time_to_end_ms = 22;
+}
+
+message GUIElement {
+    string element_id = 1;
+    string element_type = 2;
+    aam.common.Rectangle bounding_box = 3;
+    double confidence = 4;
+    bool is_visible = 5;
+    bool is_interactable = 6;
+    string text_content = 7;
+    map<string, string> attributes = 8;
+    aam.common.OcrResult ocr_result = 9;
+}
+
+message SkillButton {
+    int32 skill_index = 1;
+    aam.common.Rectangle bounding_box = 2;
+    bool is_ready = 3;
+    bool is_active = 4;
+    double cooldown_remaining = 5;
+    double cooldown_total = 6;
+    int32 current_sp = 7;
+    int32 required_sp = 8;
+    bool is_visible = 9;
+    double confidence = 10;
+}
+
+message CostDisplay {
+    int32 current_cost = 1;
+    int32 max_cost = 2;
+    double cost_per_second = 3;
+    double time_to_next_cost = 4;
+    aam.common.Rectangle bounding_box = 5;
+    double confidence = 6;
+}
+
+message LifePointDisplay {
+    int32 current_points = 1;
+    int32 max_points = 2;
+    aam.common.Rectangle bounding_box = 3;
+    double confidence = 4;
+}
+
+message TimerDisplay {
+    double elapsed_seconds = 1;
+    bool is_paused = 2;
+    bool is_speed_up = 3;
+    int32 speed_multiplier = 4;
+    aam.common.Rectangle bounding_box = 5;
+    double confidence = 6;
+}
+
+message SquadSlot {
+    int32 slot_index = 1;
+    string operator_id = 2;
+    string operator_name = 3;
+    aam.common.OperatorProfession profession = 4;
+    int32 deploy_cost = 5;
+    bool is_available = 6;
+    bool is_deployed = 7;
+    double cooldown_remaining = 8;
+    aam.common.Rectangle bounding_box = 9;
+    int32 elite_level = 10;
+    int32 level = 11;
+    double confidence = 12;
+}
+
+message BattleUI {
+    repeated SquadSlot squad_slots = 1;
+    CostDisplay cost_display = 2;
+    LifePointDisplay life_display = 3;
+    TimerDisplay timer = 4;
+    repeated SkillButton skill_buttons = 5;
+    bool pause_button_visible = 6;
+    bool speed_button_visible = 7;
+    bool retreat_button_visible = 8;
+    aam.common.Rectangle pause_button_box = 9;
+    aam.common.Rectangle speed_button_box = 10;
+    aam.common.Rectangle retreat_button_box = 11;
+}
+
+message MapTile {
+    aam.common.Position grid_position = 1;
+    aam.common.TileType tile_type = 2;
+    aam.common.Rectangle pixel_bounds = 3;
+    bool is_deployable = 4;
+    bool is_occupied = 5;
+    string occupant_id = 6;
+    repeated string special_effects = 7;
+    double height = 8;
+}
+
+message BattleMap {
+    int32 width = 1;
+    int32 height = 2;
+    repeated MapTile tiles = 3;
+    repeated aam.common.Position start_positions = 4;
+    repeated aam.common.Position end_positions = 5;
+    double tile_width_pixels = 6;
+    double tile_height_pixels = 7;
+    aam.common.PositionF map_offset_pixels = 8;
+}
+
+message PerceptionResult {
+    uint64 frame_id = 1;
+    aam.common.Timestamp timestamp = 2;
+    aam.common.GameState game_state = 3;
+    double state_confidence = 4;
+    repeated OperatorInstance operators = 5;
+    repeated EnemyInstance enemies = 6;
+    BattleUI battle_ui = 7;
+    BattleMap map = 8;
+    repeated GUIElement gui_elements = 9;
+    double processing_time_ms = 10;
+    repeated aam.common.DetectionResult detections = 11;
+    repeated aam.common.OcrResult ocr_results = 12;
+    map<string, string> metadata = 13;
+}
+
+message PerceptionConfig {
+    bool enable_operator_detection = 1;
+    bool enable_enemy_detection = 2;
+    bool enable_ui_detection = 3;
+    bool enable_map_analysis = 4;
+    bool enable_ocr = 5;
+    double detection_confidence_threshold = 6;
+    double ocr_confidence_threshold = 7;
+    string ocr_language = 8;
+    bool use_gpu = 9;
+    int32 max_detections_per_class = 10;
+    repeated string target_classes = 11;
+    map<string, string> model_paths = 12;
+}
+
+message PerceptionRequest {
+    uint64 frame_id = 1;
+    PerceptionConfig config = 2;
+    repeated aam.common.Rectangle regions_of_interest = 3;
+}
+
+message PerceptionResponse {
+    aam.common.Status status = 1;
+    PerceptionResult result = 2;
+}
+
+message PerceptionStatistics {
+    uint64 total_frames_processed = 1;
+    uint64 successful_detections = 2;
+    uint64 failed_detections = 3;
+    double average_processing_time_ms = 4;
+    double p50_processing_time_ms = 5;
+    double p99_processing_time_ms = 6;
+    double average_fps = 7;
+    int64 gpu_memory_used_bytes = 8;
+    map<string, uint64> detections_by_class = 9;
+    map<string, double> average_confidence_by_class = 10;
+}
+
+message PerceptionStatus {
+    bool is_initialized = 1;
+    bool is_processing = 2;
+    bool has_error = 3;
+    string error_message = 4;
+    PerceptionStatistics statistics = 5;
+    repeated string loaded_models = 6;
+    string gpu_device_name = 7;
+    int64 gpu_total_memory_bytes = 8;
+}
+
+message YoloDetection {
+    string class_name = 1;
+    double confidence = 2;
+    aam.common.Rectangle bounding_box = 3;
+    aam.common.Position grid_position = 4;
+    map<string, float> keypoints = 5;
+    bytes feature_vector = 6;
+}
+
+message TemplateMatch {
+    string template_id = 1;
+    string template_name = 2;
+    aam.common.Rectangle location = 3;
+    double score = 4;
+    double scale = 5;
+    double rotation = 6;
+}
+
+message TextDetection {
+    string text = 1;
+    double confidence = 2;
+    aam.common.Rectangle bounding_box = 3;
+    string language = 4;
+    double angle = 5;
+    repeated aam.common.PositionF polygon = 6;
+}
+
+message PerceptionBatchRequest {
+    repeated PerceptionRequest requests = 1;
+    bool parallel_processing = 2;
+    int32 max_parallelism = 3;
+}
+
+message PerceptionBatchResponse {
+    aam.common.Status status = 1;
+    repeated PerceptionResponse responses = 2;
+    double total_processing_time_ms = 3;
+}

@@ -1,0 +1,208 @@
+syntax = "proto3";
+
+package aam.l0;
+
+import "common/types.proto";
+
+option csharp_namespace = "Aam.L0";
+option go_package = "github.com/aam/proto/ama;l0";
+option java_multiple_files = true;
+option java_package = "com.aam.l0";
+
+enum CaptureBackend {
+    CAPTURE_BACKEND_UNSPECIFIED = 0;
+    CAPTURE_BACKEND_ADB_H264 = 1;
+    CAPTURE_BACKEND_MAA_FRAMEWORK = 2;
+    CAPTURE_BACKEND_WIN32_WINDOW = 3;
+    CAPTURE_BACKEND_DDGI = 4;
+    CAPTURE_BACKEND_SHARED_MEMORY = 5;
+}
+
+enum FrameFormat {
+    FRAME_FORMAT_UNSPECIFIED = 0;
+    FRAME_FORMAT_BGR24 = 1;
+    FRAME_FORMAT_RGB24 = 2;
+    FRAME_FORMAT_BGRA32 = 3;
+    FRAME_FORMAT_RGBA32 = 4;
+    FRAME_FORMAT_GRAY8 = 5;
+    FRAME_FORMAT_NV12 = 6;
+    FRAME_FORMAT_NV21 = 7;
+    FRAME_FORMAT_YUYV = 8;
+    FRAME_FORMAT_H264 = 9;
+    FRAME_FORMAT_H265 = 10;
+    FRAME_FORMAT_JPEG = 11;
+    FRAME_FORMAT_PNG = 12;
+}
+
+enum FrameFlags {
+    FRAME_FLAGS_NONE = 0;
+    FRAME_FLAGS_KEYFRAME = 1;
+    FRAME_FLAGS_CORRUPT = 2;
+    FRAME_FLAGS_DISCARD = 4;
+    FRAME_FLAGS_EOS = 8;
+    FRAME_FLAGS_SYNCHRONIZATION_POINT = 16;
+}
+
+message FrameMetadata {
+    uint64 frame_id = 1;
+    aam.common.Timestamp capture_timestamp = 2;
+    aam.common.Timestamp presentation_timestamp = 3;
+    int64 sequence_number = 4;
+    int32 width = 5;
+    int32 height = 6;
+    FrameFormat format = 7;
+    int32 stride = 8;
+    uint32 flags = 9;
+    double latency_ms = 10;
+    CaptureBackend backend = 11;
+    string source_id = 12;
+    map<string, string> tags = 13;
+}
+
+message FrameBuffer {
+    FrameMetadata metadata = 1;
+    bytes pixel_data = 2;
+    repeated PlaneInfo planes = 3;
+    int64 buffer_id = 4;
+    bool owns_memory = 5;
+}
+
+message PlaneInfo {
+    int32 plane_index = 1;
+    int64 offset = 2;
+    int32 stride = 3;
+    int32 width = 4;
+    int32 height = 5;
+    int32 bytes_per_pixel = 6;
+}
+
+message FrameRegion {
+    aam.common.Rectangle region = 1;
+    FrameFormat format = 2;
+    bytes data = 3;
+    double compression_ratio = 4;
+}
+
+message CaptureConfig {
+    CaptureBackend backend = 1;
+    int32 target_width = 2;
+    int32 target_height = 3;
+    int32 target_fps = 4;
+    FrameFormat output_format = 5;
+    bool enable_zero_copy = 6;
+    int32 buffer_count = 7;
+    string device_id = 8;
+    map<string, string> backend_options = 9;
+    int32 max_latency_ms = 10;
+    bool enable_timestamps = 11;
+}
+
+message CaptureStatistics {
+    uint64 total_frames = 1;
+    uint64 dropped_frames = 2;
+    uint64 corrupted_frames = 3;
+    double average_latency_ms = 4;
+    double p50_latency_ms = 5;
+    double p99_latency_ms = 6;
+    double p999_latency_ms = 7;
+    double average_fps = 8;
+    double current_fps = 9;
+    int64 buffer_usage_bytes = 10;
+    int64 buffer_capacity_bytes = 11;
+    aam.common.Timestamp start_time = 12;
+    aam.common.Duration uptime = 13;
+    map<string, double> backend_metrics = 14;
+}
+
+message CaptureStatus {
+    bool is_running = 1;
+    bool is_error = 2;
+    string error_message = 3;
+    CaptureBackend active_backend = 4;
+    CaptureStatistics statistics = 5;
+    aam.common.Timestamp last_frame_time = 6;
+    int32 consecutive_errors = 7;
+}
+
+message FrameRequest {
+    bool include_pixel_data = 1;
+    repeated aam.common.Rectangle regions_of_interest = 2;
+    FrameFormat preferred_format = 3;
+    int32 max_size_bytes = 4;
+    bool require_keyframe = 5;
+}
+
+message FrameResponse {
+    aam.common.Status status = 1;
+    FrameBuffer frame = 2;
+    repeated FrameRegion regions = 3;
+}
+
+message CaptureStartRequest {
+    CaptureConfig config = 1;
+}
+
+message CaptureStartResponse {
+    aam.common.Status status = 1;
+    string capture_id = 2;
+    CaptureConfig applied_config = 3;
+}
+
+message CaptureStopRequest {
+    string capture_id = 1;
+    bool force = 2;
+}
+
+message CaptureStopResponse {
+    aam.common.Status status = 1;
+    CaptureStatistics final_statistics = 2;
+}
+
+message SharedMemoryConfig {
+    string segment_name = 1;
+    int64 segment_size = 2;
+    int32 frame_count = 3;
+    bool use_huge_pages = 4;
+    int32 synchronization_timeout_ms = 5;
+}
+
+message SharedMemoryHeader {
+    int32 magic = 1;
+    int32 version = 2;
+    int64 total_size = 3;
+    int32 frame_count = 4;
+    int32 current_write_index = 5;
+    int32 current_read_index = 6;
+    uint64 sequence_number = 7;
+    aam.common.Timestamp last_write_time = 8;
+    uint32 checksum = 9;
+}
+
+message FrameSyncMarker {
+    uint64 frame_id = 1;
+    int64 sequence_number = 2;
+    aam.common.Timestamp capture_time = 3;
+    aam.common.Timestamp write_time = 4;
+    int32 data_offset = 5;
+    int32 data_size = 6;
+    FrameFormat format = 7;
+    int32 width = 8;
+    int32 height = 9;
+    uint32 crc32 = 10;
+}
+
+message FrameStreamConfig {
+    int32 max_queue_size = 1;
+    int32 drop_strategy = 2;
+    bool enable_backpressure = 3;
+    double target_latency_ms = 4;
+    bool enable_frame_deduplication = 5;
+}
+
+message FrameBatch {
+    repeated FrameBuffer frames = 1;
+    int64 batch_id = 2;
+    aam.common.Timestamp batch_start_time = 3;
+    aam.common.Timestamp batch_end_time = 4;
+    bool is_complete = 5;
+}

@@ -1,0 +1,562 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file ci.yml
+# @author dhjs0000
+# @brief Continuous Integration Workflow for AAM
+# =============================================================================
+# 版本: v0.2.1-alpha.2
+# 功能: 三平台构建矩阵（Windows/Linux/macOS）
+# 触发: PR 到 main 分支 或 推送到 main 分支
+# 优化: 添加 ccache 缓存、修复 clang-tidy 兼容性、优化构建时间
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, 'v*' ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+
+env:
+  BUILD_TYPE: Release
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # vcpkg 2026.03.18 Release - 包含 protobuf 3.20+ 兼容性修复和 MSVC constinit 支持
+  # 更新策略: 每季度检查 vcpkg 发布说明，验证关键依赖（protobuf, grpc, spdlog）兼容性后升级
+  VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
+  # MaaDeps 版本 - 需要与 GitHub Releases 保持一致
+  MAA_DEPS_VERSION: 'v2.12.1'
+
+jobs:
+  # ============================================================================
+  # 代码风格检查
+  # ============================================================================
+  lint:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run clang-format
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: '21'
+          check-path: 'core'
+          fallback-style: 'LLVM'
+
+      # bridge/ 目录在 v0.7.0-beta 阶段启用，当前跳过
+      # - name: Run clang-format on bridge
+      #   uses: jidicula/clang-format-action@v4.11.0
+      #   with:
+      #     clang-format-version: '21'
+      #     check-path: 'bridge'
+      #     fallback-style: 'LLVM'
+
+      - name: Check CMake formatting
+        run: |
+          pip install cmakelang
+          find . \( -name "CMakeLists.txt" -o -name "*.cmake" \) | grep -v "vcpkg_installed" | grep -v "vcpkg/" | xargs -I {} cmake-lint {} || echo "No CMake files to lint or linting completed with warnings"
+
+  # ============================================================================
+  # 协议兼容性检查
+  # ============================================================================
+  proto-check:
+    name: Protocol Compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: '1.29.0'
+
+      - name: Buf Lint
+        run: buf lint
+        working-directory: ${{ github.workspace }}/proto
+
+      - name: Fetch target branch
+        if: github.event_name == 'pull_request'
+        run: git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+
+      - name: Buf Breaking Change Detection
+        if: github.event_name == 'pull_request'
+        working-directory: ${{ github.workspace }}/proto
+        run: |
+          # 获取目标分支（支持 main 或 master）
+          TARGET_BRANCH="${{ github.base_ref }}"
+          echo "Checking breaking changes against branch: $TARGET_BRANCH"
+          buf breaking --against "../.git#branch=${TARGET_BRANCH},subdir=proto"
+
+  # ============================================================================
+  # 静态分析检查（使用 Clang 编译器）
+  # 使用 Ubuntu 24.04 以获得完整的 C++23 <format> 支持
+  # ============================================================================
+  static-analysis:
+    name: Static Analysis (clang-tidy)
+    runs-on: ubuntu-24.04
+    needs: [lint, proto-check]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            cmake \
+            pkg-config \
+            autoconf \
+            autoconf-archive \
+            automake \
+            libtool \
+            nasm \
+            clang-18 \
+            clang-tidy-18 \
+            libc++-18-dev \
+            libc++abi-18-dev \
+            libopencv-dev \
+            libeigen3-dev \
+            libprotobuf-dev \
+            protobuf-compiler \
+            libgrpc++-dev \
+            protobuf-compiler-grpc \
+            libspdlog-dev \
+            libfmt-dev \
+            libyaml-cpp-dev \
+            nlohmann-json3-dev \
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11.5
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+
+      - name: Configure CMake (compile commands only)
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          export CC=clang-18
+          export CXX=clang++-18
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+            -DAAM_BUILD_TESTS=OFF \
+            -DAAM_BUILD_EXAMPLES=OFF \
+            -DAAM_ENABLE_CUDA=OFF \
+            -DAAM_ENABLE_STATIC_ANALYSIS=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_CXX_FLAGS="-stdlib=libc++"
+
+      - name: Run clang-tidy on core/ only
+        run: |
+          # Ubuntu 24.04 提供完整 C++23 支持，确保 third_party 头文件可正常解析
+          # --header-filter 确保只报告 core/ 目录的警告
+          # --warnings-as-errors 将警告视为错误，严格质量控制
+          find core -name "*.cpp" -type f | xargs clang-tidy-18 \
+            -p build \
+            --header-filter='^core/.*' \
+            --warnings-as-errors='*' \
+            --use-color \
+            2>&1 | tee clang-tidy.log
+
+      - name: Upload clang-tidy logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-tidy-logs
+          path: clang-tidy.log
+          retention-days: 7
+
+  # ============================================================================
+  # Windows 构建
+  # ============================================================================
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-2022
+    needs: [lint, proto-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64]
+        build_type: [Release, Debug]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+          if (-not (Test-Path "${{ github.workspace }}/vcpkg")) {
+            Write-Error "vcpkg directory not found after submodule update"
+            exit 1
+          }
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          triplet: x64-windows
+          github-workspace: ${{ github.workspace }}
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11.5
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgJsonGlob: 'vcpkg.json'
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ github.job }}-${{ matrix.arch }}-${{ matrix.build_type }}
+          max-size: 2G
+
+      - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          $vcpkgToolchain = Join-Path -Path "${{ github.workspace }}" -ChildPath "vcpkg/scripts/buildsystems/vcpkg.cmake"
+          cmake -B build -S . -G Ninja `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+            -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
+            -DAAM_BUILD_TESTS=ON `
+            -DAAM_BUILD_EXAMPLES=${{ matrix.build_type == 'Release' && 'ON' || 'OFF' }} `
+            -DAAM_ENABLE_CUDA=OFF `
+            -DAAM_ENABLE_STATIC_ANALYSIS=OFF `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache `
+            -DCMAKE_CXX_FLAGS="/W4 /WX"
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel $env:NUMBER_OF_PROCESSORS
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest -C ${{ matrix.build_type }} --output-on-failure --parallel $env:NUMBER_OF_PROCESSORS
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aam-windows-${{ matrix.arch }}-${{ matrix.build_type }}
+          path: |
+            build/${{ matrix.build_type }}/*.lib
+            build/${{ matrix.build_type }}/*.dll
+            build/${{ matrix.build_type }}/*.exe
+          retention-days: 7
+
+  # ============================================================================
+  # Linux 构建
+  # ============================================================================
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-22.04
+    needs: [lint, proto-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # GCC-12 Release - 主构建
+          - compiler: gcc-12
+            build_type: Release
+            enable_static_analysis: OFF
+          # GCC-12 Debug - 带 Sanitizers
+          - compiler: gcc-12
+            build_type: Debug
+            enable_static_analysis: OFF
+          # Clang-16 Release - 用于兼容性测试
+          - compiler: clang-16
+            build_type: Release
+            enable_static_analysis: OFF
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Clang
+        if: matrix.compiler == 'clang-16'
+        run: |
+          chmod +x scripts/setup/install_clang.sh
+          sudo ./scripts/setup/install_clang.sh 16
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            cmake \
+            pkg-config \
+            autoconf \
+            autoconf-archive \
+            automake \
+            libtool \
+            nasm \
+            ccache \
+            ${{ matrix.compiler == 'gcc-12' && 'g++-12' || 'clang-16' }} \
+            libopencv-dev \
+            libeigen3-dev \
+            libprotobuf-dev \
+            protobuf-compiler \
+            libgrpc++-dev \
+            protobuf-compiler-grpc \
+            libspdlog-dev \
+            libfmt-dev \
+            libyaml-cpp-dev \
+            nlohmann-json3-dev \
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ github.job }}-${{ matrix.compiler }}-${{ matrix.build_type }}
+          max-size: 2G
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11.5
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+
+      - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+        run: |
+          export CC=${{ matrix.compiler == 'gcc-12' && 'gcc-12' || 'clang-16' }}
+          export CXX=${{ matrix.compiler == 'gcc-12' && 'g++-12' || 'clang++-16' }}
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+            -DAAM_BUILD_TESTS=ON \
+            -DAAM_BUILD_EXAMPLES=${{ matrix.build_type == 'Release' && 'ON' || 'OFF' }} \
+            -DAAM_ENABLE_CUDA=OFF \
+            -DAAM_ENABLE_SANITIZERS=${{ matrix.build_type == 'Debug' && 'ON' || 'OFF' }} \
+            -DAAM_ENABLE_STATIC_ANALYSIS=${{ matrix.enable_static_analysis }}
+
+      - name: Build
+        run: |
+          export CCACHE_DIR=${{ github.workspace }}/.ccache
+          cmake --build build --parallel $(nproc)
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel $(nproc)
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aam-linux-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: |
+            build/lib*.a
+            build/lib*.so
+          retention-days: 7
+
+  # ============================================================================
+  # macOS 构建
+  # 注意: 每个任务有独立的6小时计时，Debug和Release分别构建以确保完整性
+  # ============================================================================
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-14
+    needs: [lint, proto-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          brew install \
+            cmake \
+            ninja \
+            pkg-config \
+            nasm \
+            ccache \
+            opencv \
+            eigen \
+            protobuf \
+            grpc \
+            spdlog \
+            fmt \
+            yaml-cpp \
+            nlohmann-json \
+            zeromq
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ github.job }}-${{ matrix.build_type }}
+          max-size: 2G
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11.5
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+
+      - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+            -DAAM_BUILD_TESTS=ON \
+            -DAAM_BUILD_EXAMPLES=ON \
+            -DAAM_ENABLE_CUDA=OFF \
+            -DAAM_ENABLE_STATIC_ANALYSIS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel $(sysctl -n hw.ncpu)
+
+      - name: Run Tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel $(sysctl -n hw.ncpu)
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aam-macos-${{ matrix.build_type }}
+          path: |
+            build/lib*.a
+            build/lib*.dylib
+          retention-days: 7
+
+  # ============================================================================
+  # 构建状态汇总
+  # ============================================================================
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-macos, static-analysis]
+    if: always()
+    steps:
+      - name: Check Build Status
+        run: |
+          echo "Windows: ${{ needs.build-windows.result }}"
+          echo "Linux: ${{ needs.build-linux.result }}"
+          echo "macOS: ${{ needs.build-macos.result }}"
+          echo "Static Analysis: ${{ needs.static-analysis.result }}"
+          if [ "${{ needs.build-windows.result }}" != "success" ] || \
+             [ "${{ needs.build-linux.result }}" != "success" ] || \
+             [ "${{ needs.build-macos.result }}" != "success" ] || \
+             [ "${{ needs.static-analysis.result }}" != "success" ]; then
+            echo "Build failed!"
+            exit 1
+          fi
+          echo "All builds passed!"

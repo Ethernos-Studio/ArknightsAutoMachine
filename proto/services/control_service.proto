@@ -1,0 +1,531 @@
+syntax = "proto3";
+
+package aam.services;
+
+import "common/types.proto";
+import "ama/l0_frame.proto";
+import "ama/l1_perception.proto";
+import "ama/l2_action.proto";
+import "ama/l3_tactical.proto";
+import "ama/l4_state.proto";
+import "inference/l5_strategy.proto";
+
+option csharp_namespace = "Aam.Services";
+option go_package = "github.com/aam/proto/services;services";
+option java_multiple_files = true;
+option java_package = "com.aam.services";
+
+service AamControlService {
+    rpc Initialize(InitializeRequest) returns (InitializeResponse);
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+    rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+    
+    rpc StartCapture(StartCaptureRequest) returns (stream CaptureEvent);
+    rpc StopCapture(StopCaptureRequest) returns (StopCaptureResponse);
+    rpc GetFrame(GetFrameRequest) returns (GetFrameResponse);
+    
+    rpc ExecuteAction(ExecuteActionRequest) returns (ExecuteActionResponse);
+    rpc ExecuteActionBatch(ExecuteActionBatchRequest) returns (ExecuteActionBatchResponse);
+    rpc CancelAction(CancelActionRequest) returns (CancelActionResponse);
+    
+    rpc GetPerception(GetPerceptionRequest) returns (GetPerceptionResponse);
+    rpc StreamPerception(StreamPerceptionRequest) returns (stream PerceptionEvent);
+    
+    rpc LoadTacticalScript(LoadTacticalScriptRequest) returns (LoadTacticalScriptResponse);
+    rpc ExecuteTacticalScript(ExecuteTacticalScriptRequest) returns (stream TacticalEvent);
+    rpc StopTacticalExecution(StopTacticalExecutionRequest) returns (StopTacticalExecutionResponse);
+    
+    rpc GetStateSnapshot(GetStateSnapshotRequest) returns (GetStateSnapshotResponse);
+    rpc StreamState(StreamStateRequest) returns (stream StateEvent);
+    rpc CreateCheckpoint(CreateCheckpointRequest) returns (CreateCheckpointResponse);
+    rpc RestoreCheckpoint(RestoreCheckpointRequest) returns (RestoreCheckpointResponse);
+    
+    rpc RequestStrategy(RequestStrategyRequest) returns (RequestStrategyResponse);
+    rpc StreamStrategy(StreamStrategyRequest) returns (stream StrategyEvent);
+    
+    rpc SubscribeEvents(SubscribeEventsRequest) returns (stream Event);
+    rpc PublishEvent(PublishEventRequest) returns (PublishEventResponse);
+    
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+    rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+    rpc Configure(ConfigureRequest) returns (ConfigureResponse);
+}
+
+message InitializeRequest {
+    string session_id = 1;
+    SystemConfiguration config = 2;
+    map<string, string> options = 3;
+}
+
+message InitializeResponse {
+    aam.common.Status status = 1;
+    string session_id = 2;
+    SystemInfo system_info = 3;
+    repeated string warnings = 4;
+}
+
+message ShutdownRequest {
+    string session_id = 1;
+    bool force = 2;
+    int32 timeout_ms = 3;
+}
+
+message ShutdownResponse {
+    aam.common.Status status = 1;
+    ShutdownSummary summary = 2;
+}
+
+message GetStatusRequest {
+    string session_id = 1;
+    bool include_detailed_metrics = 2;
+}
+
+message GetStatusResponse {
+    aam.common.Status status = 1;
+    SystemStatus system_status = 2;
+    ComponentStatus component_status = 3;
+}
+
+message StartCaptureRequest {
+    string session_id = 1;
+    aam.l0.CaptureConfig config = 2;
+    bool stream_frames = 3;
+}
+
+message CaptureEvent {
+    oneof event_data {
+        aam.l0.FrameBuffer frame = 1;
+        CaptureStatusUpdate status_update = 2;
+        CaptureError error = 3;
+    }
+    aam.common.Timestamp timestamp = 4;
+}
+
+message CaptureStatusUpdate {
+    aam.l0.CaptureStatus status = 1;
+    aam.l0.CaptureStatistics statistics = 2;
+}
+
+message CaptureError {
+    string error_code = 1;
+    string error_message = 2;
+    bool is_recoverable = 3;
+}
+
+message StopCaptureRequest {
+    string session_id = 1;
+    bool immediate = 2;
+}
+
+message StopCaptureResponse {
+    aam.common.Status status = 1;
+    aam.l0.CaptureStatistics final_statistics = 2;
+}
+
+message GetFrameRequest {
+    string session_id = 1;
+    aam.l0.FrameRequest frame_request = 2;
+}
+
+message GetFrameResponse {
+    aam.common.Status status = 1;
+    aam.l0.FrameBuffer frame = 2;
+}
+
+message ExecuteActionRequest {
+    string session_id = 1;
+    aam.l2.ActionRequest action_request = 2;
+    bool wait_for_completion = 3;
+}
+
+message ExecuteActionResponse {
+    aam.common.Status status = 1;
+    aam.l2.ActionResult result = 2;
+}
+
+message ExecuteActionBatchRequest {
+    string session_id = 1;
+    aam.l2.ActionBatchRequest batch_request = 2;
+}
+
+message ExecuteActionBatchResponse {
+    aam.common.Status status = 1;
+    aam.l2.ActionBatchResponse batch_response = 2;
+}
+
+message CancelActionRequest {
+    string session_id = 1;
+    string action_id = 2;
+}
+
+message CancelActionResponse {
+    aam.common.Status status = 1;
+    bool cancelled = 2;
+}
+
+message GetPerceptionRequest {
+    string session_id = 1;
+    aam.l1.PerceptionRequest perception_request = 2;
+}
+
+message GetPerceptionResponse {
+    aam.common.Status status = 1;
+    aam.l1.PerceptionResult result = 2;
+}
+
+message StreamPerceptionRequest {
+    string session_id = 1;
+    aam.l1.PerceptionConfig config = 2;
+    int32 max_fps = 3;
+}
+
+message PerceptionEvent {
+    oneof event_data {
+        aam.l1.PerceptionResult result = 1;
+        PerceptionStatusUpdate status_update = 2;
+        PerceptionError error = 3;
+    }
+    aam.common.Timestamp timestamp = 4;
+}
+
+message PerceptionStatusUpdate {
+    aam.l1.PerceptionStatus status = 1;
+    aam.l1.PerceptionStatistics statistics = 2;
+}
+
+message PerceptionError {
+    string error_code = 1;
+    string error_message = 2;
+    aam.common.ErrorInfo details = 3;
+}
+
+message LoadTacticalScriptRequest {
+    string session_id = 1;
+    aam.l3.TacticalScript script = 2;
+    bool validate_only = 3;
+}
+
+message LoadTacticalScriptResponse {
+    aam.common.Status status = 1;
+    string script_id = 2;
+    ValidationResult validation = 3;
+}
+
+message ValidationResult {
+    bool is_valid = 1;
+    repeated ValidationError errors = 2;
+    repeated ValidationWarning warnings = 3;
+}
+
+message ValidationError {
+    string code = 1;
+    string message = 2;
+    int32 line_number = 3;
+    string context = 4;
+}
+
+message ValidationWarning {
+    string code = 1;
+    string message = 2;
+    int32 line_number = 3;
+}
+
+message ExecuteTacticalScriptRequest {
+    string session_id = 1;
+    string script_id = 2;
+    aam.l3.TacticalEngineConfig config = 3;
+    map<string, string> parameters = 4;
+}
+
+message TacticalEvent {
+    oneof event_data {
+        aam.l3.TacticalDecision decision = 1;
+        aam.l3.TacticalVMState vm_state = 2;
+        TacticalExecutionStatus execution_status = 3;
+        TacticalError error = 4;
+    }
+    aam.common.Timestamp timestamp = 5;
+}
+
+message TacticalExecutionStatus {
+    bool is_running = 1;
+    int32 current_instruction = 2;
+    int32 total_instructions = 3;
+    double progress_percent = 4;
+}
+
+message TacticalError {
+    string error_code = 1;
+    string error_message = 2;
+    int32 instruction_index = 3;
+}
+
+message StopTacticalExecutionRequest {
+    string session_id = 1;
+    string execution_id = 2;
+    bool immediate = 3;
+}
+
+message StopTacticalExecutionResponse {
+    aam.common.Status status = 1;
+    aam.l3.TacticalExecutionResult result = 2;
+}
+
+message GetStateSnapshotRequest {
+    string session_id = 1;
+    aam.l4.SnapshotType snapshot_type = 2;
+    bool include_history = 3;
+}
+
+message GetStateSnapshotResponse {
+    aam.common.Status status = 1;
+    aam.l4.SystemSnapshot snapshot = 2;
+    aam.l4.StateHistory history = 3;
+}
+
+message StreamStateRequest {
+    string session_id = 1;
+    int32 update_interval_ms = 2;
+    repeated string state_filter = 3;
+}
+
+message StateEvent {
+    oneof event_data {
+        aam.l4.StateMachineState state = 1;
+        aam.l4.StateTransition transition = 2;
+        aam.l4.SystemSnapshot snapshot = 3;
+        StateError error = 4;
+    }
+    aam.common.Timestamp timestamp = 5;
+}
+
+message StateError {
+    string error_code = 1;
+    string error_message = 2;
+    aam.l4.StateType current_state = 3;
+}
+
+message CreateCheckpointRequest {
+    string session_id = 1;
+    string checkpoint_name = 2;
+    string description = 3;
+    map<string, string> tags = 4;
+}
+
+message CreateCheckpointResponse {
+    aam.common.Status status = 1;
+    aam.l4.Checkpoint checkpoint = 2;
+}
+
+message RestoreCheckpointRequest {
+    string session_id = 1;
+    string checkpoint_id = 2;
+    bool validate_before_restore = 3;
+}
+
+message RestoreCheckpointResponse {
+    aam.common.Status status = 1;
+    aam.l4.RecoveryPoint recovery = 2;
+}
+
+message RequestStrategyRequest {
+    string session_id = 1;
+    aam.inference.StrategyRequest strategy_request = 2;
+}
+
+message RequestStrategyResponse {
+    aam.common.Status status = 1;
+    aam.inference.StrategyResponse strategy_response = 2;
+}
+
+message StreamStrategyRequest {
+    string session_id = 1;
+    aam.inference.GameContext context = 2;
+    int32 max_decisions = 3;
+}
+
+message StrategyEvent {
+    oneof event_data {
+        aam.inference.Decision decision = 1;
+        aam.inference.StrategyFeedback feedback = 2;
+        StrategyStatusUpdate status_update = 3;
+        StrategyError error = 4;
+    }
+    aam.common.Timestamp timestamp = 5;
+}
+
+message StrategyStatusUpdate {
+    bool is_processing = 1;
+    int32 decisions_made = 2;
+    double average_confidence = 3;
+}
+
+message StrategyError {
+    string error_code = 1;
+    string error_message = 2;
+    bool is_fatal = 3;
+}
+
+message SubscribeEventsRequest {
+    string session_id = 1;
+    repeated string event_types = 2;
+    string filter_expression = 3;
+}
+
+message Event {
+    string event_id = 1;
+    string event_type = 2;
+    string source_component = 3;
+    aam.common.Timestamp timestamp = 4;
+    map<string, string> metadata = 5;
+    bytes payload = 6;
+}
+
+message PublishEventRequest {
+    string session_id = 1;
+    Event event = 2;
+}
+
+message PublishEventResponse {
+    aam.common.Status status = 1;
+    string published_event_id = 2;
+}
+
+message HealthCheckRequest {
+    string session_id = 1;
+    bool deep_check = 2;
+}
+
+message HealthCheckResponse {
+    bool healthy = 1;
+    string status = 2;
+    repeated ComponentHealth components = 3;
+    aam.common.Timestamp check_time = 4;
+}
+
+message ComponentHealth {
+    string component_name = 1;
+    bool healthy = 2;
+    string status = 3;
+    string message = 4;
+    double latency_ms = 5;
+}
+
+message GetMetricsRequest {
+    string session_id = 1;
+    repeated string metric_names = 2;
+    aam.common.Timestamp start_time = 3;
+    aam.common.Timestamp end_time = 4;
+}
+
+message GetMetricsResponse {
+    aam.common.Status status = 1;
+    repeated Metric metrics = 2;
+}
+
+message Metric {
+    string name = 1;
+    string description = 2;
+    string unit = 3;
+    double value = 4;
+    map<string, string> labels = 5;
+    aam.common.Timestamp timestamp = 6;
+}
+
+message ConfigureRequest {
+    string session_id = 1;
+    SystemConfiguration config = 2;
+    bool validate_only = 3;
+}
+
+message ConfigureResponse {
+    aam.common.Status status = 1;
+    repeated ConfigChange applied_changes = 2;
+    repeated string warnings = 3;
+}
+
+message ConfigChange {
+    string component = 1;
+    string setting = 2;
+    string old_value = 3;
+    string new_value = 4;
+}
+
+message SystemConfiguration {
+    aam.l0.CaptureConfig capture_config = 1;
+    aam.l2.ActionExecutorConfig action_config = 2;
+    aam.l1.PerceptionConfig perception_config = 3;
+    aam.l3.TacticalEngineConfig tactical_config = 4;
+    aam.l4.StateMachineConfig state_config = 5;
+    aam.l4.PersistenceConfig persistence_config = 6;
+    aam.inference.StrategyConfig strategy_config = 7;
+    LoggingConfig logging_config = 8;
+    PerformanceConfig performance_config = 9;
+}
+
+message LoggingConfig {
+    string log_level = 1;
+    string log_output = 2;
+    int32 max_log_size_mb = 3;
+    int32 max_log_files = 4;
+    bool enable_console_output = 5;
+    bool enable_file_output = 6;
+    string log_format = 7;
+}
+
+message PerformanceConfig {
+    int32 target_fps = 1;
+    int32 max_latency_ms = 2;
+    bool enable_profiling = 3;
+    int32 profiling_sample_rate = 4;
+    bool enable_memory_tracking = 5;
+    int32 gc_target_heap_size_mb = 6;
+}
+
+message SystemInfo {
+    string version = 1;
+    string build_hash = 2;
+    aam.common.Timestamp build_time = 3;
+    repeated string supported_backends = 4;
+    repeated string supported_models = 5;
+    SystemCapabilities capabilities = 6;
+}
+
+message SystemCapabilities {
+    bool supports_gpu = 1;
+    bool supports_cuda = 2;
+    bool supports_directml = 3;
+    int64 available_memory_bytes = 4;
+    int64 available_disk_bytes = 5;
+    int32 cpu_cores = 6;
+    string gpu_name = 7;
+    int64 gpu_memory_bytes = 8;
+}
+
+message SystemStatus {
+    bool is_initialized = 1;
+    bool is_running = 2;
+    aam.l4.StateType current_state = 3;
+    aam.common.Timestamp started_at = 4;
+    aam.common.Duration uptime = 5;
+    string active_level_id = 6;
+    string active_script_id = 7;
+}
+
+message ComponentStatus {
+    bool capture_healthy = 1;
+    bool perception_healthy = 2;
+    bool action_healthy = 3;
+    bool tactical_healthy = 4;
+    bool state_healthy = 5;
+    bool strategy_healthy = 6;
+    string overall_status = 7;
+}
+
+message ShutdownSummary {
+    int32 actions_completed = 1;
+    int32 actions_cancelled = 2;
+    int32 checkpoints_saved = 3;
+    aam.common.Duration shutdown_duration = 4;
+    bool clean_shutdown = 5;
+}

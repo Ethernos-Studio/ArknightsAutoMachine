@@ -1,0 +1,270 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file codeql.yml
+# @author dhjs0000
+# @brief CodeQL Security Analysis Workflow for AAM
+# =============================================================================
+# 版本: v0.2.0-alpha.2
+# 功能: 安全漏洞扫描（Critical/High 级别）
+# 触发: 每周定时 + PR 到 main 分支
+# =============================================================================
+
+name: CodeQL Security Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**.cpp'
+      - '**.hpp'
+      - '**.h'
+      - '**.py'
+      - 'CMakeLists.txt'
+      - '.github/workflows/codeql.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '**.cpp'
+      - '**.hpp'
+      - '**.h'
+      - '**.py'
+      - 'CMakeLists.txt'
+  schedule:
+    # 每周一凌晨 3 点运行
+    - cron: '0 3 * * 1'
+
+env:
+  CODEQL_EXTRACTOR_CPP_TRAP_CACHING: true
+  CODEQL_EXTRACTOR_CPP_BUILD_TRACING: true
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_COMMIT: 'c3867e714dd3a51c272826eea77267876517ed99'
+  MAA_DEPS_VERSION: 'v2.12.1'
+
+jobs:
+  # ============================================================================
+  # C++ 安全分析
+  # ============================================================================
+  analyze-cpp:
+    name: Analyze C++ Code
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+        build_type: [ Release ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+          config: |
+            paths:
+              - core/src
+              - core/include
+              - bridge/src
+            paths-ignore:
+              - '**/third_party/**'
+              - '**/generated/**'
+              - '**/tests/**'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            cmake \
+            pkg-config \
+            autoconf \
+            autoconf-archive \
+            automake \
+            libtool \
+            g++-12 \
+            nasm \
+            libopencv-dev \
+            libeigen3-dev \
+            libprotobuf-dev \
+            protobuf-compiler \
+            libgrpc++-dev \
+            protobuf-compiler-grpc \
+            libspdlog-dev \
+            libfmt-dev \
+            libyaml-cpp-dev \
+            nlohmann-json3-dev \
+            libzmq3-dev \
+            libx11-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxrender-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxcomposite-dev \
+            libxdamage-dev \
+            libxkbcommon-dev \
+            libdbus-1-dev \
+            libatspi2.0-dev
+
+      - name: Ensure all submodules
+        run: |
+          git submodule update --init --recursive
+          git submodule foreach --recursive 'git submodule update --init --recursive'
+
+      - name: Setup MaaDeps
+        uses: ./.github/actions/setup-maadeps
+        with:
+          maadeps-version: ${{ env.MAA_DEPS_VERSION }}
+          github-workspace: ${{ github.workspace }}
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11.5
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+
+      - name: Configure CMake
+        run: |
+          export CC=gcc-12
+          export CXX=g++-12
+          cmake -B build -S . \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake \
+            -DAAM_BUILD_TESTS=OFF \
+            -DAAM_ENABLE_CUDA=OFF
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true
+          output: '${{ github.workspace }}/codeql-results-cpp.sarif'
+
+  # ============================================================================
+  # Python 安全分析
+  # ============================================================================
+  analyze-python:
+    name: Analyze Python Code
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+          config: |
+            paths:
+              - inference/src
+              - scripts
+            paths-ignore:
+              - '**/tests/**'
+              - '**/test_*.py'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f inference/requirements.txt ]; then
+            pip install -r inference/requirements.txt
+          fi
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true
+          output: '${{ github.workspace }}/codeql-results-python.sarif'
+
+  # ============================================================================
+  # 安全报告汇总
+  # ============================================================================
+  security-report:
+    name: Security Report
+    runs-on: ubuntu-latest
+    needs: [analyze-cpp, analyze-python]
+    if: always()
+    permissions:
+      security-events: read
+      contents: read
+
+    steps:
+      - name: Check Security Scan Results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: alerts } = await github.rest.codeScanning.listAlertsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              severity: 'critical,high'
+            });
+
+            if (alerts.length > 0) {
+              console.log(`Found ${alerts.length} Critical/High severity vulnerabilities:`);
+              alerts.forEach(alert => {
+                console.log(`- [${alert.severity}] ${alert.rule.description} (${alert.html_url})`);
+              });
+              core.setFailed(`Security scan found ${alerts.length} Critical/High vulnerabilities!`);
+            } else {
+              console.log('✅ No Critical/High severity vulnerabilities found!');
+            }
+
+      - name: Upload Security Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: |
+            ${{ github.workspace }}/codeql-results-*.sarif
+          retention-days: 30

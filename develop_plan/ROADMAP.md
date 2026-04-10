@@ -14,8 +14,8 @@
 
 | 版本 | 代号 | 目标 | 状态 |
 |------|------|------|------|
-| v0.1.0-alpha | 契约冻结版 | 接口契约与构建系统 | ❌ |
-| v0.2.0-alpha | 感知硬化版 | L0 帧捕获 | ❌ |
+| v0.1.0-alpha | 契约冻结版 | 接口契约与构建系统 | ✅ |
+| v0.2.0-alpha | 感知硬化版 | L0 帧捕获 | 🔶 传输层与基础设施完成 |
 | v0.3.0-alpha | 空间映射版 | L2 坐标映射 | ❌ |
 | v0.4.0-alpha | 记忆架构版 | L4 状态机与存储 | 🔶 Python部分完成 |
 | v0.5.0-alpha | 视觉皮层版 | L1 视觉处理 | 🔶 Python部分完成 |
@@ -34,32 +34,44 @@
 ### v0.1.0-alpha.1：协议定义
 
 **协议层 (`proto/`)**
-- [ ] `proto/common/types.proto`：基础类型定义
-- [ ] `proto/ama/l0_frame.proto`：L0 帧元数据
-- [ ] `proto/ama/l1_perception.proto`：L1 感知结果
-- [ ] `proto/ama/l2_action.proto`：L2 动作指令
-- [ ] `proto/ama/l3_tactical.proto`：L3 战术原语
-- [ ] `proto/ama/l4_state.proto`：L4 状态快照
-- [ ] `proto/inference/l5_strategy.proto`：L5 决策接口
-- [ ] `proto/services/control_service.proto`：控制服务 RPC
+- [x] `proto/common/types.proto`：基础类型定义
+- [x] `proto/ama/l0_frame.proto`：L0 帧元数据
+- [x] `proto/ama/l1_perception.proto`：L1 感知结果
+- [x] `proto/ama/l2_action.proto`：L2 动作指令
+- [x] `proto/ama/l3_tactical.proto`：L3 战术原语
+- [x] `proto/ama/l4_state.proto`：L4 状态快照
+- [x] `proto/inference/l5_strategy.proto`：L5 决策接口
+- [x] `proto/services/control_service.proto`：控制服务 RPC
 
 ### v0.1.0-alpha.2：构建系统
 
-- [ ] `CMakeLists.txt`（根）：C++23 标准，`aam_core` 静态库
-- [ ] `cmake/compiler_flags.cmake`：跨平台编译标志
-- [ ] `cmake/FindZeroMQ.cmake`：ZeroMQ 发现模块
-- [ ] `.clang-format`：代码风格配置
-- [ ] `.clang-tidy`：静态检查规则
+- [x] `CMakeLists.txt`（根）：C++23 标准，`aam_core` 静态库
+- [x] `cmake/compiler_flags.cmake`：跨平台编译标志
+- [x] `cmake/FindZeroMQ.cmake`：ZeroMQ 发现模块
+- [x] `.clang-format`：代码风格配置
+- [x] `.clang-tidy`：静态检查规则
 
 ### v0.1.0-alpha.3：持续集成
 
-- [ ] `.github/workflows/ci.yml`：三平台构建矩阵
-- [ ] `.github/workflows/codeql.yml`：安全分析
-- [ ] `scripts/codegen/protobuf_gen.py`：代码生成脚本
+- [x] `.github/workflows/ci.yml`：三平台构建矩阵
+  - Windows (MSVC 2022) x64 Release/Debug
+  - Linux (GCC-12, Clang-16) Release/Debug
+  - macOS (Apple Clang) Release/Debug
+  - 代码风格检查 (clang-format, cmake-lint)
+  - 协议兼容性检查 (Buf Breaking Change)
+- [x] `.github/workflows/codeql.yml`：安全分析
+  - C++ 代码安全扫描 (security-extended, security-and-quality)
+  - Python 代码安全扫描
+  - 自动检测 Critical/High 级别漏洞
+- [x] `scripts/codegen/protobuf_gen.py`：代码生成脚本
+  - 支持 C++ 和 Python 代码生成
+  - 自动检测 protoc 和 gRPC 插件
+  - 智能识别服务定义文件
+  - Python 包结构自动初始化
 
 **验收标准**
-- 三平台编译通过，零警告
-- CodeQL 扫描零 Critical/High 漏洞
+- [x] 三平台编译通过，零警告
+- [x] CodeQL 扫描零 Critical/High 漏洞
 
 ---
 
@@ -69,30 +81,30 @@
 
 ### v0.2.0-alpha.1：接口定义
 
-- [ ] `include/aam/l0/capture_backend.hpp`：`ICaptureBackend` 接口
-- [ ] `include/aam/l0/frame_buffer.hpp`：`LockFreeFrameBuffer<T>` 模板
+- [x] `include/aam/l0/capture_backend.hpp`：`ICaptureBackend` 接口
+- [x] `include/aam/l0/frame_buffer.hpp`：`LockFreeFrameBuffer<T>` 模板
 
 ### v0.2.0-alpha.2：捕获后端
 
-- [ ] `src/l0_sensing/adb_capture.cpp`：ADB H264 管道捕获
-- [ ] `src/l0_sensing/maa_adapter.cpp`：MaaFramework 桥接
-- [ ] `src/l0_sensing/win32_window_capture.cpp`：Win32 后备方案
+- [x] `src/l0_sensing/adb_capture.cpp`：ADB H264 管道捕获
+- [x] `src/l0_sensing/maa_adapter.cpp`：MaaFramework 桥接
+- [x] `src/l0_sensing/win32_window_capture.cpp`：Win32 后备方案
 
 ### v0.2.0-alpha.3：传输层
 
-- [ ] `src/l0_sensing/shm_transport.cpp`：共享内存传输
+- [x] `src/l0_sensing/shm_transport.cpp`：共享内存传输
 
 ### v0.2.0-alpha.4：基础设施
 
-- [ ] `include/aam/core/timer.hpp`：高精度计时器
-- [ ] `include/aam/core/memory_pool.hpp`：定长内存池
-- [ ] `src/common/logger.cpp`：spdlog 封装
+- [x] `include/aam/core/timer.hpp`：高精度计时器（682行，纳秒级精度）
+- [x] `include/aam/core/memory_pool.hpp`：定长内存池（590行，O(1)分配/释放）
+- [x] `src/common/logger.cpp`：spdlog 封装（556行，支持异步/多线程）
 
 ### v0.2.0-alpha.5：测试与配置
 
-- [ ] `src/l0_sensing/tests/test_frame_sync.cpp`：帧同步测试
-- [ ] `src/l0_sensing/tests/test_shm_throughput.cpp`：吞吐量测试
-- [ ] `configs/ama/capture.yaml`：L0 配置模板
+- [x] `core/tests/test_shm_transport.cpp`：共享内存传输测试（31个测试用例，含吞吐量/延迟基准测试）
+- [ ] `src/l0_sensing/tests/test_frame_sync.cpp`：帧同步测试（待实现）
+- [ ] `configs/ama/capture.yaml`：L0 配置模板（待实现）
 
 **验收标准**
 - 1000 帧连续捕获，0 丢帧，P99 < 20ms

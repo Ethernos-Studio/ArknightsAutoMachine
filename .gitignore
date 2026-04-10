@@ -134,6 +134,7 @@ __pycache__/
 
 # Distribution / packaging
 build/
+publish/
 develop-eggs/
 dist/
 downloads/
@@ -466,6 +467,7 @@ FodyWeavers.xsd
 
 # [Mark]Temp File 用于临时debug与测试
 temp.*
+temp_*
 
 # =============================================================================
 # C++

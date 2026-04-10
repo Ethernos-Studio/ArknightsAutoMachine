@@ -1,0 +1,348 @@
+syntax = "proto3";
+
+package aam.l4;
+
+import "common/types.proto";
+import "ama/l0_frame.proto";
+import "ama/l1_perception.proto";
+import "ama/l2_action.proto";
+import "ama/l3_tactical.proto";
+
+option csharp_namespace = "Aam.L4";
+option go_package = "github.com/aam/proto/ama;l4";
+option java_multiple_files = true;
+option java_package = "com.aam.l4";
+
+enum StateType {
+    STATE_TYPE_UNSPECIFIED = 0;
+    STATE_TYPE_IDLE = 1;
+    STATE_TYPE_INITIALIZING = 2;
+    STATE_TYPE_READY = 3;
+    STATE_TYPE_IN_BATTLE = 4;
+    STATE_TYPE_PAUSED = 5;
+    STATE_TYPE_VICTORY = 6;
+    STATE_TYPE_DEFEAT = 7;
+    STATE_TYPE_ERROR = 8;
+    STATE_TYPE_RECOVERING = 9;
+    STATE_TYPE_SHUTTING_DOWN = 10;
+}
+
+enum StateMachineEvent {
+    STATE_MACHINE_EVENT_UNSPECIFIED = 0;
+    STATE_MACHINE_EVENT_START = 1;
+    STATE_MACHINE_EVENT_STOP = 2;
+    STATE_MACHINE_EVENT_PAUSE = 3;
+    STATE_MACHINE_EVENT_RESUME = 4;
+    STATE_MACHINE_EVENT_BATTLE_STARTED = 5;
+    STATE_MACHINE_EVENT_BATTLE_ENDED = 6;
+    STATE_MACHINE_EVENT_VICTORY = 7;
+    STATE_MACHINE_EVENT_DEFEAT = 8;
+    STATE_MACHINE_EVENT_ERROR = 9;
+    STATE_MACHINE_EVENT_RECOVER = 10;
+    STATE_MACHINE_EVENT_TIMEOUT = 11;
+    STATE_MACHINE_EVENT_USER_INTERRUPT = 12;
+}
+
+enum SnapshotType {
+    SNAPSHOT_TYPE_UNSPECIFIED = 0;
+    SNAPSHOT_TYPE_FULL = 1;
+    SNAPSHOT_TYPE_DELTA = 2;
+    SNAPSHOT_TYPE_CHECKPOINT = 3;
+    SNAPSHOT_TYPE_CRASH_RECOVERY = 4;
+}
+
+message StateMachineState {
+    string state_id = 1;
+    StateType current_state = 2;
+    StateType previous_state = 3;
+    StateMachineEvent last_event = 4;
+    aam.common.Timestamp state_entered_at = 5;
+    aam.common.Duration time_in_current_state = 6;
+    map<string, bytes> state_data = 7;
+    bool is_terminal = 8;
+    repeated StateType valid_transitions = 9;
+}
+
+message HierarchicalState {
+    string state_id = 1;
+    string parent_state_id = 2;
+    StateType state_type = 3;
+    repeated HierarchicalState child_states = 4;
+    bool is_active = 5;
+    int32 depth = 6;
+    map<string, string> context = 7;
+}
+
+message StateMachineContext {
+    string context_id = 1;
+    string session_id = 2;
+    aam.common.Timestamp created_at = 3;
+    aam.common.Timestamp updated_at = 4;
+    map<string, string> string_values = 5;
+    map<string, int64> int_values = 6;
+    map<string, double> double_values = 7;
+    map<string, bool> bool_values = 8;
+    map<string, bytes> binary_values = 9;
+}
+
+message BattleState {
+    string battle_id = 1;
+    string level_id = 2;
+    aam.common.StageType stage_type = 3;
+    
+    double battle_start_time = 4;
+    double current_battle_time = 5;
+    
+    int32 current_wave = 6;
+    int32 total_waves = 7;
+    
+    int32 current_life = 8;
+    int32 max_life = 9;
+    
+    double current_cost = 10;
+    int32 max_cost = 11;
+    
+    int32 deployed_operator_count = 12;
+    int32 max_operator_count = 13;
+    
+    repeated aam.l1.OperatorInstance deployed_operators = 14;
+    repeated aam.l1.EnemyInstance active_enemies = 15;
+    
+    bool is_paused = 16;
+    bool is_speed_up = 17;
+    int32 speed_multiplier = 18;
+    
+    aam.l1.BattleMap current_map = 19;
+    aam.l1.BattleUI current_ui = 20;
+    
+    repeated aam.l3.Wave waves = 21;
+    aam.l3.TacticalPlan active_plan = 22;
+    
+    map<string, string> battle_metadata = 23;
+}
+
+message OperatorState {
+    string operator_id = 1;
+    string instance_id = 2;
+    aam.common.OperatorProfession profession = 3;
+    int32 elite_level = 4;
+    int32 level = 5;
+    
+    int32 current_hp = 6;
+    int32 max_hp = 7;
+    int32 current_sp = 8;
+    int32 max_sp = 9;
+    
+    aam.common.Position grid_position = 10;
+    bool is_deployed = 11;
+    double deploy_time = 12;
+    
+    bool skill_ready = 13;
+    bool skill_active = 14;
+    double skill_cooldown_remaining = 15;
+    
+    repeated string active_buffs = 16;
+    repeated string active_debuffs = 17;
+    
+    int32 kill_count = 18;
+    int32 damage_dealt = 19;
+    int32 damage_taken = 20;
+    
+    aam.l2.ActionStatus last_action_status = 21;
+}
+
+message EnemyState {
+    string enemy_id = 1;
+    string instance_id = 2;
+    aam.common.EnemyLevel level = 3;
+    
+    int32 current_hp = 4;
+    int32 max_hp = 5;
+    
+    aam.common.PositionF pixel_position = 6;
+    aam.common.Position grid_position = 7;
+    
+    int32 route_index = 8;
+    double path_progress = 9;
+    double distance_to_end = 10;
+    double estimated_time_to_end = 11;
+    
+    bool is_stunned = 12;
+    bool is_silenced = 13;
+    bool is_asleep = 14;
+    bool is_frozen = 15;
+    
+    repeated string active_buffs = 16;
+    repeated string active_debuffs = 17;
+    
+    string target_operator_id = 18;
+    double aggro_level = 19;
+}
+
+message ResourceState {
+    double current_cost = 1;
+    double max_cost = 2;
+    double cost_per_second = 3;
+    double predicted_next_cost_time = 4;
+    
+    int32 total_deployments = 5;
+    int32 total_retreats = 6;
+    int32 total_skills_used = 7;
+    
+    map<string, int32> operator_deploy_counts = 8;
+    map<string, double> operator_cost_totals = 9;
+}
+
+message SystemSnapshot {
+    string snapshot_id = 1;
+    SnapshotType snapshot_type = 2;
+    aam.common.Timestamp created_at = 3;
+    string parent_snapshot_id = 4;
+    
+    StateMachineState state_machine = 5;
+    StateMachineContext context = 6;
+    
+    BattleState battle_state = 7;
+    repeated OperatorState operator_states = 8;
+    repeated EnemyState enemy_states = 9;
+    ResourceState resource_state = 10;
+    
+    aam.l0.FrameMetadata last_frame = 11;
+    aam.l1.PerceptionResult last_perception = 12;
+    aam.l2.Action last_action = 13;
+    aam.l3.TacticalVMState vm_state = 14;
+    
+    bytes compressed_data = 15;
+    uint32 uncompressed_size = 16;
+    string compression_algorithm = 17;
+    
+    map<string, string> metadata = 18;
+}
+
+message DeltaSnapshot {
+    string base_snapshot_id = 1;
+    string delta_snapshot_id = 2;
+    aam.common.Timestamp created_at = 3;
+    
+    repeated FieldChange field_changes = 4;
+    repeated CollectionChange collection_changes = 5;
+    
+    uint32 change_count = 6;
+    double compression_ratio = 7;
+}
+
+message FieldChange {
+    string field_path = 1;
+    string operation = 2;
+    bytes old_value = 3;
+    bytes new_value = 4;
+    aam.common.Timestamp changed_at = 5;
+}
+
+message CollectionChange {
+    string collection_path = 1;
+    string operation = 2;
+    string item_id = 3;
+    bytes item_data = 4;
+    int32 index = 5;
+}
+
+message Checkpoint {
+    string checkpoint_id = 1;
+    string name = 2;
+    aam.common.Timestamp created_at = 3;
+    SystemSnapshot snapshot = 4;
+    bool is_auto = 5;
+    string description = 6;
+    map<string, string> tags = 7;
+}
+
+message RecoveryPoint {
+    string recovery_id = 1;
+    Checkpoint checkpoint = 2;
+    aam.common.Timestamp recovery_started_at = 3;
+    aam.common.Timestamp recovery_completed_at = 4;
+    bool recovery_successful = 5;
+    string error_message = 6;
+    int32 steps_recovered = 7;
+    double data_loss_seconds = 8;
+}
+
+message StateHistory {
+    string history_id = 1;
+    string session_id = 2;
+    aam.common.Timestamp started_at = 3;
+    aam.common.Timestamp ended_at = 4;
+    
+    repeated StateTransition transitions = 5;
+    repeated SystemSnapshot snapshots = 6;
+    repeated Checkpoint checkpoints = 7;
+    
+    StateType initial_state = 8;
+    StateType final_state = 9;
+    
+    bool completed_successfully = 10;
+    string termination_reason = 11;
+}
+
+message StateTransition {
+    int32 sequence_number = 1;
+    StateType from_state = 2;
+    StateType to_state = 3;
+    StateMachineEvent trigger_event = 4;
+    aam.common.Timestamp transition_time = 5;
+    aam.common.Duration transition_duration = 6;
+    string transition_reason = 7;
+    map<string, string> context = 8;
+}
+
+message StateMachineConfig {
+    int32 max_history_size = 1;
+    int32 snapshot_interval_ms = 2;
+    int32 auto_checkpoint_interval_ms = 3;
+    bool enable_delta_compression = 4;
+    double delta_compression_threshold = 5;
+    int32 max_snapshots_in_memory = 6;
+    string snapshot_storage_path = 7;
+    bool enable_crash_recovery = 8;
+    int32 recovery_timeout_ms = 9;
+}
+
+message PersistenceConfig {
+    string database_path = 1;
+    int32 max_snapshots_per_session = 2;
+    int64 max_storage_size_bytes = 3;
+    int32 retention_days = 4;
+    bool enable_encryption = 5;
+    string encryption_key_id = 6;
+    string compression_algorithm = 7;
+    int32 compression_level = 8;
+}
+
+message StateQuery {
+    string session_id = 1;
+    aam.common.Timestamp time_range_start = 2;
+    aam.common.Timestamp time_range_end = 3;
+    repeated StateType state_filter = 4;
+    map<string, string> metadata_filter = 5;
+    int32 limit = 6;
+    int32 offset = 7;
+}
+
+message StateQueryResult {
+    repeated SystemSnapshot snapshots = 1;
+    int32 total_count = 2;
+    bool has_more = 3;
+    string next_page_token = 4;
+}
+
+message StateStatistics {
+    string session_id = 1;
+    aam.common.Duration total_session_time = 2;
+    map<string, aam.common.Duration> time_per_state = 3;
+    map<string, int32> transition_counts = 4;
+    int32 total_snapshots = 5;
+    int64 total_storage_bytes = 6;
+    double average_snapshot_size_bytes = 7;
+    double average_compression_ratio = 8;
+}

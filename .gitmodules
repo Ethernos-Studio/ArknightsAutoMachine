@@ -1,0 +1,7 @@
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg.git
+[submodule "third_party/maafw"]
+	path = third_party/maafw
+	url = https://github.com/Ethernos-Studio/MaaFramework.git
+	branch = fix/submodule-compatibility

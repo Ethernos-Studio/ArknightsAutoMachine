@@ -1,0 +1,333 @@
+syntax = "proto3";
+
+package aam.l3;
+
+import "common/types.proto";
+
+option csharp_namespace = "Aam.L3";
+option go_package = "github.com/aam/proto/ama;l3";
+option java_multiple_files = true;
+option java_package = "com.aam.l3";
+
+enum TacticalOpcode {
+    TACTICAL_OPCODE_UNSPECIFIED = 0;
+    TACTICAL_OPCODE_NOP = 1;
+    TACTICAL_OPCODE_DEPLOY = 2;
+    TACTICAL_OPCODE_RETREAT = 3;
+    TACTICAL_OPCODE_SKILL = 4;
+    TACTICAL_OPCODE_WAIT_COST = 5;
+    TACTICAL_OPCODE_WAIT_ENEMY = 6;
+    TACTICAL_OPCODE_WAIT_TIME = 7;
+    TACTICAL_OPCODE_WAIT_CONDITION = 8;
+    TACTICAL_OPCODE_SPEED_UP = 9;
+    TACTICAL_OPCODE_PAUSE = 10;
+    TACTICAL_OPCODE_JUMP = 11;
+    TACTICAL_OPCODE_BRANCH = 12;
+    TACTICAL_OPCODE_CALL = 13;
+    TACTICAL_OPCODE_RETURN = 14;
+    TACTICAL_OPCODE_LOOP = 15;
+    TACTICAL_OPCODE_BREAK = 16;
+    TACTICAL_OPCODE_LABEL = 17;
+    TACTICAL_OPCODE_CHECKPOINT = 18;
+    TACTICAL_OPCODE_SYNC = 19;
+    TACTICAL_OPCODE_HALT = 255;
+}
+
+enum TacticalCondition {
+    TACTICAL_CONDITION_UNSPECIFIED = 0;
+    TACTICAL_CONDITION_COST_GE = 1;
+    TACTICAL_CONDITION_COST_LT = 2;
+    TACTICAL_CONDITION_ENEMY_COUNT_GE = 3;
+    TACTICAL_CONDITION_ENEMY_COUNT_LT = 4;
+    TACTICAL_CONDITION_ENEMY_NEAR = 5;
+    TACTICAL_CONDITION_TIME_GE = 6;
+    TACTICAL_CONDITION_TIME_LT = 7;
+    TACTICAL_CONDITION_WAVE_GE = 8;
+    TACTICAL_CONDITION_WAVE_LT = 9;
+    TACTICAL_CONDITION_OPERATOR_ALIVE = 10;
+    TACTICAL_CONDITION_OPERATOR_READY = 11;
+    TACTICAL_CONDITION_SKILL_READY = 12;
+    TACTICAL_CONDITION_LIFE_GE = 13;
+    TACTICAL_CONDITION_LIFE_LT = 14;
+    TACTICAL_CONDITION_ALWAYS = 15;
+    TACTICAL_CONDITION_NEVER = 16;
+}
+
+enum ComparisonOperator {
+    COMPARISON_OPERATOR_UNSPECIFIED = 0;
+    COMPARISON_OPERATOR_EQ = 1;
+    COMPARISON_OPERATOR_NE = 2;
+    COMPARISON_OPERATOR_LT = 3;
+    COMPARISON_OPERATOR_LE = 4;
+    COMPARISON_OPERATOR_GT = 5;
+    COMPARISON_OPERATOR_GE = 6;
+}
+
+message TacticalInstruction {
+    uint32 opcode = 1;
+    uint32 operand1 = 2;
+    uint32 operand2 = 3;
+    uint32 operand3 = 4;
+    bytes extended_data = 5;
+    string comment = 6;
+    uint32 line_number = 7;
+}
+
+message TacticalBytecode {
+    string script_id = 1;
+    string script_name = 2;
+    string version = 3;
+    repeated TacticalInstruction instructions = 4;
+    map<string, uint32> labels = 5;
+    map<string, string> metadata = 6;
+    aam.common.Timestamp compiled_at = 7;
+    uint32 entry_point = 8;
+}
+
+message TacticalOperand {
+    oneof value {
+        int32 int_value = 1;
+        double double_value = 2;
+        string string_value = 3;
+        bool bool_value = 4;
+        aam.common.Position position_value = 5;
+        bytes bytes_value = 6;
+    }
+}
+
+message TacticalRegister {
+    string name = 1;
+    TacticalOperand value = 2;
+    bool is_readonly = 3;
+}
+
+message TacticalStackFrame {
+    uint32 return_address = 1;
+    map<string, TacticalOperand> local_variables = 2;
+    string function_name = 3;
+}
+
+message TacticalVMState {
+    string vm_id = 1;
+    string script_id = 2;
+    uint32 program_counter = 3;
+    repeated TacticalOperand stack = 4;
+    map<string, TacticalRegister> registers = 5;
+    repeated TacticalStackFrame call_stack = 6;
+    bool is_running = 7;
+    bool is_paused = 8;
+    bool is_error = 9;
+    string error_message = 10;
+    aam.common.Timestamp started_at = 11;
+    aam.common.Duration execution_time = 12;
+    uint64 instruction_count = 13;
+}
+
+message CostCurve {
+    double base_cost_per_second = 1;
+    double current_cost = 2;
+    double max_cost = 3;
+    repeated CostEvent events = 4;
+    double predicted_time_to_target = 5;
+}
+
+message CostEvent {
+    double timestamp = 1;
+    double cost_change = 2;
+    string event_type = 3;
+    string description = 4;
+}
+
+message EnemySpawn {
+    string enemy_id = 1;
+    string enemy_name = 2;
+    aam.common.EnemyLevel level = 3;
+    int32 count = 4;
+    double spawn_time = 5;
+    int32 route_index = 6;
+    double interval = 7;
+}
+
+message Wave {
+    int32 wave_index = 1;
+    double pre_delay = 2;
+    double post_delay = 3;
+    repeated EnemySpawn spawns = 4;
+    bool is_boss_wave = 5;
+}
+
+message Route {
+    int32 route_index = 1;
+    aam.common.MotionMode motion_mode = 2;
+    aam.common.Position start_position = 3;
+    aam.common.Position end_position = 4;
+    repeated Checkpoint checkpoints = 5;
+    bool allow_diagonal_move = 6;
+    double estimated_travel_time = 7;
+}
+
+message Checkpoint {
+    string type = 1;
+    double time = 2;
+    aam.common.Position position = 3;
+    double reach_offset_x = 4;
+    double reach_offset_y = 5;
+    double reach_distance = 6;
+}
+
+message Tile {
+    aam.common.Position position = 1;
+    aam.common.TileType type = 2;
+    bool is_deployable = 3;
+    bool is_high_ground = 4;
+    bool is_protected = 5;
+    repeated string special_effects = 6;
+}
+
+message LevelOptions {
+    int32 character_limit = 1;
+    int32 max_life_point = 2;
+    int32 initial_cost = 3;
+    int32 max_cost = 4;
+    double cost_increase_time = 5;
+    double move_multiplier = 6;
+    bool allow_auto_deploy = 7;
+}
+
+message TacticalLevel {
+    string level_id = 1;
+    string level_name = 2;
+    int32 map_width = 3;
+    int32 map_height = 4;
+    repeated Tile tiles = 5;
+    repeated Route routes = 6;
+    repeated Wave waves = 7;
+    LevelOptions options = 8;
+    map<string, string> metadata = 9;
+}
+
+message DeployPlan {
+    string operator_id = 1;
+    string operator_name = 2;
+    aam.common.OperatorProfession profession = 3;
+    int32 deploy_cost = 4;
+    aam.common.Position grid_position = 5;
+    double facing_direction = 6;
+    double planned_time = 7;
+    int32 priority = 8;
+    repeated string prerequisites = 9;
+    string condition = 10;
+}
+
+message RetreatPlan {
+    string operator_id = 1;
+    double planned_time = 2;
+    string condition = 3;
+    bool is_emergency = 4;
+}
+
+message SkillPlan {
+    string operator_id = 1;
+    int32 skill_index = 2;
+    double planned_time = 3;
+    string trigger_condition = 4;
+    int32 priority = 5;
+}
+
+message TacticalPlan {
+    string plan_id = 1;
+    string level_id = 2;
+    string version = 3;
+    repeated DeployPlan deploys = 4;
+    repeated RetreatPlan retreats = 5;
+    repeated SkillPlan skills = 6;
+    map<string, string> metadata = 7;
+}
+
+message CollisionPrediction {
+    string enemy_id = 1;
+    string operator_id = 2;
+    double predicted_collision_time = 3;
+    aam.common.PositionF predicted_position = 4;
+    double confidence = 5;
+    string collision_type = 6;
+}
+
+message TacticalSituation {
+    double current_time = 1;
+    int32 current_wave = 2;
+    double current_cost = 3;
+    int32 current_life = 4;
+    int32 deployed_count = 5;
+    int32 available_count = 6;
+    repeated string active_enemies = 7;
+    repeated string deployed_operators = 8;
+    CostCurve cost_forecast = 9;
+    repeated CollisionPrediction collision_predictions = 10;
+}
+
+message TacticalDecision {
+    string decision_id = 1;
+    aam.common.ActionType action_type = 2;
+    oneof action_data {
+        DeployPlan deploy = 3;
+        RetreatPlan retreat = 4;
+        SkillPlan skill = 5;
+        WaitDecision wait = 6;
+    }
+    double confidence = 7;
+    string reasoning = 8;
+    aam.common.Timestamp timestamp = 9;
+}
+
+message WaitDecision {
+    double duration_ms = 1;
+    string wait_reason = 2;
+    string resume_condition = 3;
+}
+
+message TacticalEngineConfig {
+    int32 vm_stack_size = 1;
+    int32 max_call_depth = 2;
+    int32 instruction_timeout_ms = 3;
+    bool enable_sandbox = 4;
+    int32 max_instructions_per_second = 5;
+    bool enable_profiling = 6;
+    map<string, string> environment_variables = 7;
+}
+
+message TacticalExecutionResult {
+    string execution_id = 1;
+    bool success = 2;
+    string error_message = 3;
+    TacticalVMState final_state = 4;
+    repeated TacticalDecision decisions = 5;
+    aam.common.Duration execution_time = 6;
+    uint64 instructions_executed = 7;
+    map<string, double> performance_metrics = 8;
+}
+
+message TacticalScript {
+    string script_id = 1;
+    string name = 2;
+    string description = 3;
+    string author = 4;
+    string version = 5;
+    string level_id = 6;
+    string source_code = 7;
+    TacticalBytecode bytecode = 8;
+    aam.common.Timestamp created_at = 9;
+    aam.common.Timestamp updated_at = 10;
+    map<string, string> tags = 11;
+    int32 difficulty_rating = 12;
+    int32 success_rate = 13;
+}
+
+message TacticalLibrary {
+    string library_id = 1;
+    string name = 2;
+    string version = 3;
+    repeated TacticalScript scripts = 4;
+    map<string, string> dependencies = 5;
+    aam.common.Timestamp compiled_at = 6;
+}

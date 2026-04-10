@@ -1,0 +1,52 @@
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @file .cmake-lint
+# @author dhjs0000
+# @brief cmake-lint 配置文件
+# =============================================================================
+# 版本: v0.1.0-alpha.3
+# 功能: 统一本地开发和 CI 的 CMake 代码风格检查规则
+# =============================================================================
+
+# 行宽限制
+line_width: 100
+
+# 缩进配置
+indent_size: 4
+
+# 抑制特定警告
+suppress:
+  # C0307: 行尾空格
+  - C0307
+  # C0301: 行过长（我们使用 line_width 控制）
+  - C0301
+  # C0103: 变量名不符合命名规范（CMake 变量命名较灵活）
+  - C0103
+
+# 启用特定检查
+enable:
+  # 检查未使用的变量
+  - C0113
+  # 检查重复的 target 定义
+  - C0302
+
+# 排除路径
+exclude:
+  - vcpkg_installed/**
+  - build/**
+  - vcpkg/**

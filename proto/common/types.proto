@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package aam.common;
+
+option csharp_namespace = "Aam.Common";
+option go_package = "github.com/aam/proto/common;common";
+option java_multiple_files = true;
+option java_package = "com.aam.common";
+
+message Timestamp {
+    int64 seconds = 1;
+    int32 nanos = 2;
+}
+
+message Duration {
+    int64 seconds = 1;
+    int32 nanos = 2;
+}
+
+message Position {
+    int32 row = 1;
+    int32 col = 2;
+}
+
+message PositionF {
+    double x = 1;
+    double y = 2;
+}
+
+message Position3D {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+}
+
+message Rectangle {
+    int32 x = 1;
+    int32 y = 2;
+    int32 width = 3;
+    int32 height = 4;
+}
+
+message RectangleF {
+    double x = 1;
+    double y = 2;
+    double width = 3;
+    double height = 4;
+}
+
+message Size {
+    int32 width = 1;
+    int32 height = 2;
+}
+
+message BoundingBox {
+    Position top_left = 1;
+    Position bottom_right = 2;
+    double confidence = 3;
+    string label = 4;
+}
+
+enum DataSource {
+    DATA_SOURCE_UNSPECIFIED = 0;
+    DATA_SOURCE_GITHUB = 1;
+    DATA_SOURCE_PRTS_WIKI = 2;
+    DATA_SOURCE_LOCAL_CACHE = 3;
+    DATA_SOURCE_MANUAL = 4;
+}
+
+message DataVersion {
+    string version = 1;
+    DataSource source = 2;
+    Timestamp updated_at = 3;
+    string commit_hash = 4;
+    string description = 5;
+}
+
+message ErrorInfo {
+    int32 code = 1;
+    string message = 2;
+    string domain = 3;
+    map<string, string> metadata = 4;
+}
+
+message Status {
+    int32 code = 1;
+    string message = 2;
+    repeated ErrorInfo details = 3;
+}
+
+message Empty {}
+
+message Metadata {
+    map<string, string> entries = 1;
+    Timestamp created_at = 2;
+    Timestamp updated_at = 3;
+    string correlation_id = 4;
+}
+
+enum OperatorProfession {
+    OPERATOR_PROFESSION_UNSPECIFIED = 0;
+    OPERATOR_PROFESSION_MEDIC = 1;
+    OPERATOR_PROFESSION_WARRIOR = 2;
+    OPERATOR_PROFESSION_SPECIAL = 3;
+    OPERATOR_PROFESSION_SNIPER = 4;
+    OPERATOR_PROFESSION_PIONEER = 5;
+    OPERATOR_PROFESSION_TANK = 6;
+    OPERATOR_PROFESSION_CASTER = 7;
+    OPERATOR_PROFESSION_SUPPORT = 8;
+}
+
+enum OperatorRarity {
+    OPERATOR_RARITY_UNSPECIFIED = 0;
+    OPERATOR_RARITY_TIER_1 = 1;
+    OPERATOR_RARITY_TIER_2 = 2;
+    OPERATOR_RARITY_TIER_3 = 3;
+    OPERATOR_RARITY_TIER_4 = 4;
+    OPERATOR_RARITY_TIER_5 = 5;
+    OPERATOR_RARITY_TIER_6 = 6;
+}
+
+enum PositionType {
+    POSITION_TYPE_UNSPECIFIED = 0;
+    POSITION_TYPE_MELEE = 1;
+    POSITION_TYPE_RANGED = 2;
+    POSITION_TYPE_ALL = 3;
+    POSITION_TYPE_NONE = 4;
+}
+
+enum EnemyLevel {
+    ENEMY_LEVEL_UNSPECIFIED = 0;
+    ENEMY_LEVEL_NORMAL = 1;
+    ENEMY_LEVEL_ELITE = 2;
+    ENEMY_LEVEL_BOSS = 3;
+}
+
+enum StageType {
+    STAGE_TYPE_UNSPECIFIED = 0;
+    STAGE_TYPE_MAIN = 1;
+    STAGE_TYPE_SUB = 2;
+    STAGE_TYPE_DAILY = 3;
+    STAGE_TYPE_ACTIVITY = 4;
+    STAGE_TYPE_GUIDE = 5;
+    STAGE_TYPE_CAMPAIGN = 6;
+    STAGE_TYPE_ROGUELIKE = 7;
+}
+
+enum Difficulty {
+    DIFFICULTY_UNSPECIFIED = 0;
+    DIFFICULTY_NORMAL = 1;
+    DIFFICULTY_HARD = 2;
+}
+
+enum TileType {
+    TILE_TYPE_UNSPECIFIED = 0;
+    TILE_TYPE_FORBIDDEN = 1;
+    TILE_TYPE_WALL = 2;
+    TILE_TYPE_ROAD = 3;
+    TILE_TYPE_FLOOR = 4;
+    TILE_TYPE_START = 5;
+    TILE_TYPE_END = 6;
+    TILE_TYPE_FLYING_START = 7;
+    TILE_TYPE_FLYING_END = 8;
+    TILE_TYPE_HEALING = 9;
+    TILE_TYPE_VOLCANO = 10;
+    TILE_TYPE_CORROSION = 11;
+    TILE_TYPE_DEEP_WATER = 12;
+    TILE_TYPE_TUNNEL = 13;
+}
+
+enum MotionMode {
+    MOTION_MODE_UNSPECIFIED = 0;
+    MOTION_MODE_WALK = 1;
+    MOTION_MODE_FLY = 2;
+    MOTION_MODE_NUM = 3;
+}
+
+enum GameState {
+    GAME_STATE_UNSPECIFIED = 0;
+    GAME_STATE_UNKNOWN = 1;
+    GAME_STATE_IN_BATTLE = 2;
+    GAME_STATE_NOT_IN_BATTLE = 3;
+    GAME_STATE_TRANSITIONING = 4;
+    GAME_STATE_ERROR = 5;
+}
+
+enum ActionType {
+    ACTION_TYPE_UNSPECIFIED = 0;
+    ACTION_TYPE_DEPLOY = 1;
+    ACTION_TYPE_RETREAT = 2;
+    ACTION_TYPE_SKILL = 3;
+    ACTION_TYPE_WAIT = 4;
+    ACTION_TYPE_SPEED_UP = 5;
+    ACTION_TYPE_PAUSE = 6;
+    ACTION_TYPE_RESUME = 7;
+}
+
+message PixelBuffer {
+    int32 width = 1;
+    int32 height = 2;
+    int32 channels = 3;
+    bytes data = 4;
+    string encoding = 5;
+}
+
+message ImageMetadata {
+    int32 width = 1;
+    int32 height = 2;
+    int32 channels = 3;
+    string format = 4;
+    int64 size_bytes = 5;
+    Timestamp capture_time = 6;
+    string source_id = 7;
+    double exposure_time_ms = 8;
+}
+
+message OcrResult {
+    string text = 1;
+    double confidence = 2;
+    Rectangle bounding_box = 3;
+    string language = 4;
+}
+
+message DetectionResult {
+    string label = 1;
+    double confidence = 2;
+    BoundingBox box = 3;
+    map<string, double> class_scores = 4;
+}
