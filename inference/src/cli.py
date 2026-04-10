@@ -1,4 +1,24 @@
 # -*- coding: utf-8 -*-
+# =============================================================================
+# Copyright (C) 2026 Ethernos Studio
+# This file is part of Arknights Auto Machine (AAM).
+#
+# AAM is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# AAM is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with AAM. If not, see <https://www.gnu.org/licenses/>.
+# =============================================================================
+# @author error-0x12
+# @brief CLI 工具主入口
+# =============================================================================
 """
 明日方舟游戏状态检测 CLI 工具
 
@@ -23,56 +43,71 @@
 版本: 1.0.0
 """
 
-import argparse
-import sys
-import os
-import json
-import csv
-import time
-import logging
-from pathlib import Path
-from datetime import datetime
-from typing import Optional, List, Dict, Any, Callable, Tuple
-from dataclasses import dataclass, asdict
-from enum import Enum
-import threading
-from contextlib import contextmanager
+# =============================================================================
+# 导入模块
+# =============================================================================
 
+# 标准库
+import argparse
+import csv
+import json
+import logging
+import os
+import sys
+import threading
+import time
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+# 第三方库
 import cv2
 import numpy as np
 
-# 确保src目录在路径中
-sys.path.insert(0, str(Path(__file__).parent))
+# 确保 src 目录的父目录在路径中（这样 src 可以作为包导入）
+parent_path = str(Path(__file__).parent.parent)
+if parent_path not in sys.path:
+    sys.path.insert(0, parent_path)
 
+# 本地模块 - Vision
 from src.vision import (
-    GameStateDetector,
-    DetectorConfig,
-    GameState,
-    DetectionResult,
-    detect_game_state,
     EASYOCR_AVAILABLE,
-)
-from src.vision.gui_matcher import (
-    GUIMatcher,
-    GUIMatcherConfig,
-    MatchResult,
-    MatchMethod,
+    GameState,
+    GameStateDetector,
+    DetectionResult,
+    DetectorConfig,
+    detect_game_state,
 )
 from src.vision.enhanced_gui_matcher import (
     MainMenuAnalyzer,
     UIElement,
     UIElementType,
 )
+from src.vision.gui_matcher import (
+    GUIMatcher,
+    GUIMatcherConfig,
+    MatchMethod,
+    MatchResult,
+)
+from src.vision.squad_analyzer import SquadAnalysisResult, SquadAnalyzer
+from src.vision.squad_recognizer import (
+    EliteLevel,
+    OperatorCard,
+    SquadConfig,
+    SquadRecognizer,
+)
+
+# 本地模块 - Data
 from src.data import (
+    CacheConfig,
     DataManager,
     ManagerConfig,
-    CacheConfig,
-    Operator,
-    Stage,
-    Item,
 )
-from src.vision.squad_recognizer import SquadRecognizer, SquadConfig
-from src.vision.squad_analyzer import SquadAnalyzer
+from src.data.models import Item, Operator, Stage
+from src.data.operator_matcher import MatchResult as OperatorMatchResult
 
 
 # =============================================================================
@@ -258,13 +293,32 @@ class ImageLoader:
     def load(cls, path: Path) -> Optional[np.ndarray]:
         """加载单张图像"""
         if not path.exists():
+            logging.error(f"文件不存在：{path}")
             return None
 
         if path.suffix.lower() not in cls.SUPPORTED_EXTENSIONS:
+            logging.error(f"不支持的文件格式：{path.suffix}")
             return None
 
-        image = cv2.imread(str(path))
-        return image
+        # 使用 cv2.imdecode 读取图像以支持中文路径
+        try:
+            # 先用普通方式读取
+            image = cv2.imread(str(path))
+            if image is None:
+                # 如果失败，尝试用文件流方式读取（支持中文路径）
+                try:
+                    with open(path, 'rb') as f:
+                        file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
+                        image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                    if image is None:
+                        logging.error(f"图像解码失败：{path}")
+                except (IOError, OSError) as e:
+                    logging.error(f"读取文件失败：{path} - {e}")
+                    return None
+            return image
+        except (IOError, OSError, ValueError) as e:
+            logging.error(f"加载图像失败：{path} - {e}")
+            return None
 
     @classmethod
     def load_batch(cls, directory: Path, recursive: bool = False) -> List[Tuple[Path, np.ndarray]]:
@@ -2656,8 +2710,11 @@ def main():
     except KeyboardInterrupt:
         logger.info("用户中断")
         return 130
+    except EOFError as e:
+        logger.error(f"输入错误：{e}")
+        return 1
     except Exception as e:
-        logger.error(f"错误: {e}")
+        logger.error(f"错误：{e}")
         import traceback
         traceback.print_exc()
         return 1
