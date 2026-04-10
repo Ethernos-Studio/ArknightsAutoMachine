@@ -263,9 +263,11 @@ class ImageLoader:
     def load(cls, path: Path) -> Optional[np.ndarray]:
         """加载单张图像"""
         if not path.exists():
+            logging.error(f"文件不存在：{path}")
             return None
 
         if path.suffix.lower() not in cls.SUPPORTED_EXTENSIONS:
+            logging.error(f"不支持的文件格式：{path.suffix}")
             return None
 
         # 使用 cv2.imdecode 读取图像以支持中文路径
@@ -274,12 +276,18 @@ class ImageLoader:
             image = cv2.imread(str(path))
             if image is None:
                 # 如果失败，尝试用文件流方式读取（支持中文路径）
-                with open(path, 'rb') as f:
-                    file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
-                    image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                try:
+                    with open(path, 'rb') as f:
+                        file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
+                        image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                    if image is None:
+                        logging.error(f"图像解码失败：{path}")
+                except (IOError, OSError) as e:
+                    logging.error(f"读取文件失败：{path} - {e}")
+                    return None
             return image
         except (IOError, OSError, ValueError) as e:
-            logging.error(f"加载图像失败：{e}")
+            logging.error(f"加载图像失败：{path} - {e}")
             return None
 
     @classmethod
@@ -2663,8 +2671,8 @@ def main():
     except KeyboardInterrupt:
         logger.info("用户中断")
         return 130
-    except (SystemExit, EOFError) as e:
-        logger.error(f"程序错误：{e}")
+    except EOFError as e:
+        logger.error(f"输入错误：{e}")
         return 1
     except Exception as e:
         logger.error(f"错误：{e}")
