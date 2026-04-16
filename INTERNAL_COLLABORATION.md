@@ -14,7 +14,7 @@
 |-----------|----------|--------|------------|
 | **@dhjs0000** | 项目Owner & C++架构师 | C++23/WPF/CMake | `core/`, `bridge/`, `gui/wpf/`, `proto/` |
 | **@error-0x12** | Python推理后端负责人 | Python/OpenCV/ONNX/gRPC | `inference/`, `models/` |
-| **@ywhdzrb** | Linux GUI开发 | Qt6/C++ | `gui/qt/`, `configs/gui/` |
+| **@ywhdzrb** | Linux GUI开发 | Qt5/python | `gui/qt/`, `configs/gui/` |
 
 ### 1.2 辅助贡献者 (Contributor)
 | GitHub ID | 职责范围 | 工作性质 | 交付物 |
