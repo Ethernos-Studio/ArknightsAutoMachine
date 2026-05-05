@@ -81,6 +81,9 @@ _deps/
 *.VC.opendb
 ipch/
 
+# Trae IDE
+.trae/
+
 # Visual Studio Code
 .vscode/
 *.code-workspace
