@@ -35,14 +35,30 @@ function Install-VCPKG {
         & "$vcpkgPath\bootstrap-vcpkg.bat"
     }
 }
-function  Install-VCPKG-Dependency {
-    $vcpkgPath = "C:\Dev\vcpkg\vcpkg.exe"
-    $depsList = @(
-        # ToDo: Add dependencies here
-    )
+function Install-VCPKG-Dependency {
+    $vcpkgExe = "$script:vcpkgPath\vcpkg.exe"
+    $jsonPath = Join-Path $PSScriptRoot "..\..\vcpkg.json"  
+
+    if (-not (Test-Path $jsonPath)) {
+        Write-Error "vcpkg.json not found at $jsonPath"
+        return
+    }
+
+
+    $json = Get-Content $jsonPath -Raw | ConvertFrom-Json
+    $depsList = $json.dependencies
+
+    if ($depsList.Count -eq 0) {
+        Write-Output "No dependencies listed in vcpkg.json"
+        return
+    }
+
     foreach ($dep in $depsList) {
         Write-Output "Installing $dep via vcpkg..."
-        & "$vcpkgPath" install "$dep"
+        & $vcpkgExe install $dep
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to install $dep"
+        }
     }
 }
 function Get-Admin{
