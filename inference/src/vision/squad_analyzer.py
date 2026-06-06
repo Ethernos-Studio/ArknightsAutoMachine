@@ -17,8 +17,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from .squad_recognizer import SquadRecognizer, SquadConfig, OperatorCard, EliteLevel
-from ..data import DataManager, ManagerConfig
-from ..data.operator_matcher import OperatorMatcher, MatchResult
+from data import DataManager, ManagerConfig
+from data.operator_matcher import OperatorMatcher, MatchResult
 
 logger = logging.getLogger(__name__)
 

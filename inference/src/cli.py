@@ -44,7 +44,7 @@ import numpy as np
 # 确保src目录在路径中
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.vision import (
+from vision import (
     GameStateDetector,
     DetectorConfig,
     GameState,
@@ -52,18 +52,18 @@ from src.vision import (
     detect_game_state,
     EASYOCR_AVAILABLE,
 )
-from src.vision.gui_matcher import (
+from vision.gui_matcher import (
     GUIMatcher,
     GUIMatcherConfig,
     MatchResult,
     MatchMethod,
 )
-from src.vision.enhanced_gui_matcher import (
+from vision.enhanced_gui_matcher import (
     MainMenuAnalyzer,
     UIElement,
     UIElementType,
 )
-from src.data import (
+from data import (
     DataManager,
     ManagerConfig,
     CacheConfig,
@@ -71,8 +71,8 @@ from src.data import (
     Stage,
     Item,
 )
-from src.vision.squad_recognizer import SquadRecognizer, SquadConfig
-from src.vision.squad_analyzer import SquadAnalyzer
+from vision.squad_recognizer import SquadRecognizer, SquadConfig
+from vision.squad_analyzer import SquadAnalyzer
 
 
 # =============================================================================
@@ -81,8 +81,11 @@ from src.vision.squad_analyzer import SquadAnalyzer
 
 APP_NAME = "Arknights Game State Detector"
 APP_VERSION = "1.0.0"
+SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = Path.home() / ".arknights_detector" / "config.json"
 DEFAULT_LOG_PATH = Path.home() / ".arknights_detector" / "logs"
+DEFAULT_DATA_REPO_PATH = SCRIPT_DIR / "ArknightsGameData"
+DEFAULT_DATA_CACHE_DIR = SCRIPT_DIR / "cache"
 
 
 class OutputFormat(Enum):
@@ -819,7 +822,13 @@ class DataCommands:
     def _get_manager(self) -> DataManager:
         """获取或创建数据管理器"""
         if self._manager is None:
-            config = ManagerConfig()
+            config = ManagerConfig(
+                github_repo_path=DEFAULT_DATA_REPO_PATH,
+                cache=CacheConfig(
+                    cache_dir=DEFAULT_DATA_CACHE_DIR,
+                    db_path=DEFAULT_DATA_CACHE_DIR / "arknights_data.db"
+                )
+            )
             self._manager = DataManager(config)
             if not self._manager.initialize():
                 raise RuntimeError("数据管理器初始化失败")
@@ -847,15 +856,20 @@ class DataCommands:
                 print("✓ 数据同步成功")
                 # 加载所有数据到本地数据库
                 print("正在加载数据到本地数据库...")
-                manager.load_all_data(
+                load_success = manager.load_all_data(
                     progress_callback=lambda t, c, total: print(
                         f"  加载{t}: {c}/{total}", end='\r'
                     )
                 )
-                print("\n✓ 数据加载完成")
+                if load_success:
+                    print("\n✓ 数据加载完成")
+                    return True
+
+                print("\n✗ 数据加载失败")
+                return False
             else:
                 print("✗ 数据同步失败")
-            return success
+                return False
 
         finally:
             self._release_manager()
