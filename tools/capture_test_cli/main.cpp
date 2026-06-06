@@ -82,6 +82,4 @@ int main(int argc, char* argv[])
         std::cerr << "\nUse -h or --help for usage information.\n";
         return 1;
     }
-
-    return 0;
 }
