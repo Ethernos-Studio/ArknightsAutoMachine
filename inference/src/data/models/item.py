@@ -231,6 +231,56 @@ class ItemRarity(Enum):
 
 
 @dataclass
+class RecipeMaterial:
+    """合成配方材料"""
+    item_id: str
+    item_name: str = ""
+    count: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            'item_id': self.item_id,
+            'item_name': self.item_name,
+            'count': self.count
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'RecipeMaterial':
+        """从字典创建"""
+        return cls(
+            item_id=data.get('item_id', ''),
+            item_name=data.get('item_name', ''),
+            count=int(data.get('count', 0) or 0)
+        )
+
+
+@dataclass
+class ItemRecipe:
+    """物品合成配方"""
+    cost_gold: int = 0
+    materials: List[RecipeMaterial] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            'cost_gold': self.cost_gold,
+            'materials': [material.to_dict() for material in self.materials]
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ItemRecipe':
+        """从字典创建"""
+        return cls(
+            cost_gold=int(data.get('cost_gold', 0) or 0),
+            materials=[
+                RecipeMaterial.from_dict(material)
+                for material in data.get('materials', [])
+            ]
+        )
+
+
+@dataclass
 class Item(ArkDataModel):
     """
     物品数据模型
@@ -257,6 +307,7 @@ class Item(ArkDataModel):
 
     # 其他
     hide_in_item_get: bool = False    # 是否在获取界面隐藏
+    recipe: Optional[ItemRecipe] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -272,7 +323,8 @@ class Item(ArkDataModel):
             'obtain_approach': self.obtain_approach,
             'classify_type': self.classify_type,
             'sort_id': self.sort_id,
-            'hide_in_item_get': self.hide_in_item_get
+            'hide_in_item_get': self.hide_in_item_get,
+            'recipe': self.recipe.to_dict() if self.recipe else None
         })
         return base
 
@@ -301,6 +353,7 @@ class Item(ArkDataModel):
             classify_type=data.get('classify_type', 'NONE'),
             sort_id=data.get('sort_id', 0),
             hide_in_item_get=data.get('hide_in_item_get', False),
+            recipe=ItemRecipe.from_dict(data['recipe']) if data.get('recipe') else None,
             raw_data=data.get('raw_data', {})
         )
 

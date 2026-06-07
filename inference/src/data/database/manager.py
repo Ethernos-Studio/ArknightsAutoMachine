@@ -900,9 +900,6 @@ class StructuredDatabaseManager:
         Returns:
             材料树
         """
-        if depth <= 0:
-            return {'item_id': item_id, 'leaf': True}
-
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -923,6 +920,10 @@ class StructuredDatabaseManager:
                 'is_material': item_row['is_material'],
                 'materials': []
             }
+
+            if depth <= 0:
+                result['leaf'] = True
+                return result
 
             # 获取配方
             cursor.execute('''
@@ -1203,6 +1204,10 @@ class StructuredDatabaseManager:
 
             # 各表数量
             for table in ['operators', 'stages', 'items', 'enemies']:
+                cursor.execute(f'SELECT COUNT(*) FROM {table}')
+                stats[f'{table}_count'] = cursor.fetchone()[0]
+
+            for table in ['item_recipes', 'recipe_materials']:
                 cursor.execute(f'SELECT COUNT(*) FROM {table}')
                 stats[f'{table}_count'] = cursor.fetchone()[0]
 

@@ -476,4 +476,5 @@ vcpkg_installed/
 
 # 游戏数据
 ArknightsGameData/
+ArknightsGamedataAssets/
 cache/

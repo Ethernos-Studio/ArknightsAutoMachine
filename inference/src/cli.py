@@ -85,7 +85,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = Path.home() / ".arknights_detector" / "config.json"
 DEFAULT_LOG_PATH = Path.home() / ".arknights_detector" / "logs"
 DEFAULT_DATA_REPO_PATH = SCRIPT_DIR / "ArknightsGameData"
+ASSETS_DATA_REPO_PATH = SCRIPT_DIR / "ArknightsGamedataAssets"
 DEFAULT_DATA_CACHE_DIR = SCRIPT_DIR / "cache"
+DEFAULT_DATA_SOURCE = "assets"
+DEFAULT_DATA_SERVER = "cn"
+ASSETS_DATA_SERVERS = ("cn", "bili", "en", "jp", "kr", "tw")
 
 
 class OutputFormat(Enum):
@@ -815,20 +819,58 @@ class DetectorCommands:
 class DataCommands:
     """数据管理命令实现"""
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(
+        self,
+        logger: logging.Logger,
+        source: str = DEFAULT_DATA_SOURCE,
+        server: str = DEFAULT_DATA_SERVER
+    ):
         self.logger = logger
+        self.source = source
+        self.server = server
         self._manager: Optional[DataManager] = None
 
-    def _get_manager(self) -> DataManager:
-        """获取或创建数据管理器"""
-        if self._manager is None:
-            config = ManagerConfig(
+    def _create_manager_config(self) -> ManagerConfig:
+        """创建数据源对应的数据管理配置"""
+        source = self.source.lower()
+        server = self.server.lower()
+
+        if source == "assets":
+            if server not in ASSETS_DATA_SERVERS:
+                raise ValueError(f"不支持的 ArknightsAssets 服务器: {server}")
+
+            cache_dir = DEFAULT_DATA_CACHE_DIR / f"assets_{server}"
+            return ManagerConfig(
+                github_repo_url="https://github.com/ArknightsAssets/ArknightsGamedata.git",
+                github_repo_path=ASSETS_DATA_REPO_PATH,
+                github_data_root=server,
+                github_sparse_paths=[
+                    f"{server}/gamedata/excel",
+                    f"{server}/gamedata/levels/enemydata",
+                ],
+                cache=CacheConfig(
+                    cache_dir=cache_dir,
+                    db_path=cache_dir / "arknights_data.db"
+                )
+            )
+
+        if source == "kengxxiao":
+            return ManagerConfig(
+                github_repo_url="https://github.com/Kengxxiao/ArknightsGameData.git",
                 github_repo_path=DEFAULT_DATA_REPO_PATH,
+                github_data_root="zh_CN",
                 cache=CacheConfig(
                     cache_dir=DEFAULT_DATA_CACHE_DIR,
                     db_path=DEFAULT_DATA_CACHE_DIR / "arknights_data.db"
                 )
             )
+
+        raise ValueError(f"不支持的数据源: {self.source}")
+
+    def _get_manager(self) -> DataManager:
+        """获取或创建数据管理器"""
+        if self._manager is None:
+            config = self._create_manager_config()
             self._manager = DataManager(config)
             if not self._manager.initialize():
                 raise RuntimeError("数据管理器初始化失败")
@@ -856,10 +898,35 @@ class DataCommands:
                 print("✓ 数据同步成功")
                 # 加载所有数据到本地数据库
                 print("正在加载数据到本地数据库...")
-                load_success = manager.load_all_data(
-                    progress_callback=lambda t, c, total: print(
-                        f"  加载{t}: {c}/{total}", end='\r'
+                type_names = {
+                    'operator': '干员',
+                    'stage': '关卡',
+                    'item': '物品',
+                    'enemy': '敌人',
+                    'complete': '完成'
+                }
+                last_progress = {}
+
+                def progress_callback(data_type: str, current: int, total: int):
+                    name = type_names.get(data_type, data_type)
+                    if data_type == 'complete':
+                        print(f"\r✓ {name}: {current}/{total}", end='')
+                        return
+
+                    percent = int(current / total * 100) if total > 0 else 0
+                    last_percent = last_progress.get(data_type)
+                    should_print = (
+                        current == 0
+                        or current == total
+                        or last_percent is None
+                        or percent >= last_percent + 10
                     )
+                    if should_print:
+                        last_progress[data_type] = percent
+                        print(f"\r  加载{name}: {current}/{total} ({percent}%)", end='')
+
+                load_success = manager.load_all_data(
+                    progress_callback=progress_callback
                 )
                 if load_success:
                     print("\n✓ 数据加载完成")
@@ -1208,12 +1275,76 @@ class DataCommands:
             print("未找到匹配敌人")
             return False
 
+    def _ensure_structured_item_recipes(self, manager: DataManager) -> bool:
+        """确保结构化物品和配方数据可用"""
+        structured_stats = manager.get_structured_stats()
+        cache_stats = manager.get_stats()
+        cached_items_count = cache_stats.get('items_count', 0)
+        structured_items_count = structured_stats.get('items_count', 0)
+        has_cached_items = cached_items_count > 0
+        has_structured_items = structured_items_count >= cached_items_count
+        has_recipes = structured_stats.get('item_recipes_count', 0) > 0
+
+        if has_cached_items and has_structured_items and has_recipes:
+            return True
+
+        print("正在加载结构化物品配方数据...")
+
+        def progress_callback(current: int, total: int):
+            percent = (current / total * 100) if total > 0 else 0
+            print(f"\r  加载物品配方: {current}/{total} ({percent:.1f}%)", end='')
+
+        success = manager.load_items_structured(progress_callback=progress_callback)
+        print()
+        if success:
+            print("✓ 结构化物品配方数据加载完成")
+        else:
+            print("✗ 结构化物品配方数据加载失败")
+        return success
+
+    def _resolve_item_query(self, manager: DataManager, query: str) -> Optional[Item]:
+        """按物品ID或名称解析物品"""
+        item = manager.get_item(query)
+        if item:
+            return item
+
+        normalized_query = query.strip().lower()
+        if not normalized_query:
+            return None
+
+        exact_matches = manager.get_items(
+            filter_func=lambda i: (i.name or '').lower() == normalized_query
+        )
+        if exact_matches:
+            return exact_matches[0]
+
+        partial_matches = manager.get_items(
+            filter_func=lambda i: normalized_query in (i.name or '').lower()
+        )
+        if len(partial_matches) == 1:
+            return partial_matches[0]
+
+        if len(partial_matches) > 1:
+            print(f"找到多个匹配 '{query}' 的物品，请使用物品ID或更精确的名称:")
+            for matched_item in partial_matches[:10]:
+                print(f"  - {matched_item.id}: {matched_item.name}")
+
+        return None
+
     def get_material_tree(self, item_id: str) -> bool:
         """获取材料合成树"""
         manager = self._get_manager()
 
         try:
-            tree = manager.get_material_tree(item_id)
+            if not self._ensure_structured_item_recipes(manager):
+                return False
+
+            item = self._resolve_item_query(manager, item_id)
+            if not item:
+                print(f"未找到材料: {item_id}")
+                return False
+
+            tree = manager.get_material_tree(item.id)
             if tree and 'error' not in tree:
                 self._print_material_tree(tree)
                 return True
@@ -1261,9 +1392,10 @@ class DataCommands:
             # GitHub统计
             if 'github_stats' in stats:
                 gh = stats['github_stats']
+                version_info = gh.get('version') or {}
                 print("\nGitHub数据:")
                 print(f"  初始化: {'✓' if gh.get('initialized') else '✗'}")
-                print(f"  数据版本: {gh.get('version', {}).get('version', 'unknown')}")
+                print(f"  数据版本: {version_info.get('version', 'unknown')}")
 
             # PRTS统计
             if 'prts_stats' in stats:
@@ -2024,6 +2156,18 @@ def create_parser() -> argparse.ArgumentParser:
         'data',
         help='明日方舟数据管理（GitHub同步 + PRTS查询）'
     )
+    data_parser.add_argument(
+        '--source',
+        choices=['assets', 'kengxxiao'],
+        default=DEFAULT_DATA_SOURCE,
+        help='游戏数据源 (默认: assets)'
+    )
+    data_parser.add_argument(
+        '--server',
+        choices=list(ASSETS_DATA_SERVERS),
+        default=DEFAULT_DATA_SERVER,
+        help='ArknightsAssets 服务器 (默认: cn)'
+    )
     data_subparsers = data_parser.add_subparsers(dest='data_command', help='数据子命令')
 
     # data sync 命令
@@ -2228,7 +2372,7 @@ def create_parser() -> argparse.ArgumentParser:
     material_tree_parser.add_argument(
         'item_id',
         type=str,
-        help='物品ID'
+        help='物品ID或名称'
     )
 
     return parser
@@ -2589,7 +2733,11 @@ def main():
             return 0
 
         elif args.command == 'data':
-            data_commands = DataCommands(logger)
+            data_commands = DataCommands(
+                logger,
+                source=args.source,
+                server=args.server
+            )
 
             if args.data_command == 'sync':
                 success = data_commands.sync(force=args.force)
