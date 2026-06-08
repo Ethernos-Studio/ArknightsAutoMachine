@@ -112,22 +112,24 @@ class GitHubDataProvider:
             是否克隆成功
         """
         try:
-            cmd = [
-                'git', 'clone',
-                '--depth', '1',
-            ]
+            repo_url = self._validated_repo_url()
+            local_path = self._validated_local_path()
             if self.config.sparse_paths:
-                cmd.extend(['--filter=blob:none', '--sparse'])
-            cmd.extend([self.config.repo_url, str(self.config.local_path)])
-
-            logger.info(f"执行命令: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=300
-            )
+                result = self._run_git([
+                    'clone',
+                    '--depth', '1',
+                    '--filter=blob:none',
+                    '--sparse',
+                    repo_url,
+                    local_path,
+                ], timeout=300)
+            else:
+                result = self._run_git([
+                    'clone',
+                    '--depth', '1',
+                    repo_url,
+                    local_path,
+                ], timeout=300)
 
             if result.returncode == 0:
                 if self.config.sparse_paths and not self._apply_sparse_checkout():
@@ -153,16 +155,11 @@ class GitHubDataProvider:
             是否拉取成功
         """
         try:
-            cmd = ['git', '-C', str(self.config.local_path), 'pull']
-
-            logger.info(f"执行命令: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=60
-            )
+            result = self._run_git([
+                '-C',
+                self._validated_local_path(),
+                'pull',
+            ], timeout=60)
 
             if result.returncode == 0:
                 if self.config.sparse_paths and not self._apply_sparse_checkout():
@@ -189,19 +186,15 @@ class GitHubDataProvider:
             return True
 
         try:
-            cmd = [
-                'git', '-C', str(self.config.local_path),
-                'sparse-checkout', 'set',
-                *self.config.sparse_paths
-            ]
-            logger.info(f"执行命令: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=60
-            )
+            sparse_paths = self._validated_sparse_paths()
+            result = self._run_git([
+                '-C',
+                self._validated_local_path(),
+                'sparse-checkout',
+                'set',
+                '--',
+                *sparse_paths,
+            ], timeout=60)
 
             if result.returncode == 0:
                 return True
@@ -215,6 +208,70 @@ class GitHubDataProvider:
         except Exception as e:
             logger.error(f"sparse checkout 异常: {e}")
             return False
+
+    def _run_git(self, args: List[str], timeout: int) -> subprocess.CompletedProcess:
+        """运行经过校验的 git 命令参数。"""
+        validated_args = self._validated_git_args(args)
+        logger.info("执行命令: git %s", " ".join(validated_args))
+
+        # Git is invoked with shell=False and validated argv; no shell expansion is performed.
+        # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+        return subprocess.run(
+            ('git', *validated_args),
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=timeout
+        )
+
+    def _validated_git_args(self, args: List[str]) -> List[str]:
+        """校验 git 参数，拒绝空值和控制字符。"""
+        validated_args: List[str] = []
+        for arg in args:
+            value = str(arg)
+            if not value or any(ord(ch) < 32 for ch in value):
+                raise ValueError(f"非法 git 参数: {arg!r}")
+            validated_args.append(value)
+        return validated_args
+
+    def _validated_repo_url(self) -> str:
+        """校验仓库 URL，避免将选项或控制字符作为仓库地址传入 git。"""
+        repo_url = str(self.config.repo_url).strip()
+        if (
+            not repo_url
+            or repo_url.startswith('-')
+            or any(ord(ch) < 32 for ch in repo_url)
+        ):
+            raise ValueError(f"非法仓库 URL: {self.config.repo_url!r}")
+        return repo_url
+
+    def _validated_local_path(self) -> str:
+        """校验本地仓库路径，避免将选项传给 git。"""
+        local_path = str(self.config.local_path)
+        if (
+            not local_path
+            or local_path.startswith('-')
+            or any(ord(ch) < 32 for ch in local_path)
+        ):
+            raise ValueError(f"非法本地仓库路径: {self.config.local_path!r}")
+        return local_path
+
+    def _validated_sparse_paths(self) -> List[str]:
+        """校验 sparse checkout 路径，防止把选项或路径穿越传给 git。"""
+        validated_paths: List[str] = []
+        for path in self.config.sparse_paths or []:
+            normalized = str(path).replace('\\', '/').strip()
+            parts = [part for part in normalized.split('/') if part]
+            if (
+                not normalized
+                or normalized.startswith('/')
+                or normalized.startswith('-')
+                or any(part == '..' for part in parts)
+            ):
+                raise ValueError(f"非法 sparse checkout 路径: {path}")
+            validated_paths.append(normalized)
+
+        return validated_paths
 
     def _load_version(self) -> None:
         """加载数据版本信息"""

@@ -82,4 +82,6 @@ int main(int argc, char* argv[])
         std::cerr << "\nUse -h or --help for usage information.\n";
         return 1;
     }
+
+    // Normal command paths return from the dispatch above; main has implicit success fallback by standard.
 }

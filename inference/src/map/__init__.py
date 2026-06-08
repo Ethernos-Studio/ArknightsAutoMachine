@@ -8,13 +8,14 @@ Author: Vision System
 Version: 1.0.0
 """
 
-from .level_analyzer import LevelAnalyzer, LevelData, Route, Wave, EnemySpawn
+from .level_analyzer import LevelAnalyzer, LevelData, LevelDataLoader, EnemyRoute, Wave, EnemySpawn
 from .map_visualizer import MapVisualizer
 
 __all__ = [
     'LevelAnalyzer',
     'LevelData',
-    'Route',
+    'LevelDataLoader',
+    'EnemyRoute',
     'Wave',
     'EnemySpawn',
     'MapVisualizer',

@@ -280,6 +280,7 @@
 
 ### v0.6.0-alpha.3：C++ 战术引擎
 
+- [x] `develop_plan/L3-AAM-Script-Language.md`：AAMSL 脚本语言规范文档
 - [ ] `include/aam/l3/tactical_engine.hpp`：战术引擎接口
 - [ ] `include/aam/l3/dsl_compiler.hpp`：DSL 编译器
 - [ ] `src/l3_tactical/tactical_vm.cpp`：战术虚拟机

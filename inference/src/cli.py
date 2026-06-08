@@ -55,13 +55,9 @@ from vision import (
 from vision.gui_matcher import (
     GUIMatcher,
     GUIMatcherConfig,
-    MatchResult,
-    MatchMethod,
 )
 from vision.enhanced_gui_matcher import (
     MainMenuAnalyzer,
-    UIElement,
-    UIElementType,
 )
 from data import (
     DataManager,
@@ -71,7 +67,7 @@ from data import (
     Stage,
     Item,
 )
-from vision.squad_recognizer import SquadRecognizer, SquadConfig
+from vision.squad_recognizer import SquadConfig
 from vision.squad_analyzer import SquadAnalyzer
 
 
@@ -86,7 +82,7 @@ DEFAULT_CONFIG_PATH = Path.home() / ".arknights_detector" / "config.json"
 DEFAULT_LOG_PATH = Path.home() / ".arknights_detector" / "logs"
 DEFAULT_DATA_REPO_PATH = SCRIPT_DIR / "ArknightsGameData"
 ASSETS_DATA_REPO_PATH = SCRIPT_DIR / "ArknightsGamedataAssets"
-DEFAULT_DATA_CACHE_DIR = SCRIPT_DIR / "cache"
+DEFAULT_DATA_CACHE_DIR = Path.home() / ".arknights_detector" / "cache"
 DEFAULT_DATA_SOURCE = "assets"
 DEFAULT_DATA_SERVER = "cn"
 ASSETS_DATA_SERVERS = ("cn", "bili", "en", "jp", "kr", "tw")
@@ -1086,7 +1082,7 @@ class DataCommands:
 
     def _query_structured_operators(self, manager: DataManager, **kwargs) -> bool:
         """查询结构化干员数据"""
-        from src.data.models.operator import OperatorProfession, OperatorRarity, PositionType
+        from data.models.operator import OperatorProfession, OperatorRarity, PositionType
 
         # 解析参数
         profession = kwargs.get('profession')
@@ -1139,7 +1135,7 @@ class DataCommands:
 
     def _query_structured_stages(self, manager: DataManager, **kwargs) -> bool:
         """查询结构化关卡数据"""
-        from src.data.models.stage import StageType, Difficulty
+        from data.models.stage import StageType, Difficulty
 
         stage_type = kwargs.get('stage_type')
         if stage_type:
@@ -1190,7 +1186,7 @@ class DataCommands:
 
     def _query_structured_items(self, manager: DataManager, **kwargs) -> bool:
         """查询结构化物品数据"""
-        from src.data.models.item import ItemType
+        from data.models.item import ItemType
 
         item_type = kwargs.get('item_type')
         if item_type:
@@ -1236,7 +1232,7 @@ class DataCommands:
 
     def _query_structured_enemies(self, manager: DataManager, **kwargs) -> bool:
         """查询结构化敌人数据"""
-        from src.data.models.enemy import EnemyLevel
+        from data.models.enemy import EnemyLevel
 
         enemy_level = kwargs.get('enemy_level')
         if enemy_level:
@@ -2564,7 +2560,8 @@ def main():
             return 0
 
         elif args.command == 'level':
-            from src.map import LevelAnalyzer, MapVisualizer, LevelDataLoader
+            from map.level_analyzer import LevelAnalyzer, LevelDataLoader
+            from map.map_visualizer import MapVisualizer
 
             # 加载关卡数据
             try:
@@ -2647,7 +2644,7 @@ def main():
             return 0
 
         elif args.command == 'text':
-            from src.vision.text_locator import TextLocator
+            from vision.text_locator import TextLocator
 
             if args.text_command == 'locate':
                 # 定位指定文字
@@ -2818,6 +2815,9 @@ def main():
     except KeyboardInterrupt:
         logger.info("用户中断")
         return 130
+    except (ValueError, RuntimeError) as e:
+        logger.error(f"错误: {e}")
+        return 1
     except Exception as e:
         logger.error(f"错误: {e}")
         import traceback

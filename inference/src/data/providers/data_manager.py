@@ -15,7 +15,7 @@ import pickle
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable, Union
+from typing import Dict, List, Optional, Any, Callable, Union, Tuple
 from dataclasses import dataclass, field
 import threading
 
@@ -404,8 +404,11 @@ class DataManager:
             items = self._github_provider.get_items(
                 progress_callback=lambda c, t: progress_callback('item', c, t) if progress_callback else None
             )
-            saved_count = self._save_items_structured(items)
-            logger.info(f"结构化存储: {saved_count}/{len(items)} 个物品")
+            saved_count, recipe_saved_count = self._save_items_structured(items)
+            logger.info(
+                f"结构化存储: 基础物品 {saved_count}/{len(items)} 个，"
+                f"配方 {recipe_saved_count} 个成功"
+            )
 
             # 加载敌人
             current_type += 1
@@ -439,13 +442,15 @@ class DataManager:
             logger.error(f"加载结构化数据失败: {e}")
             return False
 
-    def _save_items_structured(self, items: List[Item]) -> int:
+    def _save_items_structured(self, items: List[Item]) -> Tuple[int, int]:
         """两阶段保存物品，避免配方材料外键依赖保存顺序"""
         if not self._structured_db:
-            return 0
+            return 0, 0
 
         saved_count = 0
+        recipe_saved_count = 0
         recipes: Dict[str, Any] = {}
+        saved_item_ids = set()
 
         for item in items:
             recipe = getattr(item, 'recipe', None)
@@ -456,15 +461,41 @@ class DataManager:
             self._items_index[item.id] = item
             if self._structured_db.save_item(item):
                 saved_count += 1
+                saved_item_ids.add(item.id)
+            else:
+                logger.error(
+                    "保存结构化物品失败: item_id=%s, name=%s",
+                    getattr(item, 'id', None),
+                    getattr(item, 'name', None)
+                )
 
             if recipe is not None:
                 item.recipe = recipe
 
         for item in items:
-            if item.id in recipes:
-                self._structured_db.save_item(item)
+            recipe = recipes.get(item.id)
+            if recipe is None:
+                continue
 
-        return saved_count
+            if item.id not in saved_item_ids:
+                logger.error(
+                    "跳过物品配方保存: item_id=%s, recipe=%r",
+                    getattr(item, 'id', None),
+                    recipe
+                )
+                continue
+
+            item.recipe = recipe
+            if self._structured_db.save_item(item):
+                recipe_saved_count += 1
+            else:
+                logger.error(
+                    "保存物品配方失败: item_id=%s, recipe=%r",
+                    getattr(item, 'id', None),
+                    recipe
+                )
+
+        return saved_count, recipe_saved_count
 
     def load_items_structured(
         self,
@@ -485,9 +516,12 @@ class DataManager:
 
         try:
             items = self._github_provider.get_items(progress_callback=progress_callback)
-            saved_count = self._save_items_structured(items)
+            saved_count, recipe_saved_count = self._save_items_structured(items)
 
-            logger.info(f"结构化存储物品: {saved_count}/{len(items)} 个")
+            logger.info(
+                f"结构化存储物品: 基础物品 {saved_count}/{len(items)} 个，"
+                f"配方 {recipe_saved_count} 个成功"
+            )
             return saved_count > 0
 
         except Exception as e:

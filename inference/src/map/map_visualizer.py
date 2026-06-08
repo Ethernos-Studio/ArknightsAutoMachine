@@ -46,7 +46,7 @@ try:
 except ImportError:
     HAS_NUMPY = False
 
-from level_analyzer import LevelData, TileType, Position, Tile, EnemyRoute
+from .level_analyzer import LevelData, TileType, Position, Tile, EnemyRoute
 
 logger = logging.getLogger(__name__)
 
@@ -458,7 +458,7 @@ class MapVisualizer:
         """渲染战略要点"""
         # 这里需要与LevelAnalyzer集成
         # 简化实现：标记路径交汇点
-        from level_analyzer import PathFinder
+        from .level_analyzer import PathFinder
         
         path_finder = PathFinder(self.level)
         
@@ -658,7 +658,7 @@ if __name__ == '__main__':
     # 示例用法
     logging.basicConfig(level=logging.INFO)
     
-    from level_analyzer import LevelDataLoader
+    from .level_analyzer import LevelDataLoader
     
     # 创建示例关卡
     example_level = {
