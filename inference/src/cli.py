@@ -44,7 +44,7 @@ import numpy as np
 # 确保src目录在路径中
 sys.path.insert(0, str(Path(__file__).parent))
 
-from vision import (
+from vision import ( # 不删src.会导致No module named 'src'报错
     GameStateDetector,
     DetectorConfig,
     GameState,
