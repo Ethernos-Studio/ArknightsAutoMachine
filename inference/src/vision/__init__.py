@@ -10,7 +10,7 @@
 - entities: 实体定义
 
 使用示例：
-    >>> from src.vision import GameStateDetector, GameState
+    >>> from vision import GameStateDetector, GameState
     >>> detector = GameStateDetector()
     >>> detector.initialize()
     >>> result = detector.detect(image)

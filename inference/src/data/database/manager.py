@@ -900,9 +900,6 @@ class StructuredDatabaseManager:
         Returns:
             材料树
         """
-        if depth <= 0:
-            return {'item_id': item_id, 'leaf': True}
-
         try:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -923,6 +920,10 @@ class StructuredDatabaseManager:
                 'is_material': item_row['is_material'],
                 'materials': []
             }
+
+            if depth <= 0:
+                result['leaf'] = True
+                return result
 
             # 获取配方
             cursor.execute('''
@@ -1201,10 +1202,18 @@ class StructuredDatabaseManager:
 
             stats = {}
 
-            # 各表数量
-            for table in ['operators', 'stages', 'items', 'enemies']:
-                cursor.execute(f'SELECT COUNT(*) FROM {table}')
-                stats[f'{table}_count'] = cursor.fetchone()[0]
+            # 各表数量。表名固定写出，避免拼接 SQL 触发注入扫描。
+            table_count_queries = {
+                'operators_count': 'SELECT COUNT(*) FROM operators',
+                'stages_count': 'SELECT COUNT(*) FROM stages',
+                'items_count': 'SELECT COUNT(*) FROM items',
+                'enemies_count': 'SELECT COUNT(*) FROM enemies',
+                'item_recipes_count': 'SELECT COUNT(*) FROM item_recipes',
+                'recipe_materials_count': 'SELECT COUNT(*) FROM recipe_materials',
+            }
+            for key, query in table_count_queries.items():
+                cursor.execute(query)
+                stats[key] = cursor.fetchone()[0]
 
             # 干员职业分布
             cursor.execute('''
@@ -1288,8 +1297,11 @@ class StructuredDatabaseManager:
         try:
             with self._transaction() as conn:
                 cursor = conn.cursor()
-                for table in ['operators', 'stages', 'items', 'enemies', 'version_info']:
-                    cursor.execute(f'DELETE FROM {table}')
+                cursor.execute('DELETE FROM operators')
+                cursor.execute('DELETE FROM stages')
+                cursor.execute('DELETE FROM items')
+                cursor.execute('DELETE FROM enemies')
+                cursor.execute('DELETE FROM version_info')
             logger.info("数据库已清空")
             return True
         except Exception as e:

@@ -83,5 +83,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    return 0;
+    // Normal command paths return from the dispatch above; main has implicit success fallback by standard.
+    // 不需要也不应该写return 0, 因为上面的流程保证在这之前一定会返回，再在这里写语句会触发编译器不可达代码检查，然后将警告视为错误导致项目无法生成
 }

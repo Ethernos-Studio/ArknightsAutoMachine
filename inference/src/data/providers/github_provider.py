@@ -23,7 +23,7 @@ from ..models.base import DataSource, DataVersion
 from ..models.operator import Operator, OperatorPhase, OperatorSkill, OperatorTalent
 from ..models.operator import OperatorProfession, OperatorRarity, PositionType
 from ..models.stage import Stage, StageDrop, StageType, Difficulty
-from ..models.item import Item, ItemType, ItemRarity
+from ..models.item import Item, ItemType, ItemRarity, ItemRecipe, RecipeMaterial
 from ..models.enemy import Enemy, EnemyAbility, EnemyLevel
 
 logger = logging.getLogger(__name__)
@@ -34,9 +34,11 @@ class SyncConfig:
     """同步配置"""
     repo_url: str = "https://github.com/Kengxxiao/ArknightsGameData.git"
     local_path: Path = Path("ArknightsGameData")
+    data_root: str = "zh_CN"
     data_version_file: str = "data_version.txt"
     auto_pull: bool = True
     pull_interval_hours: int = 24
+    sparse_paths: Optional[List[str]] = None
 
 
 class GitHubDataProvider:
@@ -48,12 +50,13 @@ class GitHubDataProvider:
 
     # 数据文件映射
     DATA_FILES = {
-        'character': 'zh_CN/gamedata/excel/character_table.json',
-        'stage': 'zh_CN/gamedata/excel/stage_table.json',
-        'item': 'zh_CN/gamedata/excel/item_table.json',
-        'enemy': 'zh_CN/gamedata/excel/enemy_handbook_table.json',
-        'skill': 'zh_CN/gamedata/excel/skill_table.json',
-        'zone': 'zh_CN/gamedata/excel/zone_table.json',
+        'character': 'gamedata/excel/character_table.json',
+        'stage': 'gamedata/excel/stage_table.json',
+        'item': 'gamedata/excel/item_table.json',
+        'building': 'gamedata/excel/building_data.json',
+        'enemy': 'gamedata/excel/enemy_handbook_table.json',
+        'skill': 'gamedata/excel/skill_table.json',
+        'zone': 'gamedata/excel/zone_table.json',
     }
 
     def __init__(self, config: Optional[SyncConfig] = None):
@@ -109,23 +112,28 @@ class GitHubDataProvider:
             是否克隆成功
         """
         try:
-            cmd = [
-                'git', 'clone',
-                '--depth', '1',
-                self.config.repo_url,
-                str(self.config.local_path)
-            ]
-
-            logger.info(f"执行命令: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=300
-            )
+            repo_url = self._validated_repo_url()
+            local_path = self._validated_local_path()
+            if self.config.sparse_paths:
+                result = self._run_git([
+                    'clone',
+                    '--depth', '1',
+                    '--filter=blob:none',
+                    '--sparse',
+                    repo_url,
+                    local_path,
+                ], timeout=300)
+            else:
+                result = self._run_git([
+                    'clone',
+                    '--depth', '1',
+                    repo_url,
+                    local_path,
+                ], timeout=300)
 
             if result.returncode == 0:
+                if self.config.sparse_paths and not self._apply_sparse_checkout():
+                    return False
                 logger.info("仓库克隆成功")
                 return True
             else:
@@ -147,18 +155,15 @@ class GitHubDataProvider:
             是否拉取成功
         """
         try:
-            cmd = ['git', '-C', str(self.config.local_path), 'pull']
-
-            logger.info(f"执行命令: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                timeout=60
-            )
+            result = self._run_git([
+                '-C',
+                self._validated_local_path(),
+                'pull',
+            ], timeout=60)
 
             if result.returncode == 0:
+                if self.config.sparse_paths and not self._apply_sparse_checkout():
+                    return False
                 if 'Already up to date' in result.stdout:
                     logger.info("数据已是最新")
                 else:
@@ -175,10 +180,103 @@ class GitHubDataProvider:
             logger.error(f"拉取异常: {e}")
             return False
 
+    def _apply_sparse_checkout(self) -> bool:
+        """应用 sparse checkout 路径"""
+        if not self.config.sparse_paths:
+            return True
+
+        try:
+            sparse_paths = self._validated_sparse_paths()
+            result = self._run_git([
+                '-C',
+                self._validated_local_path(),
+                'sparse-checkout',
+                'set',
+                '--',
+                *sparse_paths,
+            ], timeout=60)
+
+            if result.returncode == 0:
+                return True
+
+            logger.error(f"sparse checkout 失败: {result.stderr}")
+            return False
+
+        except subprocess.TimeoutExpired:
+            logger.error("sparse checkout 超时")
+            return False
+        except Exception as e:
+            logger.error(f"sparse checkout 异常: {e}")
+            return False
+
+    def _run_git(self, args: List[str], timeout: int) -> subprocess.CompletedProcess:
+        """运行经过校验的 git 命令参数。"""
+        validated_args = self._validated_git_args(args)
+        logger.info("执行命令: git %s", " ".join(validated_args))
+
+        # Git is invoked with shell=False and validated argv; no shell expansion is performed.
+        # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit
+        return subprocess.run(
+            ('git', *validated_args),
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=timeout
+        )
+
+    def _validated_git_args(self, args: List[str]) -> List[str]:
+        """校验 git 参数，拒绝空值和控制字符。"""
+        validated_args: List[str] = []
+        for arg in args:
+            value = str(arg)
+            if not value or any(ord(ch) < 32 for ch in value):
+                raise ValueError(f"非法 git 参数: {arg!r}")
+            validated_args.append(value)
+        return validated_args
+
+    def _validated_repo_url(self) -> str:
+        """校验仓库 URL，避免将选项或控制字符作为仓库地址传入 git。"""
+        repo_url = str(self.config.repo_url).strip()
+        if (
+            not repo_url
+            or repo_url.startswith('-')
+            or any(ord(ch) < 32 for ch in repo_url)
+        ):
+            raise ValueError(f"非法仓库 URL: {self.config.repo_url!r}")
+        return repo_url
+
+    def _validated_local_path(self) -> str:
+        """校验本地仓库路径，避免将选项传给 git。"""
+        local_path = str(self.config.local_path)
+        if (
+            not local_path
+            or local_path.startswith('-')
+            or any(ord(ch) < 32 for ch in local_path)
+        ):
+            raise ValueError(f"非法本地仓库路径: {self.config.local_path!r}")
+        return local_path
+
+    def _validated_sparse_paths(self) -> List[str]:
+        """校验 sparse checkout 路径，防止把选项或路径穿越传给 git。"""
+        validated_paths: List[str] = []
+        for path in self.config.sparse_paths or []:
+            normalized = str(path).replace('\\', '/').strip()
+            parts = [part for part in normalized.split('/') if part]
+            if (
+                not normalized
+                or normalized.startswith('/')
+                or normalized.startswith('-')
+                or any(part == '..' for part in parts)
+            ):
+                raise ValueError(f"非法 sparse checkout 路径: {path}")
+            validated_paths.append(normalized)
+
+        return validated_paths
+
     def _load_version(self) -> None:
         """加载数据版本信息"""
         try:
-            version_file = self.config.local_path / 'zh_CN/gamedata/excel/data_version.txt'
+            version_file = self.config.local_path / self.config.data_root / 'gamedata/excel/data_version.txt'
             if version_file.exists():
                 with open(version_file, 'r', encoding='utf-8') as f:
                     version_str = f.read().strip()
@@ -258,7 +356,8 @@ class GitHubDataProvider:
                 return self._data_cache[data_type]
 
             # 加载文件
-            file_path = self.config.local_path / self.DATA_FILES.get(data_type, '')
+            relative_path = self.DATA_FILES.get(data_type, '')
+            file_path = self.config.local_path / self.config.data_root / relative_path
             if not file_path.exists():
                 logger.error(f"数据文件不存在: {file_path}")
                 return None
@@ -510,6 +609,7 @@ class GitHubDataProvider:
 
         items = []
         items_data = data.get('items', {})
+        recipes = self._build_item_recipes(items_data)
 
         item_list = list(items_data.items())
         total = len(item_list)
@@ -519,7 +619,7 @@ class GitHubDataProvider:
                 if progress_callback:
                     progress_callback(idx + 1, total)
 
-                item = self._parse_item(item_id, item_info)
+                item = self._parse_item(item_id, item_info, recipes.get(item_id))
                 if item:
                     items.append(item)
 
@@ -530,7 +630,61 @@ class GitHubDataProvider:
         logger.info(f"加载了 {len(items)} 个物品")
         return items
 
-    def _parse_item(self, item_id: str, data: Dict[str, Any]) -> Optional[Item]:
+    def _build_item_recipes(self, items_data: Dict[str, Any]) -> Dict[str, ItemRecipe]:
+        """从基建配方表构建物品合成配方索引"""
+        building_data = self._load_json('building')
+        if not building_data:
+            return {}
+
+        formula_tables = {
+            'WORKSHOP': building_data.get('workshopFormulas', {}),
+            'MANUFACTURE': building_data.get('manufactFormulas', {}),
+        }
+        item_names = {
+            str(item_id): item_info.get('name', str(item_id))
+            for item_id, item_info in items_data.items()
+            if isinstance(item_info, dict)
+        }
+
+        recipes: Dict[str, ItemRecipe] = {}
+
+        for item_id, item_info in items_data.items():
+            if not isinstance(item_info, dict):
+                continue
+
+            for product_info in item_info.get('buildingProductList') or []:
+                room_type = product_info.get('roomType')
+                formula_id = str(product_info.get('formulaId', ''))
+                formula = formula_tables.get(room_type, {}).get(formula_id)
+                if not formula or str(formula.get('itemId')) != str(item_id):
+                    continue
+
+                materials = []
+                for cost in formula.get('costs') or []:
+                    material_id = str(cost.get('id', ''))
+                    if not material_id:
+                        continue
+                    materials.append(RecipeMaterial(
+                        item_id=material_id,
+                        item_name=item_names.get(material_id, material_id),
+                        count=int(cost.get('count', 0) or 0)
+                    ))
+
+                if materials:
+                    recipes[str(item_id)] = ItemRecipe(
+                        cost_gold=int(formula.get('goldCost', 0) or 0),
+                        materials=materials
+                    )
+                    break
+
+        return recipes
+
+    def _parse_item(
+        self,
+        item_id: str,
+        data: Dict[str, Any],
+        recipe: Optional[ItemRecipe] = None
+    ) -> Optional[Item]:
         """解析物品数据"""
         try:
             return Item(
@@ -549,6 +703,7 @@ class GitHubDataProvider:
                 classify_type=data.get('classifyType', 'NONE'),
                 sort_id=data.get('sortId', 0),
                 hide_in_item_get=data.get('hideInItemGet', False),
+                recipe=recipe,
                 raw_data=data
             )
 
@@ -576,7 +731,7 @@ class GitHubDataProvider:
             return []
 
         # 加载敌人数据库（属性数据）
-        enemy_db_path = self.config.local_path / 'zh_CN/gamedata/levels/enemydata/enemy_database.json'
+        enemy_db_path = self.config.local_path / self.config.data_root / 'gamedata/levels/enemydata/enemy_database.json'
         enemy_db = {}
         if enemy_db_path.exists():
             try:

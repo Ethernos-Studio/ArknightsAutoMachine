@@ -22,12 +22,16 @@ class StageType(Enum):
     GUIDE = "GUIDE"         # 教学
     CAMPAIGN = "CAMPAIGN"   # 剿灭
     ROGUELIKE = "ROGUELIKE" # 肉鸽
+    CLIMB_TOWER = "CLIMB_TOWER" # 保全派驻/爬塔类
+    SPECIAL_STORY = "SPECIAL_STORY" # 特别剧情
 
 
 class Difficulty(Enum):
     """难度级别"""
     NORMAL = "NORMAL"
     HARD = "HARD"
+    FOUR_STAR = "FOUR_STAR"
+    SIX_STAR = "SIX_STAR"
 
 
 @dataclass
